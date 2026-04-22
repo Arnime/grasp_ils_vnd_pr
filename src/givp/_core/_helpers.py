@@ -19,6 +19,26 @@ import numpy as np
 EvaluatorFn = Callable[[np.ndarray], float]
 
 logger = logging.getLogger("givp._core")
+_VERBOSE_HANDLER_ATTACHED: list[bool] = [False]
+
+
+def _ensure_verbose_handler() -> None:
+    """Attach a stdout handler to the ``givp._core`` logger so verbose=True
+    actually prints to the console even when the application has not
+    configured ``logging`` itself.
+
+    Idempotent: safe to call repeatedly; only the first call adds a handler.
+    """
+    if _VERBOSE_HANDLER_ATTACHED[0]:
+        logger.setLevel(logging.INFO)
+        return
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(logging.Formatter("[givp] %(message)s"))
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+    _VERBOSE_HANDLER_ATTACHED[0] = True
 
 
 # Per-context runtime configuration shared across helpers.

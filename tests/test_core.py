@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 import pytest
 
@@ -1275,3 +1277,165 @@ def test_perturb_index_no_bounds_int_branch():
     rng = np.random.default_rng(0)
     _perturb_index(arr, idx=1, strength=2, rng=rng, lower_arr=None, upper_arr=None)
     assert arr.shape == (2,)
+
+
+# ----------------------------- verbose handler & run header/footer -----------------------------
+
+
+class _ListHandler(logging.Handler):
+    """Minimal in-memory log handler used by verbose tests."""
+
+    def __init__(self):
+        super().__init__()
+        self.messages: list[str] = []
+
+    def emit(self, record: logging.LogRecord) -> None:  # type: ignore[override]
+        self.messages.append(self.format(record))
+
+
+def _capture_logger(logger_name: str = "givp._core"):
+    """Context manager that attaches a ``_ListHandler`` to *logger_name* and yields it."""
+    import contextlib
+
+    @contextlib.contextmanager
+    def _ctx():
+        log = logging.getLogger(logger_name)
+        h = _ListHandler()
+        h.setLevel(logging.DEBUG)
+        log.addHandler(h)
+        try:
+            yield h
+        finally:
+            log.removeHandler(h)
+
+    return _ctx()
+
+
+def test_ensure_verbose_handler_attaches_once():
+    """``_ensure_verbose_handler`` adds a handler the first time and is idempotent."""
+    import logging
+
+    from givp._core._helpers import (
+        _VERBOSE_HANDLER_ATTACHED,
+        _ensure_verbose_handler,
+        logger,
+    )
+
+    # Force a clean state so we can exercise the "first call" branch.
+    _VERBOSE_HANDLER_ATTACHED[0] = False
+    original_handlers = logger.handlers[:]
+    logger.handlers.clear()
+
+    _ensure_verbose_handler()
+    assert logger.level == logging.INFO
+    assert len(logger.handlers) >= 1
+    assert _VERBOSE_HANDLER_ATTACHED[0] is True
+
+    # Second call must be idempotent — handler count must not grow.
+    handler_count_after_first = len(logger.handlers)
+    _ensure_verbose_handler()
+    assert len(logger.handlers) == handler_count_after_first
+
+    # Restore original handlers so subsequent tests see a clean logger.
+    logger.handlers.clear()
+    for h in original_handlers:
+        logger.addHandler(h)
+
+
+def test_print_run_header_verbose_true():
+    """``_print_run_header`` emits a log line when verbose=True."""
+    from givp._core._impl import _print_run_header
+
+    cfg = CoreConfig(
+        max_iterations=10,
+        adaptive_alpha=True,
+        alpha_min=0.08,
+        alpha_max=0.18,
+        use_elite_pool=True,
+        elite_size=5,
+        time_limit=0.0,
+    )
+    with _capture_logger() as h:
+        _print_run_header(verbose=True, num_vars=4, config=cfg)
+    assert any("GRASP-ILS-VND-PR start" in m for m in h.messages)
+
+
+def test_print_run_header_verbose_false():
+    """``_print_run_header`` emits nothing when verbose=False."""
+    from givp._core._impl import _print_run_header
+
+    cfg = CoreConfig()
+    with _capture_logger() as h:
+        _print_run_header(verbose=False, num_vars=4, config=cfg)
+    assert not any("GRASP-ILS-VND-PR start" in m for m in h.messages)
+
+
+def test_print_run_header_non_adaptive_alpha():
+    """Header uses fixed alpha values when adaptive_alpha=False."""
+    from givp._core._impl import _print_run_header
+
+    cfg = CoreConfig(adaptive_alpha=False, alpha=0.15)
+    with _capture_logger() as h:
+        _print_run_header(verbose=True, num_vars=2, config=cfg)
+    assert any("0.150" in m for m in h.messages)
+
+
+def test_print_run_header_with_time_limit():
+    """Header shows formatted time limit when time_limit > 0."""
+    from givp._core._impl import _print_run_header
+
+    cfg = CoreConfig(time_limit=30.0)
+    with _capture_logger() as h:
+        _print_run_header(verbose=True, num_vars=2, config=cfg)
+    assert any("30.0s" in m for m in h.messages)
+
+
+def test_print_run_footer_verbose_true():
+    """``_print_run_footer`` emits a log line when verbose=True."""
+    import time
+
+    from givp._core._impl import _print_run_footer
+
+    start = time.monotonic()
+    with _capture_logger() as h:
+        _print_run_footer(verbose=True, best_cost=3.14, stagnation=7, start_time=start)
+    assert any("GRASP-ILS-VND-PR end" in m for m in h.messages)
+    assert any("3.1400" in m for m in h.messages)
+
+
+def test_print_run_footer_verbose_false():
+    """``_print_run_footer`` emits nothing when verbose=False."""
+    import time
+
+    from givp._core._impl import _print_run_footer
+
+    start = time.monotonic()
+    with _capture_logger() as h:
+        _print_run_footer(verbose=False, best_cost=1.0, stagnation=0, start_time=start)
+    assert not any("GRASP-ILS-VND-PR end" in m for m in h.messages)
+
+
+def test_verbose_output_contains_iter_and_best():
+    """End-to-end: verbose run emits header, per-iteration lines, and footer."""
+    from givp import GraspIlsVndConfig, grasp_ils_vnd_pr
+
+    cfg = GraspIlsVndConfig(
+        max_iterations=4,
+        vnd_iterations=6,
+        ils_iterations=2,
+        elite_size=3,
+        num_candidates_per_step=4,
+        use_convergence_monitor=False,
+    )
+    with _capture_logger() as h:
+        result = grasp_ils_vnd_pr(
+            lambda x: float(np.sum(x**2)),
+            [(-2.0, 2.0)] * 3,
+            config=cfg,
+            seed=1,
+            verbose=True,
+        )
+    assert any("GRASP-ILS-VND-PR start" in m for m in h.messages)
+    assert any("iter" in m and "best=" in m for m in h.messages)
+    assert any("GRASP-ILS-VND-PR end" in m for m in h.messages)
+    assert np.isfinite(result.fun)
