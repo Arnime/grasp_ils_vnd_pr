@@ -8,7 +8,9 @@ on:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-    environment: pypi
+    environment:
+      name: pypi
+      url: https://pypi.org/p/givp
     permissions:
       id-token: write
     steps:
@@ -20,5 +22,15 @@ jobs:
         run: |
           python -m pip install --upgrade pip build
           python -m build
+      - name: Generate SBOM (CycloneDX)
+        run: |
+          python -m pip install cyclonedx-bom
+          cyclonedx-py environment --of JSON -o sbom.cdx.json
+      - name: Attach SBOM to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            sbom.cdx.json
+            dist/*
       - name: Publish to PyPI (trusted publisher)
         uses: pypa/gh-action-pypi-publish@release/v1

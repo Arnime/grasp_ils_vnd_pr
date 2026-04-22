@@ -12,15 +12,21 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Sequence
 
 import numpy as np
+from numpy.typing import NDArray
 
 from givp import _core
 from givp._config import GraspIlsVndConfig
+from givp._core._helpers import _set_seed
 from givp._result import OptimizeResult
 
 BoundsLike = Sequence[tuple[float, float]] | tuple[Sequence[float], Sequence[float]]
+ObjectiveFn = Callable[[NDArray[np.float64]], float]
+IterationCallback = Callable[[int, float, NDArray[np.float64]], None]
 
 
-def _normalize_bounds(bounds: BoundsLike, num_vars: int | None) -> tuple[list[float], list[float], int]:
+def _normalize_bounds(
+    bounds: BoundsLike, num_vars: int | None
+) -> tuple[list[float], list[float], int]:
     """Accept SciPy-style list of (low, high) pairs or a (lower, upper) tuple."""
     if bounds is None:
         raise ValueError("bounds must be provided")
@@ -39,9 +45,9 @@ def _normalize_bounds(bounds: BoundsLike, num_vars: int | None) -> tuple[list[fl
         lower = [float(v) for v in bounds[0]]
         upper = [float(v) for v in bounds[1]]
     else:
-        arr_pairs = [tuple(b) for b in bounds]  # type: ignore[arg-type]
-        lower = [float(lo) for lo, _ in arr_pairs]
-        upper = [float(hi) for _, hi in arr_pairs]
+        arr_pairs = [(float(b[0]), float(b[1])) for b in bounds]  # type: ignore[index]
+        lower = [lo for lo, _ in arr_pairs]
+        upper = [hi for _, hi in arr_pairs]
 
     n = len(lower)
     if num_vars is not None and n != num_vars:
@@ -49,7 +55,9 @@ def _normalize_bounds(bounds: BoundsLike, num_vars: int | None) -> tuple[list[fl
     return lower, upper, n
 
 
-def _wrap_objective(func: Callable[[np.ndarray], float], direction: str, counter: list[int]) -> Callable[[np.ndarray], float]:
+def _wrap_objective(
+    func: ObjectiveFn, direction: str, counter: list[int]
+) -> ObjectiveFn:
     """Wrap user objective so the core always sees a *minimization* problem.
 
     Increments ``counter[0]`` on every call to track ``nfev``. Non-finite values
@@ -60,7 +68,7 @@ def _wrap_objective(func: Callable[[np.ndarray], float], direction: str, counter
 
     sign = -1.0 if direction == "maximize" else 1.0
 
-    def wrapped(x: np.ndarray) -> float:
+    def wrapped(x: NDArray[np.float64]) -> float:
         counter[0] += 1
         try:
             value = float(func(np.asarray(x, dtype=float)))
@@ -73,15 +81,45 @@ def _wrap_objective(func: Callable[[np.ndarray], float], direction: str, counter
     return wrapped
 
 
+def _resolve_direction(
+    minimize: bool | None, direction: str | None, default: str = "minimize"
+) -> str:
+    """Reconcile the boolean ``minimize`` flag with the string ``direction``.
+
+    Rules:
+        * Both ``None`` -> ``default``.
+        * Only ``minimize`` set -> map to direction.
+        * Only ``direction`` set -> validate and return it.
+        * Both set -> values must agree, otherwise ``ValueError``.
+    """
+    if direction is not None and direction not in ("minimize", "maximize"):
+        raise ValueError(
+            f"direction must be 'minimize' or 'maximize', got {direction!r}"
+        )
+    if minimize is None and direction is None:
+        return default
+    if minimize is None:
+        return direction  # type: ignore[return-value]
+    derived = "minimize" if minimize else "maximize"
+    if direction is not None and direction != derived:
+        raise ValueError(
+            "`minimize` and `direction` disagree: "
+            f"minimize={minimize} implies '{derived}', got direction={direction!r}"
+        )
+    return derived
+
+
 def grasp_ils_vnd_pr(
-    func: Callable[[np.ndarray], float],
+    func: ObjectiveFn,
     bounds: BoundsLike,
     *,
     num_vars: int | None = None,
-    direction: str = "minimize",
+    minimize: bool | None = None,
+    direction: str | None = None,
     config: GraspIlsVndConfig | None = None,
     initial_guess: Sequence[float] | None = None,
-    iteration_callback: Callable[[int, float, np.ndarray], None] | None = None,
+    iteration_callback: IterationCallback | None = None,
+    seed: int | None = None,
     verbose: bool = False,
 ) -> OptimizeResult:
     """
@@ -93,25 +131,42 @@ def grasp_ils_vnd_pr(
             ``(lower, upper)`` tuple of two equally-sized sequences.
         num_vars: Optional explicit number of variables. Inferred from
             ``bounds`` when omitted.
-        direction: ``'minimize'`` (default) or ``'maximize'``.
+        minimize: Boolean flag for the optimization sense. ``True`` minimizes,
+            ``False`` maximizes. Preferred over ``direction`` for new code.
+        direction: ``'minimize'`` or ``'maximize'`` (SciPy/Optuna style). Kept
+            for backward compatibility. Ignored when ``minimize`` is given.
+            Defaults to ``'minimize'`` when neither flag is supplied.
         config: Algorithm hyper-parameters. ``GraspIlsVndConfig()`` is used
-            when omitted. ``config.direction`` is ignored if ``direction`` is
-            also passed explicitly here (the explicit kwarg wins).
+            when omitted. Any sense field on ``config`` is overridden by the
+            explicit ``minimize``/``direction`` kwargs when provided.
         initial_guess: Optional warm-start vector, evaluated and inserted in
             the elite pool before the first iteration.
         iteration_callback: Optional callable invoked once per outer iteration
             with ``(iteration, best_cost_in_core_sign, best_solution)``.
+        seed: Optional integer seed for full reproducibility. When given,
+            every internal RNG is derived deterministically from this seed,
+            so two calls with the same inputs return the same result.
         verbose: If True, prints progress information to stdout.
 
     Returns:
         OptimizeResult: Dataclass with ``x`` (best solution), ``fun`` (best
         objective value in the **user's original sign**) and metadata.
+
+    Raises:
+        ValueError: If both ``minimize`` and ``direction`` are passed with
+            conflicting values, or if ``direction`` is not one of
+            ``'minimize'`` / ``'maximize'``.
     """
+    resolved_direction = _resolve_direction(minimize, direction)
     cfg = config or GraspIlsVndConfig()
-    if direction is not None:
-        cfg = GraspIlsVndConfig(
-            **{**cfg.__dict__, "direction": direction}
-        )
+    cfg = GraspIlsVndConfig(
+        **{**cfg.__dict__, "minimize": resolved_direction == "minimize"}
+    )
+
+    # Pin the master RNG when a seed was supplied so all internal helpers
+    # derive deterministic child seeds. ``None`` restores the default
+    # non-deterministic behaviour.
+    _set_seed(seed)
 
     lower, upper, n = _normalize_bounds(bounds, num_vars)
 
@@ -161,27 +216,33 @@ class GraspOptimizer:
 
     def __init__(
         self,
-        func: Callable[[np.ndarray], float],
+        func: ObjectiveFn,
         bounds: BoundsLike,
         *,
         num_vars: int | None = None,
-        direction: str = "minimize",
+        minimize: bool | None = None,
+        direction: str | None = None,
         config: GraspIlsVndConfig | None = None,
         initial_guess: Sequence[float] | None = None,
-        iteration_callback: Callable[[int, float, np.ndarray], None] | None = None,
+        iteration_callback: IterationCallback | None = None,
+        seed: int | None = None,
         verbose: bool = False,
     ) -> None:
         self.func = func
         self.bounds = bounds
         self.num_vars = num_vars
-        self.direction = direction
+        self.direction = _resolve_direction(minimize, direction)
+        self.minimize = self.direction == "minimize"
         self.config = config or GraspIlsVndConfig()
         self.initial_guess = initial_guess
         self.iteration_callback = iteration_callback
+        self.seed = seed
         self.verbose = verbose
 
-        self.best_x: np.ndarray | None = None
-        self.best_fun: float = float("-inf") if direction == "maximize" else float("inf")
+        self.best_x: NDArray[np.float64] | None = None
+        self.best_fun: float = (
+            float("-inf") if self.direction == "maximize" else float("inf")
+        )
         self.history: list[OptimizeResult] = []
 
     def _is_better(self, candidate: float) -> bool:
@@ -195,10 +256,11 @@ class GraspOptimizer:
             self.func,
             self.bounds,
             num_vars=self.num_vars,
-            direction=self.direction,
+            minimize=self.minimize,
             config=self.config,
             initial_guess=self.initial_guess,
             iteration_callback=self.iteration_callback,
+            seed=self.seed,
             verbose=self.verbose,
         )
         self.history.append(result)

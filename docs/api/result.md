@@ -1,0 +1,3 @@
+# `OptimizeResult`
+
+::: givp.OptimizeResult

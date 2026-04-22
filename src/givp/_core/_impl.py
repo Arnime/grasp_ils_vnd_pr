@@ -13,257 +13,30 @@ Este módulo implementa melhorias avançadas para o GRASP:
 # pylint: disable=too-many-lines
 
 import time as _time_mod
-from collections import deque
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from typing import Callable
 
 import numpy as np
 
-
-# Module-level override for the boundary between continuous and integer vars.
-# Set by ``grasp_ils_vnd`` at entry based on ``config.integer_split``; when
-# ``None`` (default) every helper falls back to ``n // 2``, preserving the
-# legacy behavior used by the SOG2 hydropower model where the first half of the
-# vector holds continuous variables (e.g. turbined flows) and the second half
-# holds integer counts (e.g. number of generators).
-_INTEGER_SPLIT: int | None = None
-
-
-def _get_half(n: int) -> int:
-    """Return the index where integer variables begin, given vector length ``n``."""
-    if _INTEGER_SPLIT is not None and 0 <= _INTEGER_SPLIT <= n:
-        return _INTEGER_SPLIT
-    return n // 2
-
-
-def _set_integer_split(split: int | None) -> None:
-    """Set the module-level integer split used by the helpers below."""
-    global _INTEGER_SPLIT
-    _INTEGER_SPLIT = split
-
-
-def _expired(deadline: float) -> bool:
-    """Retorna True se o deadline foi atingido (0 = sem limite)."""
-    return deadline > 0 and _time_mod.perf_counter() >= deadline
-
-
-class EvaluationCache:
-    """
-    Cache LRU para armazenar avaliações de soluções.
-
-    Reduz drasticamente o número de avaliações da função objetivo,
-    especialmente em buscas locais que revisitam soluções similares.
-
-    Args:
-        maxsize (int): Tamanho máximo do cache.
-
-    Attributes:
-        cache (dict): Dicionário de cache {hash: custo}.
-        hits (int): Contador de acertos no cache.
-        misses (int): Contador de falhas no cache.
-    """
-
-    def __init__(self, maxsize: int = 10000):
-        self.maxsize = maxsize
-        self.cache = {}
-        self.hits = 0
-        self.misses = 0
-        self.insertion_order: deque = deque()
-
-    def _hash_solution(self, solution: np.ndarray) -> int:
-        """Gera hash rápido da solução arredondada (P15: rounding mais grosseiro para contínuas)."""
-        half = _get_half(solution.size)
-        rounded = np.empty_like(solution)
-        rounded[:half] = np.round(solution[:half], decimals=3)
-        rounded[half:] = np.round(solution[half:], decimals=0)
-        return hash(rounded.tobytes())
-
-    def get(self, solution: np.ndarray) -> float | None:
-        """Retorna custo cached ou None se não encontrado."""
-        key = self._hash_solution(solution)
-        if key in self.cache:
-            self.hits += 1
-            return self.cache[key]
-        self.misses += 1
-        return None
-
-    def put(self, solution: np.ndarray, cost: float) -> None:
-        """Armazena solução e custo no cache."""
-        key = self._hash_solution(solution)
-
-        if key not in self.cache and len(self.cache) >= self.maxsize:
-            oldest = self.insertion_order.popleft()
-            self.cache.pop(oldest, None)
-
-        if key not in self.cache:
-            self.insertion_order.append(key)
-
-        self.cache[key] = cost
-
-    def clear(self) -> None:
-        """Limpa o cache."""
-        self.cache.clear()
-        self.insertion_order = deque()
-        self.hits = 0
-        self.misses = 0
-
-    def stats(self) -> dict:
-        """Retorna estatísticas do cache."""
-        total = self.hits + self.misses
-        hit_rate = (self.hits / total * 100) if total > 0 else 0
-        return {
-            "hits": self.hits,
-            "misses": self.misses,
-            "hit_rate": hit_rate,
-            "size": len(self.cache),
-        }
-
-
-class ConvergenceMonitor:
-    """
-    Monitora convergência e decide quando fazer restart.
-
-    Rastreia histórico de melhorias e detecta estagnação prolongada,
-    sugerindo restart com perturbação forte quando necessário.
-
-    Args:
-        window_size (int): Tamanho da janela para análise de tendência.
-        restart_threshold (int): Iterações sem melhoria para sugerir restart.
-
-    Attributes:
-        history (list): Histórico dos melhores custos.
-        no_improve_count (int): Contador de iterações sem melhoria.
-    """
-
-    def __init__(self, window_size: int = 20, restart_threshold: int = 50):
-        self.window_size = window_size
-        self.restart_threshold = restart_threshold
-        self.history = []
-        self.no_improve_count = 0
-        self.best_ever = float("inf")
-        self.diversity_scores = []
-
-    def update(self, current_cost: float, elite_pool=None) -> dict:
-        """
-        Atualiza monitor com novo custo e retorna recomendações.
-
-        Returns:
-            dict com chaves: should_restart, should_intensify, diversity
-        """
-        self.history.append(current_cost)
-
-        if current_cost < self.best_ever:
-            self.best_ever = current_cost
-            self.no_improve_count = 0
-        else:
-            self.no_improve_count += 1
-
-        diversity = 0.0
-        if elite_pool is not None and elite_pool.size() >= 2:
-            solutions = [sol for sol, _ in elite_pool.get_all()]
-            distances = []
-            for i, sol_i in enumerate(solutions):
-                for sol_j in solutions[i + 1 :]:
-                    dist = np.linalg.norm(sol_i - sol_j)
-                    distances.append(dist)
-            diversity = float(np.mean(distances)) if distances else 0.0
-
-        self.diversity_scores.append(diversity)
-
-        should_restart = self.no_improve_count >= self.restart_threshold
-        should_intensify = (
-            self.no_improve_count >= self.restart_threshold // 2 and diversity < 0.5
-        )
-
-        return {
-            "should_restart": should_restart,
-            "should_intensify": should_intensify,
-            "diversity": diversity,
-            "no_improve_count": self.no_improve_count,
-        }
-
-
-class ElitePool:
-    """
-    Pool de soluções elite com manutenção de diversidade.
-
-    Mantém um conjunto de soluções de alta qualidade, garantindo diversidade mínima entre elas
-    (distância relativa normalizada). Permite adicionar, recuperar e limpar soluções elite.
-
-    Args:
-        max_size (int): Tamanho máximo do pool.
-        min_distance (float): Distância relativa mínima normalizada entre soluções (0-1).
-        lower (np.ndarray | None): Limites inferiores das variáveis (para normalização).
-        upper (np.ndarray | None): Limites superiores das variáveis (para normalização).
-
-    Attributes:
-        pool (list[tuple[np.ndarray, float]]): Lista de tuplas (solução, benefício).
-    """
-
-    def __init__(
-        self,
-        max_size: int = 5,
-        min_distance: float = 0.05,
-        lower: np.ndarray | None = None,
-        upper: np.ndarray | None = None,
-    ):
-        self.max_size = max_size
-        self.min_distance = min_distance
-        self.pool: list[tuple[np.ndarray, float]] = []
-        self._range = None
-        if lower is not None and upper is not None:
-            self._range = np.maximum(upper - lower, 1e-12)
-
-    def _relative_distance(self, a: np.ndarray, b: np.ndarray) -> float:
-        """Calcula distância relativa normalizada média entre duas soluções."""
-        if self._range is not None:
-            return float(np.mean(np.abs(a - b) / self._range))
-        return float(np.linalg.norm(a - b))
-
-    def add(self, solution: np.ndarray, benefit: float) -> bool:
-        """
-        Adiciona solução ao pool se for boa o suficiente e diversa.
-
-        Returns:
-            True se a solução foi adicionada
-        """
-        solution = np.array(solution, dtype=float)
-
-        for elite_sol, _ in self.pool:
-            distance = self._relative_distance(solution, elite_sol)
-            if distance < self.min_distance:
-                return False
-
-        if len(self.pool) < self.max_size:
-            self.pool.append((solution.copy(), benefit))
-            self.pool.sort(key=lambda x: x[1])
-            return True
-
-        if benefit < self.pool[-1][1]:
-            self.pool[-1] = (solution.copy(), benefit)
-            self.pool.sort(key=lambda x: x[1])
-            return True
-
-        return False
-
-    def get_best(self) -> tuple[np.ndarray, float]:
-        """Retorna a melhor solução do pool."""
-        if not self.pool:
-            raise ValueError("Pool vazio")
-        return self.pool[0]
-
-    def get_all(self) -> list[tuple[np.ndarray, float]]:
-        """Retorna todas as soluções do pool."""
-        return self.pool.copy()
-
-    def size(self) -> int:
-        """Retorna o tamanho atual do pool."""
-        return len(self.pool)
-
-    def clear(self):
-        """Limpa o pool."""
-        self.pool.clear()
+from givp._core._cache import EvaluationCache
+from givp._core._convergence import ConvergenceMonitor
+from givp._core._elite import ElitePool
+from givp._core._helpers import (
+    EvaluatorFn,
+    _expired,
+    _get_group_size,
+    _get_half,
+    _new_rng,
+    _safe_evaluate,
+    _set_group_size,
+    _set_integer_split,
+    logger,
+)
+from givp._exceptions import (
+    InvalidBoundsError,
+    InvalidInitialGuessError,
+)
 
 
 @dataclass
@@ -316,10 +89,22 @@ class GraspIlsVndConfig:
     # SOG2 behavior of splitting the vector in half; set it to ``num_vars``
     # for fully continuous problems or to ``0`` for fully integer problems.
     integer_split: int | None = None
+    # Number of steps per group for the group/block neighbourhoods.
+    # Set this when your problem has structured groups of variables, e.g.
+    # group_size=24 for 3 groups of 24 time-steps each (72 continuous vars).
+    # None disables the group and block neighbourhoods.
+    group_size: int | None = None
 
 
 def evaluate_candidates(
-    available, deps_active, current_cost, deps_matrix, deps_len, c_arr, a_arr, b
+    available: np.ndarray,
+    deps_active: np.ndarray,
+    current_cost: int,
+    deps_matrix: np.ndarray,
+    deps_len: np.ndarray,
+    c_arr: np.ndarray,
+    a_arr: np.ndarray,
+    b: int,
 ):
     """
     Avalia candidatos com base em informações de dependência e custos incrementais.
@@ -364,7 +149,9 @@ def evaluate_candidates(
     return ratios, inc_costs, valid
 
 
-def select_rcl(valid_indices, valid_ratios, alpha):
+def select_rcl(
+    valid_indices: np.ndarray, valid_ratios: np.ndarray, alpha: float
+) -> np.ndarray:
     """
     Seleciona a Restricted Candidate List (RCL) com base nas razões benefício/custo e
     parâmetro alpha.
@@ -386,7 +173,7 @@ def select_rcl(valid_indices, valid_ratios, alpha):
         n_top = max(1, int(len(valid_indices) * 0.3))
         top_idx = np.argpartition(valid_ratios, -n_top)[-n_top:]
         rcl_indices = valid_indices[top_idx]
-    return rcl_indices
+    return np.asarray(rcl_indices)
 
 
 def _validate_bounds_and_initial(
@@ -396,76 +183,41 @@ def _validate_bounds_and_initial(
     num_vars: int,
 ):
     if lower_arr.shape[0] != num_vars or upper_arr.shape[0] != num_vars:
-        raise ValueError("lower and upper must have length num_vars")
+        raise InvalidBoundsError(
+            f"lower (len={lower_arr.shape[0]}) and upper (len={upper_arr.shape[0]}) "
+            f"must both have length num_vars={num_vars}"
+        )
     if initial_guess is not None:
         if initial_guess.shape[0] != num_vars:
-            raise ValueError("initial_guess must have length num_vars")
+            raise InvalidInitialGuessError(
+                f"initial_guess has length {initial_guess.shape[0]}, expected {num_vars}"
+            )
         if np.any(initial_guess <= lower_arr) or np.any(initial_guess >= upper_arr):
-            raise ValueError(
-                "initial_guess values must be strictly between lower and upper"
+            bad = np.nonzero(
+                (initial_guess <= lower_arr) | (initial_guess >= upper_arr)
+            )[0]
+            raise InvalidInitialGuessError(
+                f"initial_guess values must be strictly between lower and upper; "
+                f"violating indices: {bad.tolist()[:10]}"
             )
 
 
 def _seed_from_initial(
     chute: np.ndarray,
     num_vars: int,
-    evaluator: Callable,
+    evaluator: EvaluatorFn,
     lower_arr: np.ndarray,
     upper_arr: np.ndarray,
 ) -> np.ndarray:
-    try:
-        cost = evaluator(chute)
-    except ValueError:
-        cost = np.inf
+    cost = _safe_evaluate(evaluator, chute)
     if np.isfinite(cost):
         return chute.copy()
-    rng = np.random.default_rng()
-    return lower_arr + (upper_arr - lower_arr) * rng.random(size=num_vars)
-
-
-def _sample_candidate_indices(
-    current_sel: np.ndarray, max_candidates: int | None, rng: np.random.Generator
-) -> np.ndarray:
-    """Amostra índices de candidatos de forma estratificada."""
-    half = _get_half(current_sel.size)
-    if max_candidates is None or max_candidates >= current_sel.size:
-        return np.arange(current_sel.size)
-
-    n_int = min(max_candidates // 2, current_sel.size - half)
-    n_cont = max_candidates - n_int
-
-    cont_vars = rng.choice(half, size=min(n_cont, half), replace=False)
-    int_vars = rng.choice(np.arange(half, current_sel.size), size=n_int, replace=False)
-    available = np.concatenate([cont_vars, int_vars])
-    rng.shuffle(available)
-    return available
-
-
-def _generate_candidate_value(
-    var: int,
-    current_sel: np.ndarray,
-    lower_arr: np.ndarray,
-    upper_arr: np.ndarray,
-    rng: np.random.Generator,
-) -> np.ndarray:
-    """Gera valor candidato para uma variável."""
-    cand = current_sel.copy()
-    half = _get_half(current_sel.size)
-    if var >= half:
-        lo = int(np.ceil(lower_arr[var]))
-        hi = int(np.floor(upper_arr[var]))
-        if hi < lo:
-            cand[var] = int(np.rint((lower_arr[var] + upper_arr[var]) / 2.0))
-        else:
-            cand[var] = float(rng.integers(lo, hi + 1))
-    else:
-        cand[var] = lower_arr[var] + (upper_arr[var] - lower_arr[var]) * rng.random()
-
-    return cand
+    rng = _new_rng()
+    return np.asarray(lower_arr + (upper_arr - lower_arr) * rng.random(size=num_vars))
 
 
 def _evaluate_with_cache(
-    cand: np.ndarray, evaluator: Callable, cache: "EvaluationCache | None"
+    cand: np.ndarray, evaluator: EvaluatorFn, cache: EvaluationCache | None
 ) -> float:
     """Avalia candidato usando cache se disponível."""
     if cache is not None:
@@ -473,46 +225,10 @@ def _evaluate_with_cache(
         if cached_cost is not None:
             return cached_cost
 
-    try:
-        cost = evaluator(cand)
-        if cache is not None:
-            cache.put(cand, cost)
-        return cost
-    except ValueError:
-        return np.inf
-
-
-def _evaluate_candidate_costs(
-    current_sel: np.ndarray,
-    evaluator: Callable,
-    lower_arr: np.ndarray,
-    upper_arr: np.ndarray,
-    max_candidates: int | None = None,
-    cache: "EvaluationCache | None" = None,
-) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Avalia custos de candidatos para construção gulosa com cache e amostragem estratificada.
-
-    Args:
-        current_sel: Solução parcial atual
-        evaluator: Função de avaliação
-        lower_arr: Limites inferiores
-        upper_arr: Limites superiores
-        max_candidates: Número máximo de candidatos a avaliar (None = todos)
-        cache: Cache de avaliações (opcional)
-
-    Returns:
-        Tupla com índices disponíveis e custos correspondentes
-    """
-    rng = np.random.default_rng()
-    available = _sample_candidate_indices(current_sel, max_candidates, rng)
-    costs = np.full(len(available), np.inf, dtype=float)
-
-    for i_idx, var in enumerate(available):
-        cand = _generate_candidate_value(var, current_sel, lower_arr, upper_arr, rng)
-        costs[i_idx] = _evaluate_with_cache(cand, evaluator, cache)
-
-    return available, costs
+    cost = _safe_evaluate(evaluator, cand)
+    if cache is not None and np.isfinite(cost):
+        cache.put(cand, cost)
+    return cost
 
 
 def _select_from_rcl(
@@ -530,6 +246,114 @@ def _select_from_rcl(
     if rcl_local.size == 0:
         rcl_local = valid_idx
     return int(rng.choice(rcl_local))
+
+
+def _normalize_integer_tail(sol: np.ndarray, half: int) -> None:
+    """Round integer-part variables in-place."""
+    for idx in range(half, sol.size):
+        sol[idx] = float(int(np.rint(sol[idx])))
+
+
+def _build_seed_candidate(
+    initial_guess: np.ndarray | None,
+    num_vars: int,
+    evaluator: Callable,
+    lower_arr: np.ndarray,
+    upper_arr: np.ndarray,
+    cache: "EvaluationCache | None",
+) -> tuple[np.ndarray, float] | None:
+    """Build and evaluate candidate from initial guess when available."""
+    if initial_guess is None:
+        return None
+    seed_candidate = _seed_from_initial(
+        initial_guess, num_vars, evaluator, lower_arr, upper_arr
+    )
+    _normalize_integer_tail(seed_candidate, _get_half(num_vars))
+    seed_cost = _evaluate_with_cache(seed_candidate, evaluator, cache)
+    return seed_candidate, seed_cost
+
+
+def _sample_integer_from_bounds(
+    lower: float, upper: float, rng: np.random.Generator
+) -> float:
+    """Sample one integer variable respecting numeric bounds."""
+    lo = int(np.ceil(lower))
+    hi = int(np.floor(upper))
+    if hi >= lo:
+        return float(rng.integers(lo, hi + 1))
+    return float(int(np.rint((lower + upper) / 2.0)))
+
+
+def _build_heuristic_candidate(
+    num_vars: int,
+    half: int,
+    lower_arr: np.ndarray,
+    upper_arr: np.ndarray,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """Build one heuristic candidate using proportional dispatch idea."""
+    sol = np.empty(num_vars, dtype=float)
+    mid = (lower_arr[:half] + upper_arr[:half]) / 2.0
+    span = upper_arr[:half] - lower_arr[:half]
+    noise = rng.uniform(-0.15, 0.15, size=half)
+    sol[:half] = np.clip(mid + noise * span, lower_arr[:half], upper_arr[:half])
+
+    for idx in range(half, num_vars):
+        lo = int(np.ceil(lower_arr[idx]))
+        hi = int(np.floor(upper_arr[idx]))
+        cont_idx = idx - half
+        if hi > lo and span[cont_idx] > 0:
+            frac = (sol[cont_idx] - lower_arr[cont_idx]) / span[cont_idx]
+            target = lo + frac * (hi - lo)
+            sol[idx] = float(int(np.clip(np.rint(target), lo, hi)))
+        else:
+            sol[idx] = float(
+                hi
+                if hi >= lo
+                else int(np.rint((lower_arr[idx] + upper_arr[idx]) / 2.0))
+            )
+
+    return sol
+
+
+def _build_random_candidate(
+    num_vars: int,
+    half: int,
+    lower_arr: np.ndarray,
+    upper_arr: np.ndarray,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """Build one random mixed continuous/integer candidate."""
+    sol = np.empty(num_vars, dtype=float)
+    sol[:half] = lower_arr[:half] + (upper_arr[:half] - lower_arr[:half]) * rng.random(
+        half
+    )
+    for idx in range(half, num_vars):
+        sol[idx] = _sample_integer_from_bounds(lower_arr[idx], upper_arr[idx], rng)
+    return sol
+
+
+def _evaluate_candidates_batch(
+    candidates: list[np.ndarray],
+    evaluated_count: int,
+    evaluator: Callable,
+    cache: "EvaluationCache | None",
+    n_workers: int,
+) -> list[float]:
+    """Evaluate candidates not yet evaluated (optionally in parallel)."""
+    unevaluated = candidates[evaluated_count:]
+    if n_workers > 1 and len(unevaluated) > 1:
+        with ThreadPoolExecutor(max_workers=n_workers) as executor:
+            return list(
+                executor.map(
+                    lambda s: _evaluate_with_cache(s, evaluator, cache),
+                    unevaluated,
+                )
+            )
+    candidates_batch = [
+        _evaluate_with_cache(sol, evaluator, cache) for sol in unevaluated
+    ]
+    return candidates_batch
 
 
 def construct_solution_numpy(
@@ -565,82 +389,49 @@ def construct_solution_numpy(
     Returns:
         np.ndarray: Melhor solução construída.
     """
-    rng = np.random.default_rng(seed)
+    rng = _new_rng(seed)
     _validate_bounds_and_initial(lower_arr, upper_arr, initial_guess, num_vars)
 
     half = _get_half(num_vars)
     n_candidates = max(num_candidates_per_step or 10, 5)
+    candidates: list[np.ndarray] = []
+    costs: list[float] = []
 
-    candidates = []
-    costs = []
-
-    # Se temos initial_guess, inclui como candidato
-    if initial_guess is not None:
-        seed_candidate = _seed_from_initial(
-            initial_guess, num_vars, evaluator, lower_arr, upper_arr
-        )
-        for i in range(half, num_vars):
-            seed_candidate[i] = float(int(np.rint(seed_candidate[i])))
+    seed_data = _build_seed_candidate(
+        initial_guess,
+        num_vars,
+        evaluator,
+        lower_arr,
+        upper_arr,
+        cache,
+    )
+    if seed_data is not None:
+        seed_candidate, seed_cost = seed_data
         candidates.append(seed_candidate)
-        costs.append(_evaluate_with_cache(seed_candidate, evaluator, cache))
+        costs.append(seed_cost)
         n_candidates -= 1
 
-    # P10: gerar candidatas com heurística de despacho proporcional (metade)
-    # e aleatórias (outra metade)
     n_heuristic = max(1, n_candidates // 2)
     n_random = n_candidates - n_heuristic
 
-    # P10: gerar candidatas heurísticas (despacho proporcional)
     for _ in range(n_heuristic):
-        sol = np.empty(num_vars, dtype=float)
-        mid = (lower_arr[:half] + upper_arr[:half]) / 2.0
-        span = upper_arr[:half] - lower_arr[:half]
-        noise = rng.uniform(-0.15, 0.15, size=half)
-        sol[:half] = np.clip(mid + noise * span, lower_arr[:half], upper_arr[:half])
-        for i in range(half, num_vars):
-            lo = int(np.ceil(lower_arr[i]))
-            hi = int(np.floor(upper_arr[i]))
-            cont_idx = i - half
-            if hi > lo and span[cont_idx] > 0:
-                frac = (sol[cont_idx] - lower_arr[cont_idx]) / span[cont_idx]
-                target = lo + frac * (hi - lo)
-                sol[i] = float(int(np.clip(np.rint(target), lo, hi)))
-            else:
-                sol[i] = float(
-                    hi if hi >= lo else int(np.rint((lower_arr[i] + upper_arr[i]) / 2.0))
-                )
-        candidates.append(sol)
-
-    # Gerar candidatas aleatórias
+        candidates.append(
+            _build_heuristic_candidate(num_vars, half, lower_arr, upper_arr, rng)
+        )
     for _ in range(n_random):
-        sol = np.empty(num_vars, dtype=float)
-        sol[:half] = lower_arr[:half] + (
-            upper_arr[:half] - lower_arr[:half]
-        ) * rng.random(half)
-        for i in range(half, num_vars):
-            lo = int(np.ceil(lower_arr[i]))
-            hi = int(np.floor(upper_arr[i]))
-            sol[i] = (
-                float(rng.integers(lo, hi + 1))
-                if hi >= lo
-                else float(int(np.rint((lower_arr[i] + upper_arr[i]) / 2.0)))
-            )
-        candidates.append(sol)
+        candidates.append(
+            _build_random_candidate(num_vars, half, lower_arr, upper_arr, rng)
+        )
 
-    # P11: avaliar candidatas (paralelo se n_workers > 1, senão sequencial)
-    unevaluated = candidates[len(costs) :]  # pular initial_guess já avaliado
-    if n_workers > 1 and len(unevaluated) > 1:
-        with ThreadPoolExecutor(max_workers=n_workers) as executor:
-            new_costs = list(
-                executor.map(
-                    lambda s: _evaluate_with_cache(s, evaluator, cache),
-                    unevaluated,
-                )
-            )
-        costs.extend(new_costs)
-    else:
-        for sol in unevaluated:
-            costs.append(_evaluate_with_cache(sol, evaluator, cache))
+    costs.extend(
+        _evaluate_candidates_batch(
+            candidates,
+            evaluated_count=len(costs),
+            evaluator=evaluator,
+            cache=cache,
+            n_workers=n_workers,
+        )
+    )
 
     # Selecionar via RCL
     costs_arr = np.array(costs)
@@ -856,7 +647,7 @@ def _try_neighborhoods(
     sensitivity: np.ndarray | None = None,
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float, bool]:
-    """Tenta vizinhanças 1-opt, 2-opt, cascade, temporal e multiflip.
+    """Tenta vizinhanças 1-opt, pair, group, block e multiflip.
 
     Retorna (solution, benefit, improved).
     """
@@ -897,8 +688,8 @@ def _try_neighborhoods(
     if _expired(deadline):
         return solution, current_benefit, False
 
-    # P13: vizinhanças domain-aware — cascata e bloco temporal
-    new_solution, new_benefit = _neighborhood_cascade(
+    # Vizinhanças estruturadas por grupo (activas apenas se group_size estiver configurado)
+    new_solution, new_benefit = _neighborhood_group(
         cached_cost_fn,
         solution,
         current_benefit,
@@ -914,7 +705,7 @@ def _try_neighborhoods(
     if _expired(deadline):
         return solution, current_benefit, False
 
-    new_solution, new_benefit = _neighborhood_temporal_block(
+    new_solution, new_benefit = _neighborhood_block(
         cached_cost_fn,
         solution,
         current_benefit,
@@ -1036,7 +827,7 @@ def _execute_neighborhood(
     """Executa uma vizinhança específica pelo índice.
 
     Args:
-        idx: Índice da vizinhança (0=flip, 1=swap, 2=cascade, 3=temporal, 4=multiflip).
+        idx: Índice da vizinhança (0=flip, 1=pair, 2=group, 3=block, 4=multiflip).
         cost_fn: Função de custo.
         solution: Solução atual.
         current_benefit: Custo atual.
@@ -1062,7 +853,7 @@ def _execute_neighborhood(
             sensitivity=sensitivity,
             deadline=deadline,
         )
-    elif idx == 1:
+    if idx == 1:
         return _neighborhood_swap(
             cost_fn,
             solution,
@@ -1073,8 +864,8 @@ def _execute_neighborhood(
             upper_arr=upper_arr,
             deadline=deadline,
         )
-    elif idx == 2:
-        return _neighborhood_cascade(
+    if idx == 2:
+        return _neighborhood_group(
             cost_fn,
             solution,
             current_benefit,
@@ -1084,8 +875,8 @@ def _execute_neighborhood(
             upper_arr=upper_arr,
             deadline=deadline,
         )
-    elif idx == 3:
-        return _neighborhood_temporal_block(
+    if idx == 3:
+        return _neighborhood_block(
             cost_fn,
             solution,
             current_benefit,
@@ -1095,18 +886,17 @@ def _execute_neighborhood(
             upper_arr=upper_arr,
             deadline=deadline,
         )
-    else:
-        return _neighborhood_multiflip(
-            cost_fn,
-            solution,
-            current_benefit,
-            num_vars,
-            k=3,
-            seed=None,
-            lower_arr=lower_arr,
-            upper_arr=upper_arr,
-            deadline=deadline,
-        )
+    return _neighborhood_multiflip(
+        cost_fn,
+        solution,
+        current_benefit,
+        num_vars,
+        k=3,
+        seed=None,
+        lower_arr=lower_arr,
+        upper_arr=upper_arr,
+        deadline=deadline,
+    )
 
 
 def local_search_vnd_adaptive(
@@ -1126,7 +916,7 @@ def local_search_vnd_adaptive(
     """
     VND com Seleção Adaptativa de Vizinhança (Adaptive Neighborhood Selection — ANS).
 
-    Em vez de aplicar vizinhanças em ordem fixa (flip→swap→cascade→temporal→multiflip),
+    Em vez de aplicar vizinhanças em ordem fixa (flip→pair→group→block→multiflip),
     usa roulette-wheel proporcional ao sucesso histórico de cada vizinhança.
     Vizinhanças que geram melhorias recebem recompensa; todas sofrem decaimento
     exponencial para permitir readaptação ao longo da busca.
@@ -1156,10 +946,10 @@ def local_search_vnd_adaptive(
     sensitivity = np.zeros(num_vars, dtype=float)
 
     # ANS: scores de sucesso por vizinhança
-    n_neighborhoods = 5  # flip, swap, cascade, temporal, multiflip
+    n_neighborhoods = 5  # flip, pair, group, block, multiflip
     scores = np.ones(n_neighborhoods, dtype=float)
 
-    rng = np.random.default_rng()
+    rng = _new_rng()
     iteration = 0
     no_improve_count = 0
 
@@ -1246,7 +1036,7 @@ def _neighborhood_flip(
         tuple: (melhor_solução, melhor_benefício)
     """
 
-    rng = np.random.default_rng(seed)
+    rng = _new_rng(seed)
     half = _get_half(num_vars)
     if sensitivity is not None and np.any(sensitivity > 0):
         # P9: ordenar por sensibilidade (maior primeiro), com ruído para exploração
@@ -1304,10 +1094,10 @@ def _neighborhood_swap(
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float]:
     """
-    Vizinhança de bloco: perturba todas as variáveis de uma mesma usina/hora simultaneamente.
+    Vizinhança de par: perturba uma variável contínua e sua correspondente inteira simultaneamente.
 
-    Para o domínio hidrelétrico, modifica conjuntamente variáveis de vazão e geradores
-    de um mesmo time-step para uma usina, capturando correlações que a busca 1-opt ignora.
+    Modifica conjuntamente a variável contínua e a inteira de mesmo índice,
+    capturando correlações entre as duas metades que a busca 1-opt ignora.
 
     Args:
         cost_fn (Callable): Função de custo.
@@ -1324,15 +1114,12 @@ def _neighborhood_swap(
     """
     best_solution = solution.copy()
     best_benefit = current_benefit
-    rng = np.random.default_rng()
+    rng = _new_rng()
     half = _get_half(num_vars)
     if half <= 0 or half >= num_vars:
         # Neighborhood requires both continuous and integer halves.
         return best_solution, best_benefit
-    # Calcula qtd_usinas e tempo a partir de num_vars: half = qtd_usinas * tempo
-    # Assume estrutura: [vazao(usina0,t0), vazao(usina0,t1), ..., vazao(usina1,t0), ...
-    #                     gens(usina0,t0), gens(usina0,t1), ...]
-    # Tenta inferir usinas/tempo; fallback para pares aleatórios se impossível
+    # Seleciona pares (cont, int) aleatórios e os perturba conjuntamente.
     for _ in range(max_attempts):
         if _expired(deadline):
             break
@@ -1403,7 +1190,7 @@ def _neighborhood_multiflip(
     """
     best_solution = solution.copy()
     best_benefit = current_benefit
-    rng = np.random.default_rng(seed)
+    rng = _new_rng(seed)
 
     for _ in range(max_attempts):
         if _expired(deadline):
@@ -1421,7 +1208,100 @@ def _neighborhood_multiflip(
     return best_solution, best_benefit
 
 
-def _neighborhood_cascade(
+def _group_layout(num_vars: int) -> tuple[int, int, int] | None:
+    """Infer grouped variable layout (half, n_groups, n_steps) when valid.
+
+    Returns (half, n_groups, n_steps) where ``n_steps`` is the number of
+    steps per group and ``n_groups = half // n_steps``.  Uses
+    ``config.group_size`` (propagated via :data:`_GROUP_SIZE`) when set;
+    otherwise returns None so the caller skips the neighbourhood.
+    """
+    half = _get_half(num_vars)
+    if half <= 0 or half >= num_vars:
+        return None
+    n_steps = _get_group_size()
+    if n_steps is None or n_steps < 1:
+        return None
+    n_groups = half // n_steps
+    if n_groups < 1 or n_groups * n_steps != half:
+        return None
+    return half, n_groups, n_steps
+
+
+def _sign_from_delta(delta: float) -> int:
+    """Return discrete direction sign from continuous delta."""
+    if delta > 0:
+        return 1
+    if delta < 0:
+        return -1
+    return 0
+
+
+def _apply_group_perturbation(
+    solution: np.ndarray,
+    old_cont: np.ndarray,
+    old_int: np.ndarray,
+    start: int,
+    half: int,
+    n_steps: int,
+    lower_arr: np.ndarray,
+    upper_arr: np.ndarray,
+    rng: np.random.Generator,
+) -> None:
+    """Apply a correlated perturbation to all steps of one group."""
+    end = start + n_steps
+    span = upper_arr[start:end] - lower_arr[start:end]
+    base_delta = rng.uniform(-0.05, 0.05)
+    noise = rng.uniform(-0.02, 0.02, size=n_steps)
+    solution[start:end] = np.clip(
+        old_cont + (base_delta + noise) * span,
+        lower_arr[start:end],
+        upper_arr[start:end],
+    )
+    delta_int = _sign_from_delta(base_delta)
+    int_start = half + start
+    for step_idx in range(n_steps):
+        lo = int(np.ceil(lower_arr[int_start + step_idx]))
+        hi = int(np.floor(upper_arr[int_start + step_idx]))
+        new_val = int(np.rint(old_int[step_idx])) + delta_int
+        solution[int_start + step_idx] = float(np.clip(new_val, lo, hi))
+
+
+def _apply_block_perturbation(
+    solution: np.ndarray,
+    old_vals: np.ndarray,
+    half: int,
+    n_groups: int,
+    n_steps: int,
+    block_start: int,
+    block_end: int,
+    lower_arr: np.ndarray,
+    upper_arr: np.ndarray,
+    base_delta: float,
+) -> None:
+    """Apply a coordinated perturbation to a contiguous step-block across all groups."""
+    int_delta = _sign_from_delta(base_delta)
+    for group_idx in range(n_groups):
+        offset = group_idx * n_steps
+        for step_idx in range(block_start, block_end):
+            cont_idx = offset + step_idx
+            int_idx = half + cont_idx
+            span = upper_arr[cont_idx] - lower_arr[cont_idx]
+            solution[cont_idx] = float(
+                np.clip(
+                    old_vals[cont_idx] + base_delta * span,
+                    lower_arr[cont_idx],
+                    upper_arr[cont_idx],
+                )
+            )
+            lo = int(np.ceil(lower_arr[int_idx]))
+            hi = int(np.floor(upper_arr[int_idx]))
+            solution[int_idx] = float(
+                np.clip(int(np.rint(old_vals[int_idx])) + int_delta, lo, hi)
+            )
+
+
+def _neighborhood_group(
     cost_fn: Callable,
     solution: np.ndarray,
     current_benefit: float,
@@ -1433,53 +1313,44 @@ def _neighborhood_cascade(
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float]:
     """
-    P13: Vizinhança por cascata — perturba todas as horas de uma mesma usina.
+    Vizinhança de grupo: perturba todos os passos de um mesmo grupo simultaneamente.
 
-    Estrutura: half = n_usinas * n_horas.
-    Contínuas [0..half): usina0_h0, usina0_h1, ..., usina1_h0, ...
-    Inteiras [half..num_vars): mesma ordem.
-    Perturba todas as variáveis de uma usina com amplitude correlacionada.
+    Requer que a metade contínua esteja organizada como
+    [group0_step0, group0_step1, ..., group1_step0, ...] com grupos de
+    tamanho ``config.group_size``.  Desativada automaticamente se
+    ``group_size`` não estiver configurado.
     """
     best_solution = solution.copy()
     best_benefit = current_benefit
-    rng = np.random.default_rng()
-    half = _get_half(num_vars)
-    if half <= 0 or half >= num_vars:
+    rng = _new_rng()
+    layout = _group_layout(num_vars)
+    if layout is None:
         return best_solution, best_benefit
-    # Inferir estrutura: 3 usinas, 24 horas (CERAN)
-    n_usinas = 3
-    n_horas = half // n_usinas
-    if n_horas * n_usinas != half:
-        return best_solution, best_benefit  # fallback se estrutura não bate
+    half, n_groups, n_steps = layout
+    if lower_arr is None or upper_arr is None:
+        return best_solution, best_benefit
 
     for _ in range(max_attempts):
         if _expired(deadline):
             break
-        usina = rng.integers(0, n_usinas)
-        start = usina * n_horas
-        end = start + n_horas
+        group_idx = rng.integers(0, n_groups)
+        start = group_idx * n_steps
+        end = start + n_steps
 
         old_cont = solution[start:end].copy()
         old_int = solution[half + start : half + end].copy()
 
-        # Perturbação correlacionada: mesma direção para todas as horas
-        if lower_arr is not None and upper_arr is not None:
-            span = upper_arr[start:end] - lower_arr[start:end]
-            base_delta = rng.uniform(-0.05, 0.05)
-            noise = rng.uniform(-0.02, 0.02, size=n_horas)
-            solution[start:end] = np.clip(
-                old_cont + (base_delta + noise) * span,
-                lower_arr[start:end],
-                upper_arr[start:end],
-            )
-            # Inteiras: ajustar geradores de acordo com variação de vazão
-            int_start = half + start
-            for h in range(n_horas):
-                lo = int(np.ceil(lower_arr[int_start + h]))
-                hi = int(np.floor(upper_arr[int_start + h]))
-                delta_int = 1 if base_delta > 0 else -1 if base_delta < 0 else 0
-                new_val = int(np.rint(old_int[h])) + delta_int
-                solution[int_start + h] = float(np.clip(new_val, lo, hi))
+        _apply_group_perturbation(
+            solution,
+            old_cont,
+            old_int,
+            int(start),
+            half,
+            n_steps,
+            lower_arr,
+            upper_arr,
+            rng,
+        )
 
         cost = cost_fn(solution)
         if cost < best_benefit:
@@ -1494,7 +1365,7 @@ def _neighborhood_cascade(
     return best_solution, best_benefit
 
 
-def _neighborhood_temporal_block(
+def _neighborhood_block(
     cost_fn: Callable,
     solution: np.ndarray,
     current_benefit: float,
@@ -1506,57 +1377,44 @@ def _neighborhood_temporal_block(
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float]:
     """
-    P13: Vizinhança temporal — perturba um bloco contíguo de horas para todas as usinas.
+    Vizinhança de bloco: perturba um bloco contíguo de passos em todos os grupos.
 
-    Move 3-6 horas consecutivas em direção coordenada, capturando efeitos temporais
-    como rampas de carga e restrições de volume inter-período.
+    Seleciona aleatoriamente um subintervalo de 3–6 passos e aplica uma
+    perturbação coordenada em todos os grupos simultaneamente.  Desativada
+    automaticamente se ``group_size`` não estiver configurado.
     """
     best_solution = solution.copy()
     best_benefit = current_benefit
-    rng = np.random.default_rng()
-    half = _get_half(num_vars)
-    if half <= 0 or half >= num_vars:
+    rng = _new_rng()
+    layout = _group_layout(num_vars)
+    if layout is None:
         return best_solution, best_benefit
-    n_usinas = 3
-    n_horas = half // n_usinas
-    if n_horas * n_usinas != half:
+    half, n_groups, n_steps = layout
+    if lower_arr is None or upper_arr is None:
         return best_solution, best_benefit
 
     for _ in range(max_attempts):
         if _expired(deadline):
             break
-        block_size = rng.integers(3, min(7, n_horas + 1))
-        t_start = rng.integers(0, n_horas - block_size + 1)
-        t_end = t_start + block_size
+        block_size = rng.integers(3, min(7, n_steps + 1))
+        b_start = rng.integers(0, n_steps - block_size + 1)
+        b_end = b_start + block_size
 
         old_vals = solution.copy()
 
-        # Aplicar perturbação ao bloco temporal para todas as usinas
         base_delta = rng.uniform(-0.04, 0.04)
-        for u in range(n_usinas):
-            offset = u * n_horas
-            for t in range(t_start, t_end):
-                ci = offset + t
-                ii = half + ci
-                if lower_arr is not None and upper_arr is not None:
-                    span = upper_arr[ci] - lower_arr[ci]
-                    solution[ci] = float(
-                        np.clip(
-                            old_vals[ci] + base_delta * span,
-                            lower_arr[ci],
-                            upper_arr[ci],
-                        )
-                    )
-                    lo = int(np.ceil(lower_arr[ii]))
-                    hi = int(np.floor(upper_arr[ii]))
-                    d = 1 if base_delta > 0 else -1 if base_delta < 0 else 0
-                    solution[ii] = float(
-                        np.clip(
-                            int(np.rint(old_vals[ii])) + d,
-                            lo,
-                            hi,
-                        )
-                    )
+        _apply_block_perturbation(
+            solution,
+            old_vals,
+            half,
+            n_groups,
+            n_steps,
+            int(b_start),
+            int(b_end),
+            lower_arr,
+            upper_arr,
+            base_delta,
+        )
 
         cost = cost_fn(solution)
         if cost < best_benefit:
@@ -1676,7 +1534,7 @@ def path_relinking(
     """
     source = np.array(source, dtype=float)
     target = np.array(target, dtype=float)
-    diff_indices = np.where(np.abs(source - target) > 1e-9)[0]
+    diff_indices = np.nonzero(np.abs(source - target) > 1e-9)[0]
     if len(diff_indices) == 0:
         return source.copy(), cost_fn(source)
 
@@ -1687,16 +1545,15 @@ def path_relinking(
         top_k_local = np.argpartition(diffs, -max_pr_vars)[-max_pr_vars:]
         diff_indices = diff_indices[top_k_local]
 
-    rng = np.random.default_rng(seed)
+    rng = _new_rng(seed)
     rng.shuffle(diff_indices)
     if strategy == "best":
         return _path_relinking_best(
             cost_fn, source, target, diff_indices, deadline=deadline
         )
-    else:
-        return _path_relinking_forward(
-            cost_fn, source, target, diff_indices, deadline=deadline
-        )
+    return _path_relinking_forward(
+        cost_fn, source, target, diff_indices, deadline=deadline
+    )
 
 
 def bidirectional_path_relinking(
@@ -1729,8 +1586,7 @@ def bidirectional_path_relinking(
 
     if cost1 <= cost2:
         return best1, cost1
-    else:
-        return best2, cost2
+    return best2, cost2
 
 
 def perturb_solution_numpy(
@@ -1754,7 +1610,7 @@ def perturb_solution_numpy(
         np.ndarray: Solução perturbada.
     """
     perturbed = solution.copy().astype(float)
-    rng = np.random.default_rng(seed)
+    rng = _new_rng(seed)
     # P15: perturbação mais agressiva — num_vars//5 variáveis para escapar ótimos locais
     n_perturb = min(max(strength, num_vars // 5), num_vars)
     indices = rng.choice(num_vars, size=n_perturb, replace=False)
@@ -1770,10 +1626,9 @@ def get_current_alpha(iteration: int, config: GraspIlsVndConfig) -> float:
         current_alpha = (
             config.alpha_min + (config.alpha_max - config.alpha_min) * progress
         )
-        current_alpha += float(np.random.default_rng().uniform(-0.02, 0.02))
+        current_alpha += float(_new_rng().uniform(-0.02, 0.02))
         return float(np.clip(current_alpha, config.alpha_min, config.alpha_max))
-    else:
-        return config.alpha
+    return config.alpha
 
 
 def ils_search(
@@ -1815,8 +1670,11 @@ def ils_search(
             int(config.perturbation_strength * (1.0 + progress)),
         )
         perturbed = perturb_solution_numpy(
-            solution, num_vars, strength=adaptive_strength,
-            lower_arr=lower_arr, upper_arr=upper_arr,
+            solution,
+            num_vars,
+            strength=adaptive_strength,
+            lower_arr=lower_arr,
+            upper_arr=upper_arr,
         )
         perturbed = local_search_vnd(
             cost_fn,
@@ -1831,7 +1689,7 @@ def ils_search(
         perturbed_cost = cost_fn(perturbed)
         # P15: aceitar pior com probabilidade maior (max 25%) para escapar ótimos locais
         temperature = 1.0 - progress
-        accept_worse = np.random.default_rng().random() < temperature * 0.25
+        accept_worse = _new_rng().random() < temperature * 0.25
         if perturbed_cost < current_cost or accept_worse:
             solution = perturbed
             current_cost = perturbed_cost
@@ -1855,9 +1713,14 @@ def _safe_iteration_callback(
         return
     try:
         iteration_callback(iter_idx, benefit, sol)
-    except RuntimeError as e:
+    except Exception:  # pylint: disable=broad-except
+        logger.warning(
+            "iteration_callback raised at iter %d; continuing", iter_idx, exc_info=True
+        )
         if verbose:
-            print(f"iteration_callback error at iter {iter_idx}: {e}")
+            logger.info(
+                "iteration_callback error at iter %d (see warning above)", iter_idx
+            )
 
 
 def _handle_convergence_monitor(
@@ -1890,11 +1753,11 @@ def _evaluate_solution_with_cache(
     if cache is not None:
         cached = cache.get(sol)
         if cached is not None:
-            return cached
-        cost = cost_fn(sol)
+            return float(cached)
+        cost = float(cost_fn(sol))
         cache.put(sol, cost)
         return cost
-    return cost_fn(sol)
+    return float(cost_fn(sol))
 
 
 def _print_iteration_status(
@@ -1905,7 +1768,7 @@ def _print_iteration_status(
     best_cost: float,
     original_best: float,
 ) -> None:
-    """Imprime status da iteração."""
+    """Loga status da iteração (nível INFO quando verbose)."""
     if not verbose:
         return
 
@@ -1913,9 +1776,9 @@ def _print_iteration_status(
     is_new_best = construction_cost < original_best
 
     if is_new_best:
-        print(f"{iter_str}: Custo={construction_cost:>12.2f}")
+        logger.info("%s: Custo=%12.2f", iter_str, construction_cost)
     else:
-        print(f"{iter_str}: Custo={best_cost:>12.2f}")
+        logger.info("%s: Custo=%12.2f", iter_str, best_cost)
 
 
 def _run_iteration_step(
@@ -2020,16 +1883,16 @@ def _run_iteration_step(
     # P15: escalonamento reativo à estagnação — restart parcial
     if stagnation > config.max_iterations // 4:
         if verbose:
-            print(
-                f"  🔄 Estagnação detectada ({stagnation} iter sem melhoria) — restart parcial"
+            logger.info(
+                "Estagnação detectada (%d iter sem melhoria) — restart parcial",
+                stagnation,
             )
         # Reiniciar de solução aleatória para diversificação real
-        rng = np.random.default_rng()
+        rng = _new_rng()
         initial_arr = lower_arr + (upper_arr - lower_arr) * rng.random(size=num_vars)
         # Arredondar variáveis inteiras (segunda metade)
         half = _get_half(num_vars)
         initial_arr[half:] = np.rint(initial_arr[half:])
-        restart_cost = cost_fn(initial_arr)
         # VND completo + ILS na solução aleatória para qualidade competitiva
         initial_arr = local_search_vnd(
             cost_fn,
@@ -2214,27 +2077,141 @@ def _check_early_stopping(
 
     if conv_monitor.no_improve_count >= config.early_stop_threshold:
         if verbose:
-            print(
-                f"\n⏹️  EARLY STOP: {conv_monitor.no_improve_count} iterações sem melhoria"
+            logger.info(
+                "EARLY STOP: %d iterações sem melhoria", conv_monitor.no_improve_count
             )
         return True
     return False
 
 
 def _print_cache_stats(cache: "EvaluationCache | None", verbose: bool) -> None:
-    """Imprime estatísticas do cache."""
+    """Loga estatísticas do cache."""
     if verbose and cache is not None:
         stats = cache.stats()
-        print(
-            f"\n📊 Cache Stats: {stats['hits']} hits, {stats['misses']} misses, "
-            f"taxa={stats['hit_rate']:.1f}%, tamanho={stats['size']}"
+        logger.info(
+            "Cache Stats: %d hits, %d misses, taxa=%.1f%%, tamanho=%d",
+            stats["hits"],
+            stats["misses"],
+            stats["hit_rate"],
+            stats["size"],
         )
+
+
+def _prepare_bounds(
+    lower: list[float] | None,
+    upper: list[float] | None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Validate and convert bounds to numpy arrays."""
+    if lower is None or upper is None:
+        raise InvalidBoundsError("lower and upper bounds must be provided")
+    lower_arr = np.array(lower, dtype=float)
+    upper_arr = np.array(upper, dtype=float)
+    if lower_arr.shape != upper_arr.shape:
+        raise InvalidBoundsError(
+            f"lower (shape={lower_arr.shape}) and upper "
+            f"(shape={upper_arr.shape}) must have the same shape"
+        )
+    if np.any(upper_arr <= lower_arr):
+        bad = np.nonzero(upper_arr <= lower_arr)[0]
+        raise InvalidBoundsError(
+            f"each element of upper must be strictly greater than lower; "
+            f"violating indices: {bad.tolist()[:10]}"
+        )
+    return lower_arr, upper_arr
+
+
+def _prepare_initial_array(
+    initial_guess: list[float] | None,
+    lower_arr: np.ndarray,
+    upper_arr: np.ndarray,
+    num_vars: int,
+) -> np.ndarray:
+    """Build initial candidate either from initial_guess or random sample."""
+    if initial_guess is not None:
+        return np.array(initial_guess, dtype=float)
+    rng = _new_rng()
+    return np.asarray(lower_arr + (upper_arr - lower_arr) * rng.random(size=num_vars))
+
+
+def _maybe_apply_warm_start(
+    initial_guess: list[float] | None,
+    elite_pool: "ElitePool | None",
+    cost_fn: Callable,
+    initial_arr: np.ndarray,
+    best_cost: float,
+    best_solution: np.ndarray,
+    verbose: bool,
+) -> tuple[float, np.ndarray]:
+    """Insert warm start in elite pool and update incumbent if needed."""
+    if initial_guess is None or elite_pool is None:
+        return best_cost, best_solution
+
+    init_cost = cost_fn(initial_arr)
+    elite_pool.add(initial_arr.copy(), init_cost)
+    if init_cost < best_cost:
+        best_cost = init_cost
+        best_solution = initial_arr.copy()
+    if verbose:
+        logger.info("[P14 warm-start] initial_guess cost = %.2f", init_cost)
+    return best_cost, best_solution
+
+
+def _run_grasp_loop(
+    cost_fn: Callable,
+    num_vars: int,
+    config: "GraspIlsVndConfig",
+    lower_arr: np.ndarray,
+    upper_arr: np.ndarray,
+    initial_arr: np.ndarray,
+    callbacks: tuple[
+        Callable | None,
+        "ElitePool | None",
+        "EvaluationCache | None",
+        "ConvergenceMonitor | None",
+    ],
+    verbose: bool,
+    state: tuple[float, np.ndarray, int],
+) -> tuple[float, np.ndarray, int]:
+    """Execute main GRASP iterations until stop conditions are met."""
+    iteration_callback, elite_pool, cache, conv_monitor = callbacks
+    best_cost, best_solution, stagnation = state
+    start_time = _time_mod.monotonic()
+    deadline = (start_time + config.time_limit) if config.time_limit > 0 else 0.0
+
+    for iteration in range(config.max_iterations):
+        if _expired(deadline):
+            if verbose:
+                logger.info(
+                    "TIME LIMIT: %.0fs atingido na iteração %d",
+                    config.time_limit,
+                    iteration + 1,
+                )
+            break
+
+        best_cost, best_solution, stagnation = _run_iteration_step(
+            iteration,
+            cost_fn,
+            num_vars,
+            lower_arr,
+            upper_arr,
+            initial_arr,
+            config,
+            (iteration_callback, elite_pool, cache, conv_monitor),
+            verbose,
+            (best_cost, best_solution, stagnation),
+            deadline=deadline,
+        )
+
+        if _check_early_stopping(conv_monitor, config, verbose):
+            break
+
+    return best_cost, best_solution, stagnation
 
 
 def grasp_ils_vnd(
     cost_fn: Callable,
     num_vars: int,
-    config: "GraspIlsVndConfig" = GraspIlsVndConfig(),
+    config: GraspIlsVndConfig | None = None,
     verbose: bool = False,
     iteration_callback: Callable | None = None,
     lower: list[float] | None = None,
@@ -2256,22 +2233,16 @@ def grasp_ils_vnd(
     Returns:
         tuple: (melhor solução como lista binária, benefício da solução)
     """
-    if lower is None or upper is None:
-        raise ValueError("lower and upper bounds must be provided")
-    lower_arr = np.array(lower, dtype=float)
-    upper_arr = np.array(upper, dtype=float)
+    if config is None:
+        config = GraspIlsVndConfig()
 
-    if np.any(upper_arr <= lower_arr):
-        raise ValueError("each element of upper must be strictly greater than lower")
+    lower_arr, upper_arr = _prepare_bounds(lower, upper)
 
     # Configure the continuous/integer split for the duration of this run.
     _set_integer_split(config.integer_split)
+    _set_group_size(config.group_size)
 
-    if initial_guess is not None:
-        initial_arr = np.array(initial_guess, dtype=float)
-    else:
-        rng = np.random.default_rng()
-        initial_arr = lower_arr + (upper_arr - lower_arr) * rng.random(size=num_vars)
+    initial_arr = _prepare_initial_array(initial_guess, lower_arr, upper_arr, num_vars)
 
     elite_pool, cache, conv_monitor = _initialize_optimization_components(
         config, lower_arr, upper_arr
@@ -2282,45 +2253,28 @@ def grasp_ils_vnd(
     best_cost = float("inf")
     stagnation = 0
 
-    if initial_guess is not None and elite_pool is not None:
-        init_cost = cost_fn(initial_arr)
-        elite_pool.add(initial_arr.copy(), init_cost)
-        if init_cost < best_cost:
-            best_cost = init_cost
-            best_solution = initial_arr.copy()
-        if verbose:
-            print(f"[P14 warm-start] initial_guess cost = {init_cost:.2f}")
+    best_cost, best_solution = _maybe_apply_warm_start(
+        initial_guess,
+        elite_pool,
+        cost_fn,
+        initial_arr,
+        best_cost,
+        best_solution,
+        verbose,
+    )
 
-    _start_time = _time_mod.perf_counter()
-    _deadline = (_start_time + config.time_limit) if config.time_limit > 0 else 0.0
-
-    for iteration in range(config.max_iterations):
-        if _expired(_deadline):
-            if verbose:
-                print(
-                    f"\n⏱️  TIME LIMIT: {config.time_limit:.0f}s "
-                    f"atingido na iteração {iteration + 1}"
-                )
-            break
-
-        best_cost, best_solution, stagnation = _run_iteration_step(
-            iteration,
-            cost_fn,
-            num_vars,
-            lower_arr,
-            upper_arr,
-            initial_arr,
-            config,
-            (iteration_callback, elite_pool, cache, conv_monitor),
-            verbose,
-            (best_cost, best_solution, stagnation),
-            deadline=_deadline,
-        )
-
-        if _check_early_stopping(conv_monitor, config, verbose):
-            break
+    best_cost, best_solution, stagnation = _run_grasp_loop(
+        cost_fn,
+        num_vars,
+        config,
+        lower_arr,
+        upper_arr,
+        initial_arr,
+        (iteration_callback, elite_pool, cache, conv_monitor),
+        verbose,
+        (best_cost, best_solution, stagnation),
+    )
 
     _print_cache_stats(cache, verbose)
 
     return best_solution.tolist(), best_cost
-

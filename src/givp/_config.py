@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from . import _core
+from ._exceptions import InvalidConfigError
+
 Direction = Literal["minimize", "maximize"]
 
 
@@ -13,10 +16,12 @@ class GraspIlsVndConfig:
     """
     Hyper-parameters for the GRASP-ILS-VND-PR algorithm.
 
-    The ``direction`` field makes the algorithm agnostic to minimization or
-    maximization. Internally the library always minimizes; when
-    ``direction='maximize'`` the user-supplied objective is wrapped with a sign
-    flip and the returned value is restored to the original sign.
+    The optimization sense is controlled by ``minimize`` (boolean, preferred)
+    or ``direction`` (string, SciPy/Optuna-style). Pass *one* of the two; if
+    both are given, ``minimize`` wins and ``direction`` is rewritten to match.
+    Internally the library always minimizes: when the user wants maximization
+    the objective is wrapped with a sign flip and the returned value is
+    restored to the original sign.
 
     Attributes:
         max_iterations: Maximum number of GRASP outer iterations.
@@ -37,7 +42,15 @@ class GraspIlsVndConfig:
         use_convergence_monitor: Enable diversification/restart heuristics.
         n_workers: Threads used to evaluate candidates in parallel.
         time_limit: Wall-clock budget in seconds (0 = unlimited).
-        direction: ``'minimize'`` (default) or ``'maximize'``.
+        minimize: Boolean convenience flag. ``True`` (default) means
+            minimization, ``False`` means maximization. When set, it overrides
+            ``direction``.
+        direction: ``'minimize'`` (default) or ``'maximize'``. Kept for
+            SciPy/Optuna-style API compatibility.
+        integer_split: Index where integer variables begin in the decision
+            vector. ``None`` preserves the legacy SOG2 behavior of splitting
+            in half. Set to ``num_vars`` for fully continuous problems or to
+            ``0`` for fully integer problems.
     """
 
     max_iterations: int = 100
@@ -58,8 +71,81 @@ class GraspIlsVndConfig:
     use_convergence_monitor: bool = True
     n_workers: int = 1
     time_limit: float = 0.0
+    minimize: bool | None = None
     direction: Direction = "minimize"
-    integer_split: int | None = None  # index where integer vars begin; None -> n // 2 (legacy)
+    integer_split: int | None = (
+        None  # index where integer vars begin; None -> n // 2 (legacy)
+    )
+
+    def __post_init__(self) -> None:
+        # ``minimize`` is the canonical boolean flag. When the user sets it,
+        # it wins and ``direction`` is rewritten to match. When omitted,
+        # ``minimize`` is derived from ``direction`` so both fields are
+        # always consistent for downstream readers.
+        if self.minimize is None:
+            if self.direction not in ("minimize", "maximize"):
+                raise InvalidConfigError(
+                    "direction must be 'minimize' or 'maximize', "
+                    f"got {self.direction!r}"
+                )
+            self.minimize = self.direction == "minimize"
+        else:
+            self.direction = "minimize" if self.minimize else "maximize"
+
+        self._validate_numeric_fields()
+
+    def _validate_numeric_fields(self) -> None:
+        """Validate numeric ranges; raises ``InvalidConfigError`` on failure."""
+        positive_int = {
+            "max_iterations": self.max_iterations,
+            "vnd_iterations": self.vnd_iterations,
+            "ils_iterations": self.ils_iterations,
+            "elite_size": self.elite_size,
+            "path_relink_frequency": self.path_relink_frequency,
+            "num_candidates_per_step": self.num_candidates_per_step,
+            "cache_size": self.cache_size,
+            "early_stop_threshold": self.early_stop_threshold,
+            "n_workers": self.n_workers,
+        }
+        for name, value in positive_int.items():
+            if not isinstance(value, int) or value < 1:
+                raise InvalidConfigError(
+                    f"{name} must be a positive integer, got {value!r}"
+                )
+
+        if (
+            not isinstance(self.perturbation_strength, int)
+            or self.perturbation_strength < 0
+        ):
+            raise InvalidConfigError(
+                f"perturbation_strength must be a non-negative integer, "
+                f"got {self.perturbation_strength!r}"
+            )
+
+        if not 0.0 <= self.alpha <= 1.0:
+            raise InvalidConfigError(f"alpha must be in [0, 1], got {self.alpha!r}")
+        if not 0.0 <= self.alpha_min <= 1.0:
+            raise InvalidConfigError(
+                f"alpha_min must be in [0, 1], got {self.alpha_min!r}"
+            )
+        if not 0.0 <= self.alpha_max <= 1.0:
+            raise InvalidConfigError(
+                f"alpha_max must be in [0, 1], got {self.alpha_max!r}"
+            )
+        if self.alpha_min > self.alpha_max:
+            raise InvalidConfigError(
+                f"alpha_min ({self.alpha_min}) must be <= alpha_max ({self.alpha_max})"
+            )
+
+        if self.time_limit < 0:
+            raise InvalidConfigError(
+                f"time_limit must be >= 0 (0 = unlimited), got {self.time_limit!r}"
+            )
+
+        if self.integer_split is not None and self.integer_split < 0:
+            raise InvalidConfigError(
+                f"integer_split must be >= 0 or None, got {self.integer_split!r}"
+            )
 
     def as_core_config(self):
         """Return an internal config object compatible with ``_core``.
@@ -67,8 +153,6 @@ class GraspIlsVndConfig:
         ``_core`` defines its own ``GraspIlsVndConfig`` (without ``direction``),
         so we copy field values across to keep the two layers decoupled.
         """
-        from givp import _core
-
         return _core.GraspIlsVndConfig(
             max_iterations=self.max_iterations,
             alpha=self.alpha,

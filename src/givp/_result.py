@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 
 @dataclass
@@ -24,14 +26,14 @@ class OptimizeResult:
         meta: Additional algorithm-specific information (cache stats, etc.).
     """
 
-    x: np.ndarray
+    x: NDArray[np.float64]
     fun: float
     nit: int = 0
     nfev: int = 0
     success: bool = True
     message: str = ""
     direction: str = "minimize"
-    meta: dict = field(default_factory=dict)
+    meta: dict[str, Any] = field(default_factory=dict)
 
     def __iter__(self):
         # Allows tuple unpacking ``x, fun = result`` for compatibility with

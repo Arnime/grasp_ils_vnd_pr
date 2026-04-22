@@ -1,33 +1,44 @@
-"""Smoke tests for the public ``givp`` API."""
+"""Tests for the public ``givp`` API (``grasp_ils_vnd_pr`` and ``GraspOptimizer``)."""
 
 from __future__ import annotations
 
 import numpy as np
 import pytest
 
-from givp import GraspIlsVndConfig, GraspOptimizer, OptimizeResult, grasp_ils_vnd_pr
+from givp import (
+    GraspIlsVndConfig,
+    GraspOptimizer,
+    InvalidBoundsError,
+    InvalidInitialGuessError,
+    OptimizeResult,
+    grasp_ils_vnd_pr,
+)
+from givp._core import _validate_bounds_and_initial
 
 
 def sphere(x: np.ndarray) -> float:
-    return float(np.sum(x ** 2))
+    return float(np.sum(x**2))
 
 
 def neg_sphere(x: np.ndarray) -> float:
-    return -float(np.sum(x ** 2))
+    return -float(np.sum(x**2))
 
 
-@pytest.fixture
-def fast_config() -> GraspIlsVndConfig:
+@pytest.fixture(name="fast_config")
+def fixture_fast_config() -> GraspIlsVndConfig:
     return GraspIlsVndConfig(
-        max_iterations=5,
-        vnd_iterations=10,
+        max_iterations=4,
+        vnd_iterations=8,
         ils_iterations=2,
         elite_size=3,
         path_relink_frequency=2,
-        num_candidates_per_step=5,
+        num_candidates_per_step=4,
         early_stop_threshold=10,
         use_convergence_monitor=False,
     )
+
+
+# ----------------------------- core happy paths -----------------------------
 
 
 def test_minimize_sphere_returns_result(fast_config):
@@ -42,9 +53,10 @@ def test_minimize_sphere_returns_result(fast_config):
 
 def test_maximize_returns_value_in_original_sign(fast_config):
     bounds = [(-5.0, 5.0)] * 4
-    result = grasp_ils_vnd_pr(neg_sphere, bounds, direction="maximize", config=fast_config)
+    result = grasp_ils_vnd_pr(
+        neg_sphere, bounds, direction="maximize", config=fast_config
+    )
     assert result.direction == "maximize"
-    # neg_sphere is always <= 0; max should be near 0.
     assert result.fun <= 0.0
     assert np.isfinite(result.fun)
 
@@ -56,11 +68,6 @@ def test_bounds_as_lower_upper_tuple(fast_config):
     assert result.x.shape == (3,)
 
 
-def test_invalid_direction_raises(fast_config):
-    with pytest.raises(ValueError):
-        grasp_ils_vnd_pr(sphere, [(0.0, 1.0)], direction="bogus", config=fast_config)
-
-
 def test_optimizer_class_keeps_history(fast_config):
     opt = GraspOptimizer(sphere, [(-2.0, 2.0)] * 3, config=fast_config)
     r1 = opt.run()
@@ -70,6 +77,19 @@ def test_optimizer_class_keeps_history(fast_config):
     assert opt.best_x is not None
 
 
+def test_grasp_optimizer_maximize_tracks_best(fast_config):
+    opt = GraspOptimizer(
+        neg_sphere,
+        [(-1.0, 1.0)] * 2,
+        direction="maximize",
+        config=fast_config,
+    )
+    opt.run()
+    opt.run()
+    assert opt.best_x is not None
+    assert len(opt.history) == 2
+
+
 def test_result_is_iterable_for_legacy_unpacking(fast_config):
     result = grasp_ils_vnd_pr(sphere, [(-1.0, 1.0)] * 2, config=fast_config)
     x, fun = result
@@ -77,10 +97,199 @@ def test_result_is_iterable_for_legacy_unpacking(fast_config):
     assert fun == result.fun
 
 
+# ----------------------------- error handling -----------------------------
+
+
 def test_objective_returning_nan_is_handled(fast_config):
     def nan_func(_x):
         return float("nan")
 
     result = grasp_ils_vnd_pr(nan_func, [(0.0, 1.0)] * 2, config=fast_config)
-    # NaN is coerced to +inf inside, so success should be False.
     assert not result.success
+
+
+def test_evaluator_raising_exception_is_handled(fast_config):
+    def boom(_x):
+        raise RuntimeError("explode")
+
+    result = grasp_ils_vnd_pr(boom, [(0.0, 1.0)] * 2, config=fast_config)
+    assert not result.success
+
+
+def test_invalid_direction_raises(fast_config):
+    with pytest.raises(ValueError):
+        grasp_ils_vnd_pr(sphere, [(0.0, 1.0)], direction="bogus", config=fast_config)
+
+
+def test_minimize_and_direction_conflict_raises(fast_config):
+    with pytest.raises(ValueError):
+        grasp_ils_vnd_pr(
+            sphere,
+            [(0.0, 1.0)] * 2,
+            minimize=True,
+            direction="maximize",
+            config=fast_config,
+        )
+
+
+def test_bounds_num_vars_mismatch_raises(fast_config):
+    with pytest.raises(ValueError):
+        grasp_ils_vnd_pr(sphere, [(0.0, 1.0)] * 2, num_vars=5, config=fast_config)
+
+
+def test_bounds_none_raises():
+    with pytest.raises(ValueError):
+        grasp_ils_vnd_pr(sphere, None)  # type: ignore[arg-type]
+
+
+def test_invalid_initial_guess_length_raises(fast_config):
+    with pytest.raises(InvalidInitialGuessError):
+        grasp_ils_vnd_pr(
+            sphere,
+            [(-1.0, 1.0)] * 3,
+            config=fast_config,
+            initial_guess=[0.0, 0.0],
+        )
+
+
+def test_invalid_initial_guess_outside_bounds_raises(fast_config):
+    with pytest.raises(InvalidInitialGuessError):
+        grasp_ils_vnd_pr(
+            sphere,
+            [(-1.0, 1.0)] * 3,
+            config=fast_config,
+            initial_guess=[5.0, 5.0, 5.0],
+        )
+
+
+def test_invalid_bounds_via_core_validate():
+    with pytest.raises(InvalidBoundsError):
+        _validate_bounds_and_initial(
+            np.array([0.0, 1.0]),
+            np.array([1.0, 2.0, 3.0]),
+            None,
+            num_vars=3,
+        )
+
+
+def test_evaluator_raising_value_error_in_wrapper(fast_config):
+    """``_wrap_objective`` catches ValueError and returns +inf."""
+
+    def bad(_x):
+        raise ValueError("nope")
+
+    result = grasp_ils_vnd_pr(bad, [(0.0, 1.0)] * 2, config=fast_config)
+    assert not result.success
+
+
+# ----------------------------- config code paths -----------------------------
+
+
+def test_initial_guess_warm_start(fast_config):
+    bounds = [(-3.0, 3.0)] * 3
+    initial = [0.1, 0.1, 0.1]
+    result = grasp_ils_vnd_pr(sphere, bounds, config=fast_config, initial_guess=initial)
+    assert result.x.shape == (3,)
+    assert np.isfinite(result.fun)
+
+
+def test_iteration_callback_is_invoked(fast_config):
+    calls = []
+
+    def cb(it, cost, sol):
+        calls.append((it, float(cost), np.array(sol)))
+
+    grasp_ils_vnd_pr(
+        sphere, [(-1.0, 1.0)] * 2, config=fast_config, iteration_callback=cb
+    )
+    assert len(calls) >= 1
+
+
+def test_iteration_callback_exception_is_swallowed(fast_config):
+    def cb(_it, _cost, _sol):
+        raise RuntimeError("callback boom")
+
+    result = grasp_ils_vnd_pr(
+        sphere,
+        [(-1.0, 1.0)] * 2,
+        config=fast_config,
+        iteration_callback=cb,
+        verbose=True,
+    )
+    assert np.isfinite(result.fun)
+
+
+def test_use_cache_path(fast_config):
+    cfg = GraspIlsVndConfig(**{**fast_config.__dict__, "use_cache": True})
+    result = grasp_ils_vnd_pr(sphere, [(-1.0, 1.0)] * 2, config=cfg)
+    assert np.isfinite(result.fun)
+
+
+def test_no_cache_path(fast_config):
+    cfg = GraspIlsVndConfig(**{**fast_config.__dict__, "use_cache": False})
+    result = grasp_ils_vnd_pr(sphere, [(-1.0, 1.0)] * 2, config=cfg)
+    assert np.isfinite(result.fun)
+
+
+def test_adaptive_alpha_disabled(fast_config):
+    cfg = GraspIlsVndConfig(**{**fast_config.__dict__, "adaptive_alpha": False})
+    result = grasp_ils_vnd_pr(sphere, [(-1.0, 1.0)] * 2, config=cfg)
+    assert np.isfinite(result.fun)
+
+
+def test_convergence_monitor_enabled(fast_config):
+    cfg = GraspIlsVndConfig(
+        **{
+            **fast_config.__dict__,
+            "use_convergence_monitor": True,
+            "early_stop_threshold": 2,
+        }
+    )
+    result = grasp_ils_vnd_pr(sphere, [(-1.0, 1.0)] * 2, config=cfg)
+    assert np.isfinite(result.fun)
+
+
+def test_n_workers_parallel_path(fast_config):
+    cfg = GraspIlsVndConfig(**{**fast_config.__dict__, "n_workers": 2})
+    result = grasp_ils_vnd_pr(sphere, [(-1.0, 1.0)] * 3, config=cfg)
+    assert np.isfinite(result.fun)
+
+
+def test_time_limit_triggers_early_stop(fast_config):
+    cfg = GraspIlsVndConfig(
+        **{
+            **fast_config.__dict__,
+            "max_iterations": 10_000,
+            "vnd_iterations": 10_000,
+            "ils_iterations": 50,
+            "time_limit": 0.05,
+        }
+    )
+    result = grasp_ils_vnd_pr(sphere, [(-1.0, 1.0)] * 3, config=cfg)
+    assert np.isfinite(result.fun)
+
+
+def test_verbose_runs_without_error(fast_config, caplog):
+    with caplog.at_level("INFO"):
+        result = grasp_ils_vnd_pr(
+            sphere, [(-1.0, 1.0)] * 2, config=fast_config, verbose=True
+        )
+    assert np.isfinite(result.fun)
+
+
+def test_long_run_triggers_path_relinking_and_restart(fast_config):
+    cfg = GraspIlsVndConfig(
+        max_iterations=8,
+        vnd_iterations=6,
+        ils_iterations=2,
+        elite_size=4,
+        path_relink_frequency=1,
+        num_candidates_per_step=4,
+        perturbation_strength=2,
+        adaptive_alpha=True,
+        use_cache=True,
+        use_convergence_monitor=True,
+        early_stop_threshold=100,
+    )
+    result = grasp_ils_vnd_pr(sphere, [(-2.0, 2.0)] * 4, config=cfg, verbose=True)
+    assert np.isfinite(result.fun)

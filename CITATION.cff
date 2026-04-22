@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "givp: GRASP-ILS-VND with Path Relinking"
+abstract: >
+  A direction-agnostic metaheuristic optimizer combining GRASP construction,
+  Iterated Local Search (ILS), Variable Neighborhood Descent (VND) and
+  bidirectional Path Relinking for continuous, integer and mixed-variable
+  problems.
+type: software
+authors:
+  - family-names: "Mendes Pires Junior"
+    given-names: "Arnaldo"
+license: MIT
+repository-code: "https://github.com/Arnime/grasp_ils_vnd_pr"
+keywords:
+  - optimization
+  - metaheuristic
+  - grasp
+  - ils
+  - vnd
+  - path-relinking
+  - global-optimization
+version: 0.1.0
+date-released: 2026-04-21

@@ -1,0 +1,3 @@
+# `GraspOptimizer`
+
+::: givp.GraspOptimizer

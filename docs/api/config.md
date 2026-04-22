@@ -1,0 +1,3 @@
+# `GraspIlsVndConfig`
+
+::: givp.GraspIlsVndConfig

@@ -12,5 +12,7 @@ coverage.xml
 htmlcov/
 .ruff_cache/
 .mypy_cache/
+.hypothesis/
 .idea/
 .vscode/
+site/
