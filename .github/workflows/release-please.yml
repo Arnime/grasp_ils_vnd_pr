@@ -7,14 +7,15 @@ on:
 env:
     FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-permissions:
-    contents: write
-    pull-requests: write
+permissions: read-all
 
 jobs:
     release-please:
         runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            pull-requests: write
         steps:
-            - uses: googleapis/release-please-action@v4
+            - uses: googleapis/release-please-action@e4dc86ba9405554aeba3c6bb2d169500e7d3b4ee # v4
               with:
                   release-type: python
