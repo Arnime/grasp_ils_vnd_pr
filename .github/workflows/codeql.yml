@@ -8,15 +8,15 @@ on:
     schedule:
         - cron: "27 4 * * 1"
 
-permissions:
-    contents: read
-    security-events: write
-    actions: read
+permissions: read-all
 
 jobs:
     analyze:
         name: Analyze (python)
         runs-on: ubuntu-latest
+        permissions:
+            security-events: write
+            actions: read
         steps:
             - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
             - uses: github/codeql-action/init@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3

@@ -2,24 +2,38 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
+import time
 
 import numpy as np
 import pytest
 
-from givp import EmptyPoolError
+from givp import EmptyPoolError, GraspIlsVndConfig, grasp_ils_vnd_pr
+from givp import InvalidBoundsError as IBE
 from givp._config import GraspIlsVndConfig as PublicConfig
 from givp._core import (
     ConvergenceMonitor,
     ElitePool,
     EvaluationCache,
+    _apply_path_relinking_to_pair,
     _build_heuristic_candidate,
     _build_random_candidate,
+    _check_early_stopping,
+    _create_cached_cost_fn,
+    _evaluate_solution_with_cache,
     _evaluate_with_cache,
+    _execute_neighborhood,
     _get_group_size,
     _get_half,
+    _handle_convergence_monitor,
+    _initialize_optimization_components,
+    _maybe_apply_warm_start,
     _neighborhood_block,
     _neighborhood_group,
+    _perturb_index,
+    _prepare_bounds,
+    _print_cache_stats,
     _safe_evaluate,
     _sample_integer_from_bounds,
     _select_from_rcl,
@@ -39,6 +53,13 @@ from givp._core import (
 from givp._core import (
     GraspIlsVndConfig as CoreConfig,
 )
+from givp._core import _impl as core_impl
+from givp._core._helpers import (
+    _VERBOSE_HANDLER_ATTACHED,
+    _ensure_verbose_handler,
+    logger,
+)
+from givp._core._impl import _print_run_footer, _print_run_header
 
 
 @pytest.fixture(autouse=True)
@@ -723,9 +744,6 @@ def test_neighborhood_block_disabled_without_bounds():
 
 
 def test_prepare_bounds_missing_raises():
-    from givp import InvalidBoundsError as IBE
-    from givp._core import _prepare_bounds
-
     with pytest.raises(IBE):
         _prepare_bounds(None, [1.0])
     with pytest.raises(IBE):
@@ -733,17 +751,11 @@ def test_prepare_bounds_missing_raises():
 
 
 def test_prepare_bounds_shape_mismatch_raises():
-    from givp import InvalidBoundsError as IBE
-    from givp._core import _prepare_bounds
-
     with pytest.raises(IBE):
         _prepare_bounds([0.0, 0.0], [1.0])
 
 
 def test_prepare_bounds_upper_not_strictly_greater_raises():
-    from givp import InvalidBoundsError as IBE
-    from givp._core import _prepare_bounds
-
     with pytest.raises(IBE):
         _prepare_bounds([0.0, 1.0], [1.0, 1.0])
 
@@ -753,8 +765,6 @@ def test_prepare_bounds_upper_not_strictly_greater_raises():
 
 def _past_deadline() -> float:
     """Return a deadline that is already in the past."""
-    import time
-
     return time.perf_counter() - 1.0
 
 
@@ -899,8 +909,6 @@ def test_local_search_vnd_adaptive_with_cache():
 
 def test_execute_neighborhood_all_indices():
     """Cover every branch of ``_execute_neighborhood`` (idx 0..4)."""
-    from givp._core import _execute_neighborhood
-
     _set_integer_split(8)
     _set_group_size(4)
     sol = np.full(16, 0.5)
@@ -927,8 +935,6 @@ def test_execute_neighborhood_all_indices():
 
 
 def test_evaluate_solution_with_cache_branches():
-    from givp._core import _evaluate_solution_with_cache
-
     cache = EvaluationCache(maxsize=4)
     sol = np.array([1.0, 2.0])
     # first call: miss -> compute and store
@@ -943,8 +949,6 @@ def test_evaluate_solution_with_cache_branches():
 
 
 def test_create_cached_cost_fn_with_and_without_cache():
-    from givp._core import _create_cached_cost_fn
-
     cache = EvaluationCache(maxsize=4)
     cached = _create_cached_cost_fn(quad, cache)
     sol = np.array([1.0, 2.0])
@@ -960,8 +964,6 @@ def test_create_cached_cost_fn_with_and_without_cache():
 
 def test_grasp_run_triggers_stagnation_restart():
     """Constant-cost evaluator forces stagnation -> partial restart code path."""
-    from givp import grasp_ils_vnd_pr
-
     cfg = PublicConfig(
         max_iterations=12,
         vnd_iterations=4,
@@ -996,8 +998,6 @@ def test_select_rcl_fallback_with_nan_ratios():
 
 def test_handle_convergence_monitor_verbose_with_pool_trim():
     """Cover ``_handle_convergence_monitor`` verbose branch trimming the pool."""
-    from givp._core import _handle_convergence_monitor
-
     pool = ElitePool(max_size=10, min_distance=0.0)
     for i in range(5):
         pool.add(np.array([float(i)]), float(i))
@@ -1013,21 +1013,16 @@ def test_handle_convergence_monitor_verbose_with_pool_trim():
 
 
 def test_handle_convergence_monitor_returns_neg1_when_no_restart():
-    from givp._core import _handle_convergence_monitor
-
     mon = ConvergenceMonitor(window_size=3, restart_threshold=10)
     out = _handle_convergence_monitor(mon, 1.0, None, verbose=False)
     assert out == -1
 
 
 def test_handle_convergence_monitor_returns_zero_when_no_monitor():
-    from givp._core import _handle_convergence_monitor
-
     assert _handle_convergence_monitor(None, 0.0, None, False) == 0
 
 
 def test_maybe_apply_warm_start_updates_best():
-    from givp._core import _maybe_apply_warm_start
 
     pool = ElitePool(max_size=2, min_distance=0.0)
     init = np.array([0.5, 0.5])
@@ -1046,7 +1041,6 @@ def test_maybe_apply_warm_start_updates_best():
 
 
 def test_maybe_apply_warm_start_keeps_best_when_initial_worse():
-    from givp._core import _maybe_apply_warm_start
 
     pool = ElitePool(max_size=2, min_distance=0.0)
     init = np.array([5.0, 5.0])
@@ -1063,7 +1057,6 @@ def test_maybe_apply_warm_start_keeps_best_when_initial_worse():
 
 
 def test_maybe_apply_warm_start_no_pool_short_circuit():
-    from givp._core import _maybe_apply_warm_start
 
     out_cost, _ = _maybe_apply_warm_start(
         None,
@@ -1078,8 +1071,6 @@ def test_maybe_apply_warm_start_no_pool_short_circuit():
 
 
 def test_print_cache_stats_runs(caplog):
-    from givp._core import _print_cache_stats
-
     cache = EvaluationCache(maxsize=4)
     cache.put(np.array([1.0]), 1.0)
     cache.get(np.array([1.0]))
@@ -1090,8 +1081,6 @@ def test_print_cache_stats_runs(caplog):
 
 
 def test_check_early_stopping_branches(caplog):
-    from givp._core import _check_early_stopping
-
     cfg = CoreConfig(early_stop_threshold=2)
     assert _check_early_stopping(None, cfg, False) is False
 
@@ -1106,8 +1095,6 @@ def test_check_early_stopping_branches(caplog):
 
 def test_apply_path_relinking_to_pair_runs():
     """Cover ``_apply_path_relinking_to_pair`` directly."""
-    from givp._core import _apply_path_relinking_to_pair, _create_cached_cost_fn
-
     _set_integer_split(3)
     cfg = CoreConfig(vnd_iterations=4)
     cached = _create_cached_cost_fn(quad, None)
@@ -1124,8 +1111,6 @@ def test_apply_path_relinking_to_pair_runs():
 
 
 def test_initialize_optimization_components_all_off():
-    from givp._core import _initialize_optimization_components
-
     cfg = CoreConfig(
         use_elite_pool=False,
         use_cache=False,
@@ -1138,8 +1123,6 @@ def test_initialize_optimization_components_all_off():
 
 
 def test_initialize_optimization_components_all_on():
-    from givp._core import _initialize_optimization_components
-
     cfg = CoreConfig(
         use_elite_pool=True,
         use_cache=True,
@@ -1161,8 +1144,6 @@ def test_initialize_optimization_components_all_on():
 @pytest.fixture
 def expired_deadline(monkeypatch):
     """Make ``_expired`` always return True regardless of deadline value."""
-    from givp._core import _impl as core_impl
-
     monkeypatch.setattr(core_impl, "_expired", lambda _d: True)
     yield
 
@@ -1243,9 +1224,6 @@ def test_neighborhoods_short_circuit(expired_deadline):
 
 def test_grasp_run_with_immediate_deadline(monkeypatch):
     """Make the loop quit on first iteration via patched ``_expired``."""
-    from givp import grasp_ils_vnd_pr
-    from givp._core import _impl as core_impl
-
     cfg = PublicConfig(
         max_iterations=5,
         vnd_iterations=4,
@@ -1270,8 +1248,6 @@ def test_grasp_run_with_immediate_deadline(monkeypatch):
 
 def test_perturb_index_no_bounds_int_branch():
     """Cover the ``_perturb_index`` integer branch with no bounds."""
-    from givp._core import _perturb_index
-
     _set_integer_split(1)
     arr = np.array([0.5, 3.0])
     rng = np.random.default_rng(0)
@@ -1295,7 +1271,6 @@ class _ListHandler(logging.Handler):
 
 def _capture_logger(logger_name: str = "givp._core"):
     """Context manager that attaches a ``_ListHandler`` to *logger_name* and yields it."""
-    import contextlib
 
     @contextlib.contextmanager
     def _ctx():
@@ -1313,14 +1288,6 @@ def _capture_logger(logger_name: str = "givp._core"):
 
 def test_ensure_verbose_handler_attaches_once():
     """``_ensure_verbose_handler`` adds a handler the first time and is idempotent."""
-    import logging
-
-    from givp._core._helpers import (
-        _VERBOSE_HANDLER_ATTACHED,
-        _ensure_verbose_handler,
-        logger,
-    )
-
     # Force a clean state so we can exercise the "first call" branch.
     _VERBOSE_HANDLER_ATTACHED[0] = False
     original_handlers = logger.handlers[:]
@@ -1344,8 +1311,6 @@ def test_ensure_verbose_handler_attaches_once():
 
 def test_print_run_header_verbose_true():
     """``_print_run_header`` emits a log line when verbose=True."""
-    from givp._core._impl import _print_run_header
-
     cfg = CoreConfig(
         max_iterations=10,
         adaptive_alpha=True,
@@ -1362,8 +1327,6 @@ def test_print_run_header_verbose_true():
 
 def test_print_run_header_verbose_false():
     """``_print_run_header`` emits nothing when verbose=False."""
-    from givp._core._impl import _print_run_header
-
     cfg = CoreConfig()
     with _capture_logger() as h:
         _print_run_header(verbose=False, num_vars=4, config=cfg)
@@ -1372,8 +1335,6 @@ def test_print_run_header_verbose_false():
 
 def test_print_run_header_non_adaptive_alpha():
     """Header uses fixed alpha values when adaptive_alpha=False."""
-    from givp._core._impl import _print_run_header
-
     cfg = CoreConfig(adaptive_alpha=False, alpha=0.15)
     with _capture_logger() as h:
         _print_run_header(verbose=True, num_vars=2, config=cfg)
@@ -1382,8 +1343,6 @@ def test_print_run_header_non_adaptive_alpha():
 
 def test_print_run_header_with_time_limit():
     """Header shows formatted time limit when time_limit > 0."""
-    from givp._core._impl import _print_run_header
-
     cfg = CoreConfig(time_limit=30.0)
     with _capture_logger() as h:
         _print_run_header(verbose=True, num_vars=2, config=cfg)
@@ -1392,10 +1351,6 @@ def test_print_run_header_with_time_limit():
 
 def test_print_run_footer_verbose_true():
     """``_print_run_footer`` emits a log line when verbose=True."""
-    import time
-
-    from givp._core._impl import _print_run_footer
-
     start = time.monotonic()
     with _capture_logger() as h:
         _print_run_footer(verbose=True, best_cost=3.14, stagnation=7, start_time=start)
@@ -1405,10 +1360,6 @@ def test_print_run_footer_verbose_true():
 
 def test_print_run_footer_verbose_false():
     """``_print_run_footer`` emits nothing when verbose=False."""
-    import time
-
-    from givp._core._impl import _print_run_footer
-
     start = time.monotonic()
     with _capture_logger() as h:
         _print_run_footer(verbose=False, best_cost=1.0, stagnation=0, start_time=start)
@@ -1417,8 +1368,6 @@ def test_print_run_footer_verbose_false():
 
 def test_verbose_output_contains_iter_and_best():
     """End-to-end: verbose run emits header, per-iteration lines, and footer."""
-    from givp import GraspIlsVndConfig, grasp_ils_vnd_pr
-
     cfg = GraspIlsVndConfig(
         max_iterations=4,
         vnd_iterations=6,
