@@ -37,4 +37,4 @@ __all__ = [
     "grasp_ils_vnd_pr",
 ]
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
