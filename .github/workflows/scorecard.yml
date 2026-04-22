@@ -6,6 +6,7 @@ on:
         - cron: "37 3 * * 2"
     push:
         branches: [ main ]
+    workflow_dispatch:
 
 permissions: read-all
 
