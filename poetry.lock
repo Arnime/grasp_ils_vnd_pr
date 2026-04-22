@@ -16,6 +16,21 @@ files = [
 test = ["coverage", "mypy", "pexpect", "ruff", "wheel"]
 
 [[package]]
+name = "atheris"
+version = "3.0.0"
+description = "A coverage-guided fuzzer for Python and Python extensions."
+optional = true
+python-versions = "*"
+groups = ["main"]
+markers = "sys_platform == \"linux\" and extra == \"fuzz\""
+files = [
+    {file = "atheris-3.0.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:8a5c8a781467c187da40fd29139784193e2647058831f837f675d0bb8cbd8746"},
+    {file = "atheris-3.0.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:510e502c57b6dc615fb174066407af620d4c7f73cf08a782c86e7761bf12c4eb"},
+    {file = "atheris-3.0.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:a402cdca8a650d1371050b1f9552eb4cdc488d2db64950d603c4560318365eac"},
+    {file = "atheris-3.0.0.tar.gz", hash = "sha256:1f0929c7bc3040f3fe4102e557718734190cf2d7718bbb8e3ce6d3eb56ef5bb3"},
+]
+
+[[package]]
 name = "attrs"
 version = "26.1.0"
 description = "Classes Without Boilerplate"
@@ -1949,8 +1964,9 @@ watchmedo = ["PyYAML (>=3.10)"]
 [extras]
 dev = ["black", "hypothesis", "mypy", "pre-commit", "pytest", "pytest-benchmark", "pytest-cov", "pytest-xdist", "ruff", "tqdm"]
 docs = ["mkdocs", "mkdocs-material", "mkdocstrings"]
+fuzz = ["atheris"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "479cb0049be53875b5ba0177da823c02fea3408d1208dcb55a186141e02ebb85"
+content-hash = "e0200e2f519732df1a32a64c07a27c6dd8f7e0c85b6a70e53661d70dbec36366"
