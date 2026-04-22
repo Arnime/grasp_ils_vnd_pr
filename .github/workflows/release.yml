@@ -27,7 +27,7 @@ jobs:
           python -m pip install cyclonedx-bom
           cyclonedx-py environment --of JSON -o sbom.cdx.json
       - name: Attach SBOM to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             sbom.cdx.json
