@@ -1,0 +1,7 @@
+{
+  "ignores": [
+    "LICENSE",
+    "CHANGELOG.md",
+    "site/**"
+  ]
+}
