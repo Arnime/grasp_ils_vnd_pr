@@ -20,6 +20,7 @@ jobs:
         runs-on: ubuntu-latest
         permissions:
             contents: write
+            actions: write
         steps:
             - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
               with:
@@ -55,3 +56,13 @@ jobs:
                   git tag "${{ steps.version.outputs.tag }}"
                   git push origin "${{ steps.version.outputs.tag }}"
                   echo "Tag ${{ steps.version.outputs.tag }} created and pushed."
+
+            - name: Trigger release workflow
+              if: steps.tag_check.outputs.exists == 'false'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  gh workflow run release.yml \
+                    --repo "${{ github.repository }}" \
+                    --field tag="${{ steps.version.outputs.tag }}"
+                  echo "Release workflow dispatched for ${{ steps.version.outputs.tag }}."
