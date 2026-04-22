@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/Arnime/grasp_ils_vnd_pr/compare/v0.1.2...v0.2.0) (2026-04-22)
+
+
+### Features
+
+* add hypothesis as cross-platform fuzz backend (Windows/macOS/Linux) ([e58e2a4](https://github.com/Arnime/grasp_ils_vnd_pr/commit/e58e2a4c8a79ed281f892b577f004f25230d9318))
+
 ## [0.1.2](https://github.com/Arnime/grasp_ils_vnd_pr/compare/v0.1.1...v0.1.2) (2026-04-22)
 
 
