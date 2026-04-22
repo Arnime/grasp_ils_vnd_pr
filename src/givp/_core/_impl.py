@@ -24,6 +24,7 @@ from givp._core._convergence import ConvergenceMonitor
 from givp._core._elite import ElitePool
 from givp._core._helpers import (
     EvaluatorFn,
+    _ensure_verbose_handler,
     _expired,
     _get_group_size,
     _get_half,
@@ -1771,18 +1772,38 @@ def _print_iteration_status(
     construction_cost: float,
     best_cost: float,
     original_best: float,
+    *,
+    alpha: float | None = None,
+    stagnation: int = 0,
+    elite_size: int = 0,
+    start_time: float | None = None,
 ) -> None:
-    """Loga status da iteração (nível INFO quando verbose)."""
+    """Loga status da iteração (nível INFO quando verbose).
+
+    Mostra: iter, marcador de melhora, custo da construção, melhor custo
+    global, alpha corrente, estagnação, tamanho do pool elite e tempo
+    decorrido. Linhas com novo melhor são prefixadas com ``*``.
+    """
     if not verbose:
         return
 
-    iter_str = f"Iter {iter_idx + 1:3d}/{max_iterations}"
     is_new_best = construction_cost < original_best
-
-    if is_new_best:
-        logger.info("%s: Custo=%12.2f", iter_str, construction_cost)
-    else:
-        logger.info("%s: Custo=%12.2f", iter_str, best_cost)
+    marker = "*" if is_new_best else " "
+    elapsed = _time_mod.monotonic() - start_time if start_time is not None else 0.0
+    alpha_str = f"{alpha:.3f}" if alpha is not None else "  -  "
+    logger.info(
+        "%s iter %3d/%d | cur=%12.4f | best=%12.4f | alpha=%s "
+        "| stag=%3d | elite=%2d | t=%6.2fs",
+        marker,
+        iter_idx + 1,
+        max_iterations,
+        construction_cost,
+        best_cost,
+        alpha_str,
+        stagnation,
+        elite_size,
+        elapsed,
+    )
 
 
 def _run_iteration_step(
@@ -1802,6 +1823,7 @@ def _run_iteration_step(
     verbose: bool,
     state: tuple[float, np.ndarray, int],
     deadline: float = 0.0,
+    start_time: float | None = None,
 ) -> tuple[float, np.ndarray, int]:
     """Executa uma iteração do GRASP (construção, busca local, path relinking).
 
@@ -1881,7 +1903,16 @@ def _run_iteration_step(
     )
 
     _print_iteration_status(
-        verbose, iter_idx, config.max_iterations, construction_cost, best_cost, state[0]
+        verbose,
+        iter_idx,
+        config.max_iterations,
+        construction_cost,
+        best_cost,
+        state[0],
+        alpha=current_alpha,
+        stagnation=stagnation,
+        elite_size=elite_pool.size() if elite_pool is not None else 0,
+        start_time=start_time,
     )
 
     # P15: escalonamento reativo à estagnação — restart parcial
@@ -2163,6 +2194,40 @@ def _maybe_apply_warm_start(
     return best_cost, best_solution
 
 
+def _print_run_header(
+    verbose: bool, num_vars: int, config: "GraspIlsVndConfig"
+) -> None:
+    """Log a single header line summarising the run configuration."""
+    if not verbose:
+        return
+    _ensure_verbose_handler()
+    logger.info(
+        "GRASP-ILS-VND-PR start | n=%d | iters=%d | alpha=[%.3f, %.3f] "
+        "| elite=%d | time_limit=%s",
+        num_vars,
+        config.max_iterations,
+        config.alpha_min if config.adaptive_alpha else config.alpha,
+        config.alpha_max if config.adaptive_alpha else config.alpha,
+        config.elite_size if config.use_elite_pool else 0,
+        f"{config.time_limit:.1f}s" if config.time_limit > 0 else "unlimited",
+    )
+
+
+def _print_run_footer(
+    verbose: bool, best_cost: float, stagnation: int, start_time: float
+) -> None:
+    """Log a single footer line summarising the final state."""
+    if not verbose:
+        return
+    elapsed = _time_mod.monotonic() - start_time
+    logger.info(
+        "GRASP-ILS-VND-PR end   | best=%.4f | stagnation=%d | t=%.2fs",
+        best_cost,
+        stagnation,
+        elapsed,
+    )
+
+
 def _run_grasp_loop(
     cost_fn: Callable,
     num_vars: int,
@@ -2184,6 +2249,8 @@ def _run_grasp_loop(
     best_cost, best_solution, stagnation = state
     start_time = _time_mod.monotonic()
     deadline = (start_time + config.time_limit) if config.time_limit > 0 else 0.0
+
+    _print_run_header(verbose, num_vars, config)
 
     for iteration in range(config.max_iterations):
         if _expired(deadline):
@@ -2207,10 +2274,13 @@ def _run_grasp_loop(
             verbose,
             (best_cost, best_solution, stagnation),
             deadline=deadline,
+            start_time=start_time,
         )
 
         if _check_early_stopping(conv_monitor, config, verbose):
             break
+
+    _print_run_footer(verbose, best_cost, stagnation, start_time)
 
     return best_cost, best_solution, stagnation
 
