@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "givp"
-version = "0.2.1"
+version = "0.3.0"
 description = "GRASP-ILS-VND with Path Relinking — direction-agnostic metaheuristic optimizer."
 readme = "README.md"
 license = { text = "MIT" }

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/Arnime/grasp_ils_vnd_pr/compare/v0.2.0...v0.3.0) (2026-04-22)
+
+
+### Features
+
+* **verbose:** enrich verbose output with per-iteration progress ([ba0d50c](https://github.com/Arnime/grasp_ils_vnd_pr/commit/ba0d50c3d65f1858a7f0cef46d6257bea0738f55))
+
 ## [0.2.0](https://github.com/Arnime/grasp_ils_vnd_pr/compare/v0.1.2...v0.2.0) (2026-04-22)
 
 
