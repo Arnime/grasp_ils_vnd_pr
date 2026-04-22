@@ -48,7 +48,7 @@ nox
 Please follow the [Conventional Commits](https://www.conventionalcommits.org)
 format, which enables automated CHANGELOG generation:
 
-```
+```text
 feat(api): expose `seed` parameter for reproducibility
 fix(core): guard against empty bounds list
 docs: add quickstart for warm-start
@@ -57,6 +57,7 @@ docs: add quickstart for warm-start
 ## Reporting bugs
 
 Open a GitHub issue with:
+
 - `givp` version, Python version, OS;
 - minimal reproducer (function + bounds + config);
 - expected vs actual behaviour;
