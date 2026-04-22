@@ -27,4 +27,4 @@ jobs:
                   pip install -e .[dev]
                   pip install pip-audit>=2.7
             - name: Audit
-              run: pip-audit --strict
+              run: pip-audit --skip-editable --strict
