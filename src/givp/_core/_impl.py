@@ -213,7 +213,10 @@ def _seed_from_initial(
     if np.isfinite(cost):
         return chute.copy()
     rng = _new_rng()
-    return np.asarray(lower_arr + (upper_arr - lower_arr) * rng.random(size=num_vars))
+    result: np.ndarray = np.asarray(
+        lower_arr + (upper_arr - lower_arr) * rng.random(size=num_vars)
+    )
+    return result
 
 
 def _evaluate_with_cache(
@@ -1609,7 +1612,7 @@ def perturb_solution_numpy(
     Returns:
         np.ndarray: Solução perturbada.
     """
-    perturbed = solution.copy().astype(float)
+    perturbed: np.ndarray = solution.copy().astype(float)
     rng = _new_rng(seed)
     # P15: perturbação mais agressiva — num_vars//5 variáveis para escapar ótimos locais
     n_perturb = min(max(strength, num_vars // 5), num_vars)
@@ -2130,7 +2133,10 @@ def _prepare_initial_array(
     if initial_guess is not None:
         return np.array(initial_guess, dtype=float)
     rng = _new_rng()
-    return np.asarray(lower_arr + (upper_arr - lower_arr) * rng.random(size=num_vars))
+    result: np.ndarray = np.asarray(
+        lower_arr + (upper_arr - lower_arr) * rng.random(size=num_vars)
+    )
+    return result
 
 
 def _maybe_apply_warm_start(
