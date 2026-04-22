@@ -6,8 +6,8 @@
 [![codecov](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/branch/main/graph/badge.svg)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Arnime/grasp_ils_vnd_pr/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Arnime/grasp_ils_vnd_pr)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
+[![Ruff](https://img.shields.io/badge/linter-ruff-red)](https://github.com/astral-sh/ruff)
+[![Checked with mypy](https://img.shields.io/badge/type--checked-mypy-blue)](https://mypy-lang.org/)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 A direction-agnostic, NumPy-native metaheuristic optimizer for **continuous,
