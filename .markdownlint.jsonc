@@ -3,5 +3,7 @@
     "LICENSE",
     "CHANGELOG.md",
     "site/**"
-  ]
+  ],
+  "MD013": { "tables": false },
+  "MD060": false
 }
