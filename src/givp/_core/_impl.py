@@ -211,7 +211,8 @@ def _seed_from_initial(
 ) -> np.ndarray:
     cost = _safe_evaluate(evaluator, chute)
     if np.isfinite(cost):
-        return chute.copy()
+        copy: np.ndarray = chute.copy()
+        return copy
     rng = _new_rng()
     result: np.ndarray = np.asarray(
         lower_arr + (upper_arr - lower_arr) * rng.random(size=num_vars)
