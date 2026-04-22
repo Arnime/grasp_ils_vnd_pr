@@ -20,6 +20,7 @@ jobs:
         runs-on: ubuntu-latest
         permissions:
             contents: write
+            actions: write
         steps:
             - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
               with:
@@ -56,12 +57,12 @@ jobs:
                   git push origin "${{ steps.version.outputs.tag }}"
                   echo "Tag ${{ steps.version.outputs.tag }} created and pushed."
 
-                      sbom.cdx.json
-                      dist/*
-            - name: Move sigstore files out of dist
-              run: mv dist/*.sigstore.json .
-            - name: Publish to PyPI (trusted publisher)
-              uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
-              with:
-                  skip-existing: true
-                  packages-dir: dist
+            - name: Trigger release workflow
+              if: steps.tag_check.outputs.exists == 'false'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  gh workflow run release.yml \
+                    --repo "${{ github.repository }}" \
+                    --field tag="${{ steps.version.outputs.tag }}"
+                  echo "Release workflow dispatched for ${{ steps.version.outputs.tag }}."
