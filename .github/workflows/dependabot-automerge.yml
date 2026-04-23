@@ -14,7 +14,9 @@ jobs:
         if: github.actor == 'dependabot[bot]'
         steps:
             - name: Enable auto-merge for Dependabot PRs
+              # Requires "Allow auto-merge" enabled in Settings → General → Pull Requests
               run: gh pr merge --auto --squash "$PR_URL"
+              continue-on-error: true
               env:
                   PR_URL: ${{ github.event.pull_request.html_url }}
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
