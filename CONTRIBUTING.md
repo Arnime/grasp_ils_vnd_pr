@@ -54,6 +54,16 @@ fix(core): guard against empty bounds list
 docs: add quickstart for warm-start
 ```
 
+## Repository policy
+
+The repository enforces branch protection: all Pull Requests require at
+least one approving review and passing CI checks (lint, type checks and
+tests) before merging. Please ensure your PR satisfies the checklist above
+and wait for required status checks to pass before requesting a merge.
+
+If you are a maintainer and need branch protection changes, manage them via
+the repository settings on GitHub.
+
 ## Reporting bugs
 
 Open a GitHub issue with:
