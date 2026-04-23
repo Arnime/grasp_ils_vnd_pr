@@ -62,6 +62,8 @@ nav:
   - Examples: examples.md
   - Comparison: comparison.md
   - Profiling: profiling.md
+  - Roadmap: roadmap.md
+  - Security requirements: security-requirements.md
   - API Reference:
       - grasp_ils_vnd_pr: api/grasp_ils_vnd_pr.md
       - GraspOptimizer: api/optimizer.md

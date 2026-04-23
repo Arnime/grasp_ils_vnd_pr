@@ -35,8 +35,7 @@ jobs:
                   python -m build
             - name: Smoke install
               run: |
-                  python -m venv /tmp/smoke
-                  /tmp/smoke/bin/pip install dist/*.whl
+                  sh .github/scripts/smoke-install.sh
                   /tmp/smoke/bin/python -c "import givp; print(givp.__version__)"
             - name: Publish to TestPyPI
               uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1

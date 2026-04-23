@@ -18,14 +18,14 @@ jobs:
             - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
               with:
                   python-version: "3.12"
-            - name: Install requirements (if present)
+            - name: Install
               run: |
-                  python -m pip install --upgrade pip
-                  if [ -f requirements/ci.txt ]; then python -m pip install -r requirements/ci.txt; fi
+                  pip install --require-hashes -r requirements/audit.txt
+                  sh .github/scripts/install-package.sh
             - name: Run pip-audit
               run: |
-                  python -m pip install pip-audit
-                  if [ -f requirements/ci.txt ]; then pip-audit -r requirements/ci.txt; else pip-audit; fi
+                  pip freeze --exclude-editable > /tmp/audit-reqs.txt
+                  pip-audit -r /tmp/audit-reqs.txt
 
     bandit:
         name: Bandit scan
@@ -36,7 +36,7 @@ jobs:
               with:
                   python-version: "3.12"
             - name: Install Bandit
-              run: python -m pip install bandit
+              run: pip install --require-hashes -r requirements/security.txt
             - name: Run Bandit
               run: bandit -r src -lll
 
