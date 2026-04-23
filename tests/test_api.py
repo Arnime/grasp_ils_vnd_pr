@@ -324,9 +324,31 @@ def test_wrap_objective_valid_directions(direction):
 def test_integer_split_preset_is_respected(fast_config):
     """When ``integer_split`` is already set on the config the branch that
     auto-fills it from ``n`` must NOT overwrite it (line 178 false-branch)."""
-    cfg = GraspIlsVndConfig(
-        **{**fast_config.__dict__, "integer_split": 2}
-    )
+    cfg = GraspIlsVndConfig(**{**fast_config.__dict__, "integer_split": 2})
     # 4-variable problem but integer_split=2 pre-set — should not be overwritten
     result = grasp_ils_vnd_pr(sphere, [(-2.0, 2.0)] * 4, config=cfg)
     assert np.isfinite(result.fun)
+
+
+def test_grasp_optimizer_run_second_call_not_better(monkeypatch, fast_config):
+    """Line 269->272: second run() result is NOT better -> best_fun/best_x unchanged."""
+    from givp import _api as api_mod
+    from givp._result import OptimizeResult
+
+    call_count = [0]
+    results = [
+        OptimizeResult(x=np.zeros(2), fun=0.5, nit=1, nfev=1, success=True, message="ok", direction="minimize"),
+        OptimizeResult(x=np.ones(2), fun=2.0, nit=1, nfev=1, success=True, message="ok", direction="minimize"),
+    ]
+
+    def fake_run(*_args, **_kwargs):
+        r = results[call_count[0]]
+        call_count[0] += 1
+        return r
+
+    monkeypatch.setattr(api_mod, "grasp_ils_vnd_pr", fake_run)
+
+    opt = GraspOptimizer(sphere, [(-1.0, 1.0)] * 2, config=fast_config)
+    opt.run()          # best_fun set to 0.5
+    opt.run()          # 2.0 is NOT better -> best_fun stays 0.5
+    assert opt.best_fun == pytest.approx(0.5)

@@ -2052,7 +2052,8 @@ def test_process_path_relinking_pairs_expired_break(monkeypatch):
 
 
 def test_grasp_ils_vnd_no_elite_pool_stagnation_branches():
-    """Lines 1885->1888, 1961->1963: use_elite_pool=False skips elite-pool adds."""
+    """Lines 1885->1888, 1961->1963: use_elite_pool=False skips elite-pool adds.
+    Also covers line 1923: verbose logger.info inside stagnation restart."""
     _set_integer_split(2)
     cfg = CoreConfig(
         max_iterations=3,
@@ -2068,5 +2069,34 @@ def test_grasp_ils_vnd_no_elite_pool_stagnation_branches():
         lambda x: 1.0, num_vars=4, config=cfg,
         lower=[0.0, 0.0, 0.0, 0.0],
         upper=[2.0, 2.0, 2.0, 2.0],
+        verbose=True,
     )
     assert np.isfinite(cost)
+
+
+# ---- _path_relinking_best: move found but NOT better (1491->1475) ----
+
+
+def test_path_relinking_best_move_found_but_not_better(monkeypatch):
+    """Line 1491->1475: best_move_idx is not None but best_move_benefit >= best_benefit
+    -> if-body skipped, loop continues to while check (the False branch of line 1491)."""
+    # Monkeypatch _find_best_move: first call returns (0, 100.0) meaning a move was
+    # found but its cost is NOT less than best_benefit. Second call returns None -> break.
+    call_count = [0]
+
+    def fake_find_best_move(cost_fn, current, target, indices, source,
+                            best_benefit, diff_indices, deadline=0.0):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            # Pretend idx=0 was "best" but with cost equal to best_benefit (not better)
+            current[0] = target[0]
+            return 0, best_benefit  # NOT less than best_benefit
+        return None, best_benefit  # break on second call
+
+    monkeypatch.setattr(core_impl, "_find_best_move", fake_find_best_move)
+    _set_integer_split(3)
+    src = np.array([1.0, 2.0, 3.0])
+    tgt = np.array([0.0, 0.0, 0.0])
+    out, cost = path_relinking(quad, src, tgt, strategy="best", deadline=0.0)
+    assert out.shape == (3,)
+    assert call_count[0] == 2  # both fake calls were made
