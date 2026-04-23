@@ -7,6 +7,8 @@ on:
     schedule:
         - cron: "0 3 * * *"
 
+permissions: read-all
+
 jobs:
     pip-audit:
         name: pip-audit
