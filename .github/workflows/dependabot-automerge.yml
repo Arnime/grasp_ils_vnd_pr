@@ -1,0 +1,19 @@
+name: Dependabot Auto-merge
+
+on:
+    pull_request_target:
+        types: [ opened, reopened, labeled, synchronize, ready_for_review ]
+
+jobs:
+    automerge:
+        runs-on: ubuntu-latest
+        if: github.actor == 'dependabot[bot]'
+        permissions:
+            pull-requests: write
+        steps:
+            - name: Automerge Dependabot PR
+              uses: pascalgn/automerge-action@v0.15.1
+              with:
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  merge_method: squash
+                  label: automerge

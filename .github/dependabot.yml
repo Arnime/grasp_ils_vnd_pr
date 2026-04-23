@@ -1,12 +1,14 @@
 version: 2
 updates:
-  - package-ecosystem: pip
+  - package-ecosystem: "pip"
     directory: "/"
     schedule:
-      interval: weekly
+      interval: "weekly"
       day: monday
     open-pull-requests-limit: 5
-    labels: [ "dependencies", "python" ]
+    labels:
+      - "dependencies"
+      - "automerge"
     groups:
       python-dev:
         patterns:
@@ -21,10 +23,12 @@ updates:
           - "mkdocs*"
           - "mkdocstrings*"
 
-  - package-ecosystem: github-actions
+  - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: weekly
+      interval: "weekly"
       day: monday
     open-pull-requests-limit: 5
-    labels: [ "dependencies", "github-actions" ]
+    labels:
+      - "dependencies"
+      - "automerge"
