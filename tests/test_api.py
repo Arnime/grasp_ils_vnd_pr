@@ -337,8 +337,24 @@ def test_grasp_optimizer_run_second_call_not_better(monkeypatch, fast_config):
 
     call_count = [0]
     results = [
-        OptimizeResult(x=np.zeros(2), fun=0.5, nit=1, nfev=1, success=True, message="ok", direction="minimize"),
-        OptimizeResult(x=np.ones(2), fun=2.0, nit=1, nfev=1, success=True, message="ok", direction="minimize"),
+        OptimizeResult(
+            x=np.zeros(2),
+            fun=0.5,
+            nit=1,
+            nfev=1,
+            success=True,
+            message="ok",
+            direction="minimize",
+        ),
+        OptimizeResult(
+            x=np.ones(2),
+            fun=2.0,
+            nit=1,
+            nfev=1,
+            success=True,
+            message="ok",
+            direction="minimize",
+        ),
     ]
 
     def fake_run(*_args, **_kwargs):
@@ -349,6 +365,6 @@ def test_grasp_optimizer_run_second_call_not_better(monkeypatch, fast_config):
     monkeypatch.setattr(api_mod, "grasp_ils_vnd_pr", fake_run)
 
     opt = GraspOptimizer(sphere, [(-1.0, 1.0)] * 2, config=fast_config)
-    opt.run()          # best_fun set to 0.5
-    opt.run()          # 2.0 is NOT better -> best_fun stays 0.5
+    opt.run()  # best_fun set to 0.5
+    opt.run()  # 2.0 is NOT better -> best_fun stays 0.5
     assert opt.best_fun == pytest.approx(0.5)
