@@ -25,6 +25,31 @@ We follow a coordinated disclosure model:
 3. We agree on a public disclosure date.
 4. We publish a release and a GitHub Security Advisory.
 
+## Vulnerability response process
+
+Our documented process for handling vulnerability reports:
+
+1. **Receipt**: Reporter contacts us via private vulnerability report or
+   email.
+2. **Acknowledgement** (within 7 days): We confirm receipt and assign a
+   severity.
+3. **Investigation** (within 14 days): We reproduce and assess impact.
+4. **Fix development**: We develop, review, and test a patch in a private
+   fork.
+5. **Coordinated disclosure**: We agree a public disclosure date with the
+   reporter.
+6. **Release and advisory** (within 30 days of confirmation): We publish a
+   patched release and a GitHub Security Advisory (GHSA).
+7. **Credit**: We publicly credit the reporter in the GHSA and in the
+   acknowledgement table below, unless they request anonymity.
+
+## Reporter credit policy
+
+We credit every reporter of a confirmed vulnerability in the GitHub
+Security Advisory and in the table below, unless the reporter explicitly
+requests anonymity. No vulnerability reports have been resolved in the
+last 12 months.
+
 ## Acknowledgements and audit log
 
 We commit to acknowledging valid vulnerability reports within 7 days and

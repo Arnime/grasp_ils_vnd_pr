@@ -43,6 +43,39 @@ nox
 - [ ] If user-visible, the change is mentioned in the PR description for
       the changelog.
 
+## Developer Certificate of Origin (DCO)
+
+By submitting a Pull Request you certify that you have the right to
+contribute the code under the project's MIT licence and you agree to the
+[Developer Certificate of Origin v1.1](https://developercertificate.org/).
+
+Add a `Signed-off-by` trailer to every commit in your PR:
+
+```bash
+git commit -s -m "your commit message"
+```
+
+This appends a line of the form:
+
+```
+Signed-off-by: Your Name <your.email@example.com>
+```
+
+The CI DCO check will fail if any commit in the PR lacks this trailer.
+
+## Test policy
+
+**All Pull Requests that add or change observable behaviour MUST include
+tests.** Specifically:
+
+- New features require at least one positive test and one negative/edge
+  case test.
+- Bug fixes require a regression test that would have caught the bug.
+- The coverage gate (`--cov-fail-under=95`) is enforced in CI and will
+  fail the PR if coverage drops below 95%.
+
+PRs that reduce coverage or omit tests for new code will not be merged.
+
 ## Commit messages
 
 Please follow the [Conventional Commits](https://www.conventionalcommits.org)
