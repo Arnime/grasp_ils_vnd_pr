@@ -34,16 +34,14 @@ jobs:
           python-version: "3.12"
       - name: Build
         run: |
-          pip install build
+          pip install --require-hashes -r requirements/release-tools.txt
           python -m build
       - name: Sign artifacts with Sigstore
         uses: sigstore/gh-action-sigstore-python@04cffa1d795717b140764e8b640de88853c92acc # v3.3.0
         with:
           inputs: ./dist/*.tar.gz ./dist/*.whl
       - name: Generate SBOM (CycloneDX)
-        run: |
-          pip install cyclonedx-bom
-          cyclonedx-py environment --of JSON -o sbom.cdx.json
+        run: cyclonedx-py environment --of JSON -o sbom.cdx.json
       - name: Attach artifacts to release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
