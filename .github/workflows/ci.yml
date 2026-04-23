@@ -42,7 +42,8 @@ jobs:
         with:
           files: coverage.xml
           token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
+          version: v11.2.8
+          fail_ci_if_error: false
 
   docs:
     runs-on: ubuntu-latest
