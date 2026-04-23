@@ -24,6 +24,7 @@ jobs:
     permissions:
       id-token: write
       contents: write
+      attestations: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -36,6 +37,10 @@ jobs:
         run: |
           pip install --require-hashes -r requirements/release-tools.txt
           python -m build
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        with:
+          subject-path: dist/*
       - name: Sign artifacts with Sigstore
         uses: sigstore/gh-action-sigstore-python@04cffa1d795717b140764e8b640de88853c92acc # v3.3.0
         with:
@@ -56,4 +61,4 @@ jobs:
         with:
           skip-existing: true
           packages-dir: dist
-          attestations: false
+          attestations: true
