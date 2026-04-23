@@ -105,3 +105,36 @@ Open a GitHub issue with:
 - minimal reproducer (function + bounds + config);
 - expected vs actual behaviour;
 - traceback if any.
+
+## Good first issues
+
+Issues labelled
+[`good first issue`](https://github.com/Arnime/grasp_ils_vnd_pr/labels/good%20first%20issue)
+are specifically scoped for new or casual contributors. They require no
+knowledge of the full algorithm — typical tasks include adding type stubs,
+improving error messages, expanding docstring examples, or writing a new
+benchmark. Pick one, comment to claim it, and open a PR.
+
+## Code review standards
+
+All Pull Requests undergo mandatory code review before merging:
+
+1. **What is reviewed:** correctness, test coverage, type safety (mypy),
+   style (ruff), documentation completeness, and security implications.
+2. **Who reviews:** the maintainer reviews every PR. PRs from the
+   maintainer are self-reviewed against this checklist before merging.
+3. **Acceptance criteria:** all CI checks must pass *and* the reviewer
+   must explicitly approve the changes. PRs with unresolved comments are
+   not merged.
+
+## Two-factor authentication (2FA)
+
+All contributors with write access to the repository **must** enable 2FA
+on their GitHub account. GitHub enforces this automatically for accounts
+in the `Arnime` organisation.
+
+For stronger security, please use a cryptographic 2FA method such as a
+TOTP authenticator app (e.g., Authy, Google Authenticator) or a hardware
+security key (e.g., YubiKey via GitHub's WebAuthn support). SMS-based 2FA
+alone is **not** recommended because it is susceptible to SIM-swapping
+attacks.

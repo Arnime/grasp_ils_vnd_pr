@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """``givp._core`` package — algorithm implementation.
 
 Historically this was a single ``_core.py`` module. It is now a package whose
