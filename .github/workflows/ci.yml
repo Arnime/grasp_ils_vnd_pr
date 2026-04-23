@@ -24,7 +24,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install
-        run: pip install -e .[dev]
+        run: |
+          pip install --require-hashes -r requirements/ci.txt
+          pip install --no-deps .
       - name: Lint
         run: ruff check src tests
       - name: Type-check
@@ -47,6 +49,8 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install
-        run: pip install -e .[docs]
+        run: |
+          pip install --require-hashes -r requirements/docs.txt
+          pip install --no-deps .
       - name: Build docs (strict)
         run: mkdocs build --strict

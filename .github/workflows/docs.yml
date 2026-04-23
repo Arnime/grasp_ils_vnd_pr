@@ -21,6 +21,8 @@ jobs:
               with:
                   python-version: "3.12"
             - name: Install
-              run: pip install -e .[docs]
+              run: |
+                  pip install --require-hashes -r requirements/docs.txt
+                  pip install --no-deps .
             - name: Build & deploy
               run: mkdocs gh-deploy --force --clean
