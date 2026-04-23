@@ -1,1 +1,2 @@
 tomli>=1.1.0
+exceptiongroup>=1.0.0
