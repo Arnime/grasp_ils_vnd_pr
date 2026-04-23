@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/Arnime/grasp_ils_vnd_pr/compare/v0.2.2...v0.3.0) (2026-04-23)
+
+
+### Features
+
+* add Python 3.14 support; extend `requires-python` to `<3.15`
+
+
 ## [0.2.0](https://github.com/Arnime/grasp_ils_vnd_pr/compare/v0.1.2...v0.2.0) (2026-04-22)
 
 
