@@ -293,3 +293,40 @@ def test_long_run_triggers_path_relinking_and_restart(fast_config):
     )
     result = grasp_ils_vnd_pr(sphere, [(-2.0, 2.0)] * 4, config=cfg, verbose=True)
     assert np.isfinite(result.fun)
+
+
+# ----------------------------- _wrap_objective coverage --------------------
+
+
+def test_wrap_objective_invalid_direction_raises():
+    """`_wrap_objective` raises ValueError for an unknown direction string."""
+    from givp._api import _wrap_objective
+
+    with pytest.raises(ValueError, match="direction must be"):
+        _wrap_objective(sphere, "sideways", [0])
+
+
+@pytest.mark.parametrize("direction", ["minimize", "maximize"])
+def test_wrap_objective_valid_directions(direction):
+    """`_wrap_objective` accepts both valid direction strings."""
+    from givp._api import _wrap_objective
+
+    counter: list[int] = [0]
+    wrapped = _wrap_objective(sphere, direction, counter)
+    val = wrapped(np.array([1.0, 2.0]))
+    assert np.isfinite(val)
+    assert counter[0] == 1
+
+
+# ----------------------------- integer_split pre-set ----------------------
+
+
+def test_integer_split_preset_is_respected(fast_config):
+    """When ``integer_split`` is already set on the config the branch that
+    auto-fills it from ``n`` must NOT overwrite it (line 178 false-branch)."""
+    cfg = GraspIlsVndConfig(
+        **{**fast_config.__dict__, "integer_split": 2}
+    )
+    # 4-variable problem but integer_split=2 pre-set — should not be overwritten
+    result = grasp_ils_vnd_pr(sphere, [(-2.0, 2.0)] * 4, config=cfg)
+    assert np.isfinite(result.fun)
