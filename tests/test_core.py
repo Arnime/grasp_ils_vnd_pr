@@ -1388,3 +1388,212 @@ def test_verbose_output_contains_iter_and_best():
     assert any("iter" in m and "best=" in m for m in h.messages)
     assert any("GRASP-ILS-VND-PR end" in m for m in h.messages)
     assert np.isfinite(result.fun)
+
+
+# ----------------------------- _sign_from_delta ---------------------------
+
+
+def test_sign_from_delta_all_branches():
+    """Lines 1234, 1244: cover negative (-1) and zero (0) return branches."""
+    assert core_impl._sign_from_delta(2.0) == 1
+    assert core_impl._sign_from_delta(-0.5) == -1
+    assert core_impl._sign_from_delta(0.0) == 0
+
+
+# ----------------------------- _neighborhood_pair invalid split -----------
+
+
+def test_neighborhood_swap_skips_when_half_equals_num_vars():
+    """Line 1132: half >= num_vars triggers early return in _neighborhood_swap."""
+    _set_integer_split(4)  # _get_half(4) = 4 >= num_vars=4 -> early return
+    sol = np.array([0.5, 0.5, 1.0, 1.0])
+    out, ben = core_impl._neighborhood_swap(
+        quad, sol.copy(), quad(sol), num_vars=4
+    )
+    np.testing.assert_array_equal(out, sol)
+    assert ben == pytest.approx(quad(sol))
+
+
+# ----------------------------- _group_layout indivisible -----------------
+
+
+def test_group_layout_returns_none_when_indivisible():
+    """Lines 1162->1165: half not divisible by n_steps -> return None."""
+    _set_integer_split(5)  # half = 5
+    _set_group_size(3)     # 5 // 3 = 1; 1 * 3 = 3 != 5 -> None
+    assert core_impl._group_layout(10) is None
+
+
+# ----------------------------- _modify_indices_for_multiflip no-bounds ---
+
+
+def test_modify_indices_continuous_no_bounds():
+    """Lines 622-623: continuous perturbation path without bounds supplied."""
+    _set_integer_split(2)  # half=2; indices [0,1] are in the continuous region
+    sol = np.array([0.5, 0.5, 1.0, 1.0])
+    indices = np.array([0, 1])
+    rng = np.random.default_rng(99)
+    core_impl._modify_indices_for_multiflip(
+        sol, indices, rng, lower_arr=None, upper_arr=None
+    )
+    assert sol.shape == (4,)
+
+
+# ----------------------------- _perturb_index continuous no bounds -------
+
+
+def test_perturb_index_continuous_no_bounds():
+    """Line 662: continuous variable with no bounds uses normal perturbation."""
+    _set_integer_split(1)  # half=1; idx=0 is in the continuous region
+    arr = np.array([1.5, 2.0])
+    rng = np.random.default_rng(7)
+    _perturb_index(arr, idx=0, strength=1, rng=rng, lower_arr=None, upper_arr=None)
+    assert arr.shape == (2,)
+
+
+# ----------------------------- grasp_ils_vnd config=None -----------------
+
+
+def test_grasp_ils_vnd_config_none_uses_default():
+    """Line 2316: grasp_ils_vnd auto-creates GraspIlsVndConfig when config=None."""
+    _set_integer_split(2)
+    sol, cost = core_impl.grasp_ils_vnd(
+        quad,
+        num_vars=4,
+        config=None,
+        lower=[0.0, 0.0, 0.0, 0.0],
+        upper=[1.0, 1.0, 3.0, 3.0],
+    )
+    assert np.isfinite(cost)
+
+
+# ----------------------------- _path_relinking_best lines 1452-1491 ------
+
+
+def test_path_relinking_best_no_improving_move_breaks():
+    """Line 1491->1475: break when _find_best_move returns None.
+    Source is already optimal; every step toward target worsens cost."""
+    _set_integer_split(3)
+    src = np.array([0.0, 0.0, 0.0])  # cost=0, optimal
+    tgt = np.array([2.0, 2.0, 2.0])  # cost=12, worse
+    out, cost = path_relinking(quad, src, tgt, strategy="best", seed=0)
+    assert out.shape == (3,)
+    assert np.isfinite(cost)
+
+
+def test_path_relinking_best_processes_improving_moves():
+    """Lines 1452, 1454: _find_best_move iterates indices and restores state."""
+    _set_integer_split(3)
+    src = np.array([3.0, 3.0, 3.0])  # cost=27
+    tgt = np.array([0.0, 0.0, 0.0])  # cost=0, better
+    out, cost = path_relinking(quad, src, tgt, strategy="best", seed=0)
+    assert out.shape == (3,)
+    assert cost <= 27.0
+
+
+# ----------------------------- _find_best_move equal-index skip ----------
+
+
+def test_find_best_move_skips_index_already_equal_to_target():
+    """Line 1452: `continue` when current[idx] == target[idx]."""
+    current = np.array([1.0, 2.0, 3.0], dtype=float)
+    # idx=1: current[1] == target[1] == 2.0 -> the continue branch fires
+    target = np.array([0.0, 2.0, 0.0], dtype=float)
+    source = np.array([1.0, 2.0, 3.0], dtype=float)
+    indices = np.array([0, 1, 2])
+    diff_indices = np.array([0, 1, 2])
+    best_idx, best_cost = core_impl._find_best_move(
+        quad, current, target, indices, source, quad(current), diff_indices
+    )
+    assert best_idx != 1  # idx=1 was skipped; winner is 0 or 2
+
+
+# ----------------------------- _safe_iteration_callback verbose=False ----
+
+
+def test_safe_iteration_callback_exception_verbose_false():
+    """Line 1727->exit: exception in callback with verbose=False skips logger.info."""
+
+    def boom(_it, _cost, _sol):
+        raise RuntimeError("oops")
+
+    # Must not raise; the False branch of `if verbose:` is taken
+    core_impl._safe_iteration_callback(
+        boom, iter_idx=0, benefit=1.0, sol=np.zeros(2), verbose=False
+    )
+
+
+# ----------------------------- _search_*_module first_improvement --------
+
+
+def test_search_integer_flip_module_first_improvement():
+    """Line 515: early return when first_improvement=True and move improves cost."""
+    _set_integer_split(2)
+    # sol=[0,0,5,5], cost=50; moving idx=2 from 5->4 gives cost=41 < 50
+    sol = np.array([0.0, 0.0, 5.0, 5.0])
+    initial_cost = quad(sol)
+    lower = np.array([0.0, 0.0, 0.0, 0.0])
+    upper = np.array([1.0, 1.0, 10.0, 10.0])
+    out, cost = core_impl._search_integer_flip_module(
+        sol,
+        initial_cost,
+        np.arange(2, 4),  # integer indices
+        quad,
+        lower,
+        upper,
+        first_improvement=True,
+    )
+    assert out.shape == (4,)
+    assert cost < initial_cost
+
+
+def test_search_continuous_flip_module_first_improvement(monkeypatch):
+    """Line 550: early return when first_improvement=True and move improves cost."""
+    # Patch _try_continuous_move_module to guarantee an improvement on first call
+    monkeypatch.setattr(
+        core_impl,
+        "_try_continuous_move_module",
+        lambda *_args, **_kwargs: (True, 0.0),
+    )
+    _set_integer_split(2)
+    sol = np.array([3.0, 3.0, 0.0, 0.0])
+    lower = np.array([-5.0, -5.0, 0.0, 0.0])
+    upper = np.array([5.0, 5.0, 3.0, 3.0])
+    rng = np.random.default_rng(0)
+    out, cost = core_impl._search_continuous_flip_module(
+        sol,
+        quad(sol),
+        np.arange(0, 2),  # continuous indices
+        quad,
+        rng,
+        lower,
+        upper,
+        first_improvement=True,
+    )
+    assert out.shape == sol.shape
+    assert cost == pytest.approx(0.0)
+
+
+# ----------------------------- _compute_ratios_numpy dependency branch ---
+
+
+def test_evaluate_candidates_with_new_deps():
+    """Line 146->148: branch where a package has new (inactive) dependencies."""
+    # Package 0 depends on package 1; package 1 has no dependencies
+    available = np.array([0, 1])
+    deps_active = np.array([False, False])  # no dep active yet
+    current_cost = 0
+    deps_matrix = np.zeros((2, 2), dtype=int)
+    deps_matrix[0, 0] = 1       # pkg 0's first dep is pkg 1
+    deps_len = np.array([1, 0])  # pkg 0 has 1 dep; pkg 1 has 0
+    c_arr = np.array([20, 15])  # package benefits
+    a_arr = np.array([10, 5])   # dependency costs
+    b = 100                      # budget
+
+    ratios, inc_costs, valid = evaluate_candidates(
+        available, deps_active, current_cost,
+        deps_matrix, deps_len, c_arr, a_arr, b,
+    )
+    # pkg 0: n_deps=1, dep 1 not active -> incremental_cost = a_arr[1] = 5
+    assert valid[0]
+    assert inc_costs[0] == 5
