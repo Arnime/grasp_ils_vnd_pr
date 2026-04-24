@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """Diversity-aware elite pool of high-quality solutions."""
 
 from __future__ import annotations

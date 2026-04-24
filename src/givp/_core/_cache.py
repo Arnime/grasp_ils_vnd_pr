@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """LRU evaluation cache used by the GRASP/ILS/VND algorithm."""
 
 from __future__ import annotations

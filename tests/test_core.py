@@ -1388,3 +1388,867 @@ def test_verbose_output_contains_iter_and_best():
     assert any("iter" in m and "best=" in m for m in h.messages)
     assert any("GRASP-ILS-VND-PR end" in m for m in h.messages)
     assert np.isfinite(result.fun)
+
+
+# ----------------------------- _sign_from_delta ---------------------------
+
+
+def test_sign_from_delta_all_branches():
+    """Lines 1234, 1244: cover negative (-1) and zero (0) return branches."""
+    assert core_impl._sign_from_delta(2.0) == 1
+    assert core_impl._sign_from_delta(-0.5) == -1
+    assert core_impl._sign_from_delta(0.0) == 0
+
+
+# ----------------------------- _neighborhood_pair invalid split -----------
+
+
+def test_neighborhood_swap_skips_when_half_equals_num_vars():
+    """Line 1132: half >= num_vars triggers early return in _neighborhood_swap."""
+    _set_integer_split(4)  # _get_half(4) = 4 >= num_vars=4 -> early return
+    sol = np.array([0.5, 0.5, 1.0, 1.0])
+    out, ben = core_impl._neighborhood_swap(quad, sol.copy(), quad(sol), num_vars=4)
+    np.testing.assert_array_equal(out, sol)
+    assert ben == pytest.approx(quad(sol))
+
+
+# ----------------------------- _group_layout indivisible -----------------
+
+
+def test_group_layout_returns_none_when_indivisible():
+    """Lines 1162->1165: half not divisible by n_steps -> return None."""
+    _set_integer_split(5)
+    _set_group_size(3)  # 5 // 3 = 1; 1 * 3 = 3 != 5 -> None
+    assert core_impl._group_layout(10) is None
+
+
+# ----------------------------- _modify_indices_for_multiflip no-bounds ---
+
+
+def test_modify_indices_continuous_no_bounds():
+    """Lines 622-623: continuous perturbation path without bounds supplied."""
+    _set_integer_split(2)  # half=2; indices [0,1] are in the continuous region
+    sol = np.array([0.5, 0.5, 1.0, 1.0])
+    indices = np.array([0, 1])
+    rng = np.random.default_rng(99)
+    core_impl._modify_indices_for_multiflip(
+        sol, indices, rng, lower_arr=None, upper_arr=None
+    )
+    assert sol.shape == (4,)
+
+
+# ----------------------------- _perturb_index continuous no bounds -------
+
+
+def test_perturb_index_continuous_no_bounds():
+    """Line 662: continuous variable with no bounds uses normal perturbation."""
+    _set_integer_split(1)  # half=1; idx=0 is in the continuous region
+    arr = np.array([1.5, 2.0])
+    rng = np.random.default_rng(7)
+    _perturb_index(arr, idx=0, strength=1, rng=rng, lower_arr=None, upper_arr=None)
+    assert arr.shape == (2,)
+
+
+# ----------------------------- grasp_ils_vnd config=None -----------------
+
+
+def test_grasp_ils_vnd_config_none_uses_default():
+    """Line 2316: grasp_ils_vnd auto-creates GraspIlsVndConfig when config=None."""
+    _set_integer_split(2)
+    _, cost = core_impl.grasp_ils_vnd(
+        quad,
+        num_vars=4,
+        config=None,
+        lower=[0.0, 0.0, 0.0, 0.0],
+        upper=[1.0, 1.0, 3.0, 3.0],
+    )
+    assert np.isfinite(cost)
+
+
+# ----------------------------- _path_relinking_best lines 1452-1491 ------
+
+
+def test_path_relinking_best_no_improving_move_breaks():
+    """Line 1491->1475: break when _find_best_move returns None.
+    Source is already optimal; every step toward target worsens cost."""
+    _set_integer_split(3)
+    src = np.array([0.0, 0.0, 0.0])
+    tgt = np.array([2.0, 2.0, 2.0])
+    out, cost = path_relinking(quad, src, tgt, strategy="best", seed=0)
+    assert out.shape == (3,)
+    assert np.isfinite(cost)
+
+
+def test_path_relinking_best_processes_improving_moves():
+    """Lines 1452, 1454: _find_best_move iterates indices and restores state."""
+    _set_integer_split(3)
+    src = np.array([3.0, 3.0, 3.0])
+    tgt = np.array([0.0, 0.0, 0.0])
+    out, cost = path_relinking(quad, src, tgt, strategy="best", seed=0)
+    assert out.shape == (3,)
+    assert cost <= 27.0
+
+
+# ----------------------------- _find_best_move equal-index skip ----------
+
+
+def test_find_best_move_skips_index_already_equal_to_target():
+    """Line 1452: `continue` when current[idx] == target[idx]."""
+    current = np.array([1.0, 2.0, 3.0], dtype=float)
+    # idx=1: current[1] == target[1] == 2.0 -> the continue branch fires
+    target = np.array([0.0, 2.0, 0.0], dtype=float)
+    source = np.array([1.0, 2.0, 3.0], dtype=float)
+    indices = np.array([0, 1, 2])
+    diff_indices = np.array([0, 1, 2])
+    best_idx, _ = core_impl._find_best_move(
+        quad, current, target, indices, source, quad(current), diff_indices
+    )
+    assert best_idx != 1  # idx=1 was skipped; winner is 0 or 2
+
+
+# ----------------------------- _safe_iteration_callback verbose=False ----
+
+
+def test_safe_iteration_callback_exception_verbose_false():
+    """Line 1727->exit: exception in callback with verbose=False skips logger.info."""
+
+    def boom(_it, _cost, _sol):
+        raise RuntimeError("oops")
+
+    # Must not raise; the False branch of `if verbose:` is taken
+    core_impl._safe_iteration_callback(
+        boom, iter_idx=0, benefit=1.0, sol=np.zeros(2), verbose=False
+    )
+
+
+# ----------------------------- _search_*_module first_improvement --------
+
+
+def test_search_integer_flip_module_first_improvement():
+    """Line 515: early return when first_improvement=True and move improves cost."""
+    _set_integer_split(2)
+    # sol=[0,0,5,5], cost=50; moving idx=2 from 5->4 gives cost=41 < 50
+    sol = np.array([0.0, 0.0, 5.0, 5.0])
+    initial_cost = quad(sol)
+    lower = np.array([0.0, 0.0, 0.0, 0.0])
+    upper = np.array([1.0, 1.0, 10.0, 10.0])
+    out, cost = core_impl._search_integer_flip_module(
+        sol,
+        initial_cost,
+        np.arange(2, 4),  # integer indices
+        quad,
+        lower,
+        upper,
+        first_improvement=True,
+    )
+    assert out.shape == (4,)
+    assert cost < initial_cost
+
+
+def test_search_continuous_flip_module_first_improvement(monkeypatch):
+    """Line 550: early return when first_improvement=True and move improves cost."""
+    # Patch _try_continuous_move_module to guarantee an improvement on first call
+    monkeypatch.setattr(
+        core_impl,
+        "_try_continuous_move_module",
+        lambda *_args, **_kwargs: (True, 0.0),
+    )
+    _set_integer_split(2)
+    sol = np.array([3.0, 3.0, 0.0, 0.0])
+    lower = np.array([-5.0, -5.0, 0.0, 0.0])
+    upper = np.array([5.0, 5.0, 3.0, 3.0])
+    rng = np.random.default_rng(0)
+    out, cost = core_impl._search_continuous_flip_module(
+        sol,
+        quad(sol),
+        np.arange(0, 2),  # continuous indices
+        quad,
+        rng,
+        lower,
+        upper,
+        first_improvement=True,
+    )
+    assert out.shape == sol.shape
+    assert cost == pytest.approx(0.0)
+
+
+# ----------------------------- _compute_ratios_numpy dependency branch ---
+
+
+def test_evaluate_candidates_with_new_deps():
+    """Line 146->148: branch where a package has new (inactive) dependencies."""
+    # Package 0 depends on package 1; package 1 has no dependencies
+    available = np.array([0, 1])
+    deps_active = np.array([False, False])  # no dep active yet
+    current_cost = 0
+    deps_matrix = np.zeros((2, 2), dtype=int)
+    deps_matrix[0, 0] = 1  # pkg 0's first dep is pkg 1
+    deps_len = np.array([1, 0])  # pkg 0 has 1 dep; pkg 1 has 0
+    c_arr = np.array([20, 15])  # package benefits
+    a_arr = np.array([10, 5])  # dependency costs
+    b = 100  # budget
+
+    _, inc_costs, valid = evaluate_candidates(
+        available,
+        deps_active,
+        current_cost,
+        deps_matrix,
+        deps_len,
+        c_arr,
+        a_arr,
+        b,
+    )
+    # pkg 0: n_deps=1, dep 1 not active -> incremental_cost = a_arr[1] = 5
+    assert valid[0]
+    assert inc_costs[0] == 5
+
+
+# ---- evaluate_candidates: all deps already active (146->148 False branch) ----
+
+
+def test_evaluate_candidates_all_deps_already_active():
+    """Line 146->148: n_deps > 0 but all deps already active -> incremental_cost = 0."""
+    available = np.array([0])
+    deps_active = np.array([False, True])  # dep pkg 1 is already active
+    current_cost = 0
+    deps_matrix = np.zeros((2, 2), dtype=int)
+    deps_matrix[0, 0] = 1  # pkg 0 depends on pkg 1
+    deps_len = np.array([1, 0])
+    c_arr = np.array([20, 15])
+    a_arr = np.array([10, 5])
+    b = 100
+    _, inc_costs, valid = evaluate_candidates(
+        available, deps_active, current_cost, deps_matrix, deps_len, c_arr, a_arr, b
+    )
+    assert valid[0]
+    assert inc_costs[0] == 0  # dep already active -> no incremental cost
+
+
+# ---- _select_from_rcl: all-inf costs returns None (line 246) ----
+
+
+def test_select_from_rcl_all_costs_infinite():
+    """Line 246: return None when all candidate costs are infinite."""
+    costs = np.array([np.inf, np.inf, np.inf])
+    rng = np.random.default_rng(0)
+    result = _select_from_rcl(costs, alpha=0.5, rng=rng)
+    assert result is None
+
+
+# ---- _select_from_rcl: empty RCL after filter falls back to valid_idx (line 254) ----
+
+
+def test_select_from_rcl_empty_rcl_fallback():
+    """Line 254: rcl_local = valid_idx when threshold filters out all candidates (alpha<0)."""
+    costs = np.array([1.0, 2.0, 3.0])
+    rng = np.random.default_rng(0)
+    # alpha < 0 -> threshold < min_cost -> all valid_costs fail <= threshold -> empty RCL
+    result = _select_from_rcl(costs, alpha=-0.5, rng=rng)
+    assert result is not None
+    assert 0 <= result < 3
+
+
+# ---- _search_integer_flip_module: deadline break (line 515) ----
+
+
+def test_search_integer_flip_module_deadline_break(monkeypatch):
+    """Line 515: break fires when _expired returns True on first loop iteration."""
+    monkeypatch.setattr(core_impl, "_expired", lambda _: True)
+    _set_integer_split(2)
+    sol = np.array([0.0, 0.0, 5.0, 5.0])
+    initial_cost = quad(sol)
+    lower = np.array([0.0, 0.0, 0.0, 0.0])
+    upper = np.array([1.0, 1.0, 10.0, 10.0])
+    out, cost = core_impl._search_integer_flip_module(
+        sol,
+        initial_cost,
+        np.arange(2, 4),
+        quad,
+        lower,
+        upper,
+        first_improvement=True,
+        deadline=1.0,
+    )
+    np.testing.assert_array_equal(out, sol)
+    assert cost == pytest.approx(initial_cost)
+
+
+# ---- _search_integer_flip_module: improvement + first_improvement=False (522->513) ----
+
+
+def test_search_integer_flip_module_no_first_improvement():
+    """Line 522->513: improvement found but first_improvement=False continues loop."""
+    _set_integer_split(2)
+    sol = np.array([0.0, 0.0, 5.0, 5.0])
+    initial_cost = quad(sol)
+    lower = np.array([0.0, 0.0, 0.0, 0.0])
+    upper = np.array([1.0, 1.0, 10.0, 10.0])
+    _, cost = core_impl._search_integer_flip_module(
+        sol,
+        initial_cost,
+        np.arange(2, 4),
+        quad,
+        lower,
+        upper,
+        first_improvement=False,
+    )
+    assert cost < initial_cost
+
+
+# ---- _search_continuous_flip_module: improvement + first_improvement=False (550->552) ----
+
+
+def test_search_continuous_flip_module_no_first_improvement(monkeypatch):
+    """Line 550->552: improvement found but first_improvement=False continues loop."""
+    call_count = [0]
+
+    def always_improve(*_args, **_kwargs):
+        call_count[0] += 1
+        return (True, 0.0)
+
+    monkeypatch.setattr(core_impl, "_try_continuous_move_module", always_improve)
+    _set_integer_split(2)
+    sol = np.array([3.0, 3.0, 0.0, 0.0])
+    lower = np.array([-5.0, -5.0, 0.0, 0.0])
+    upper = np.array([5.0, 5.0, 3.0, 3.0])
+    rng = np.random.default_rng(0)
+    _, cost = core_impl._search_continuous_flip_module(
+        sol,
+        quad(sol),
+        np.arange(0, 2),
+        quad,
+        rng,
+        lower,
+        upper,
+        first_improvement=False,
+    )
+    assert call_count[0] >= 2  # called on both indices (no early return)
+    assert cost == pytest.approx(0.0)
+
+
+# ---- _modify_indices_for_multiflip: integer no-bounds path (572->576) ----
+
+
+def test_modify_indices_integer_no_bounds():
+    """Line 572->576: integer indices with lower_arr=None skips the clip block."""
+    _set_integer_split(2)
+    sol = np.array([0.5, 0.5, 3.0, 5.0])
+    rng = np.random.default_rng(0)
+    old_vals = core_impl._modify_indices_for_multiflip(
+        sol, indices=np.array([2, 3]), rng=rng, lower_arr=None, upper_arr=None
+    )
+    assert old_vals.shape == (2,)
+
+
+# ---- _try_neighborhoods: expired at very start (line 662) ----
+
+
+def test_try_neighborhoods_expired_immediately(monkeypatch):
+    """Line 662: _expired True before first neighborhood -> immediately returns False."""
+    monkeypatch.setattr(core_impl, "_expired", lambda _: True)
+    _set_integer_split(1)
+    sol = np.array([1.0, 1.0])
+    _, cost, improved = core_impl._try_neighborhoods(
+        quad,
+        sol,
+        2.0,
+        num_vars=2,
+        use_first_improvement=True,
+        iteration=0,
+        no_improve_flip_limit=3,
+        lower_arr=None,
+        upper_arr=None,
+        deadline=1.0,
+    )
+    assert not improved
+    assert cost == pytest.approx(2.0)
+
+
+# ---- _try_neighborhoods: expired after swap no-improvement (line 696) ----
+
+
+def test_try_neighborhoods_expired_after_swap(monkeypatch):
+    """Line 696: _expired fires after swap neighborhood finds no improvement."""
+    call_count = [0]
+
+    def count_expired(d):
+        call_count[0] += 1
+        return call_count[0] >= 3
+
+    monkeypatch.setattr(core_impl, "_expired", count_expired)
+    monkeypatch.setattr(
+        core_impl, "_neighborhood_flip", lambda *a, **kw: (a[1].copy(), a[2])
+    )
+    monkeypatch.setattr(
+        core_impl, "_neighborhood_swap", lambda *a, **kw: (a[1].copy(), a[2])
+    )
+    _set_integer_split(1)
+    sol = np.array([1.0, 1.0])
+    _, _, improved = core_impl._try_neighborhoods(
+        quad,
+        sol,
+        2.0,
+        num_vars=2,
+        use_first_improvement=True,
+        iteration=0,
+        no_improve_flip_limit=3,
+        lower_arr=None,
+        upper_arr=None,
+        deadline=1.0,
+    )
+    assert not improved
+
+
+# ---- _try_neighborhoods: group neighborhood improves (line 710) ----
+
+
+def test_try_neighborhoods_group_neighborhood_improves(monkeypatch):
+    """Line 710: _neighborhood_group returns an improvement -> early True return."""
+    monkeypatch.setattr(core_impl, "_expired", lambda _: False)
+    monkeypatch.setattr(
+        core_impl, "_neighborhood_flip", lambda *a, **kw: (a[1].copy(), a[2])
+    )
+    monkeypatch.setattr(
+        core_impl, "_neighborhood_swap", lambda *a, **kw: (a[1].copy(), a[2])
+    )
+    improved_sol = np.zeros(2)
+    monkeypatch.setattr(
+        core_impl, "_neighborhood_group", lambda *a, **kw: (improved_sol, 0.0)
+    )
+    _set_integer_split(1)
+    sol = np.array([1.0, 1.0])
+    _, cost, improved_flag = core_impl._try_neighborhoods(
+        quad,
+        sol,
+        2.0,
+        num_vars=2,
+        use_first_improvement=True,
+        iteration=0,
+        no_improve_flip_limit=3,
+        lower_arr=None,
+        upper_arr=None,
+    )
+    assert improved_flag
+    assert cost == pytest.approx(0.0)
+
+
+# ---- _try_neighborhoods: expired after group no-improvement (line 713) ----
+
+
+def test_try_neighborhoods_expired_after_group(monkeypatch):
+    """Line 713: _expired fires after group neighborhood finds no improvement."""
+    call_count = [0]
+
+    def count_expired(d):
+        call_count[0] += 1
+        return call_count[0] >= 4
+
+    monkeypatch.setattr(core_impl, "_expired", count_expired)
+    monkeypatch.setattr(
+        core_impl, "_neighborhood_flip", lambda *a, **kw: (a[1].copy(), a[2])
+    )
+    monkeypatch.setattr(
+        core_impl, "_neighborhood_swap", lambda *a, **kw: (a[1].copy(), a[2])
+    )
+    monkeypatch.setattr(
+        core_impl, "_neighborhood_group", lambda *a, **kw: (a[1].copy(), a[2])
+    )
+    _set_integer_split(1)
+    sol = np.array([1.0, 1.0])
+    _, _, improved = core_impl._try_neighborhoods(
+        quad,
+        sol,
+        2.0,
+        num_vars=2,
+        use_first_improvement=True,
+        iteration=0,
+        no_improve_flip_limit=3,
+        lower_arr=None,
+        upper_arr=None,
+        deadline=1.0,
+    )
+    assert not improved
+
+
+# ---- _try_neighborhoods: block neighborhood improves (line 726) ----
+
+
+def test_try_neighborhoods_block_neighborhood_improves(monkeypatch):
+    """Line 726: _neighborhood_block returns an improvement -> early True return."""
+    monkeypatch.setattr(core_impl, "_expired", lambda _: False)
+    monkeypatch.setattr(
+        core_impl, "_neighborhood_flip", lambda *a, **kw: (a[1].copy(), a[2])
+    )
+    monkeypatch.setattr(
+        core_impl, "_neighborhood_swap", lambda *a, **kw: (a[1].copy(), a[2])
+    )
+    monkeypatch.setattr(
+        core_impl, "_neighborhood_group", lambda *a, **kw: (a[1].copy(), a[2])
+    )
+    improved_sol = np.zeros(2)
+    monkeypatch.setattr(
+        core_impl, "_neighborhood_block", lambda *a, **kw: (improved_sol, 0.0)
+    )
+    _set_integer_split(1)
+    sol = np.array([1.0, 1.0])
+    _, cost, improved_flag = core_impl._try_neighborhoods(
+        quad,
+        sol,
+        2.0,
+        num_vars=2,
+        use_first_improvement=True,
+        iteration=0,
+        no_improve_flip_limit=3,
+        lower_arr=None,
+        upper_arr=None,
+    )
+    assert improved_flag
+    assert cost == pytest.approx(0.0)
+
+
+# ---- _try_neighborhoods: expired in multiflip check (line 730) ----
+
+
+def test_try_neighborhoods_expired_in_multiflip_check(monkeypatch):
+    """Line 730: _expired fires inside `if iteration % limit == 0:` block."""
+    call_count = [0]
+
+    def count_expired(d):
+        call_count[0] += 1
+        return call_count[0] >= 5
+
+    monkeypatch.setattr(core_impl, "_expired", count_expired)
+    monkeypatch.setattr(
+        core_impl, "_neighborhood_flip", lambda *a, **kw: (a[1].copy(), a[2])
+    )
+    monkeypatch.setattr(
+        core_impl, "_neighborhood_swap", lambda *a, **kw: (a[1].copy(), a[2])
+    )
+    monkeypatch.setattr(
+        core_impl, "_neighborhood_group", lambda *a, **kw: (a[1].copy(), a[2])
+    )
+    monkeypatch.setattr(
+        core_impl, "_neighborhood_block", lambda *a, **kw: (a[1].copy(), a[2])
+    )
+    _set_integer_split(1)
+    sol = np.array([1.0, 1.0])
+    # iteration=0, no_improve_flip_limit=1 -> 0 % 1 == 0 -> multiflip check fires
+    _, _, improved = core_impl._try_neighborhoods(
+        quad,
+        sol,
+        2.0,
+        num_vars=2,
+        use_first_improvement=True,
+        iteration=0,
+        no_improve_flip_limit=1,
+        lower_arr=None,
+        upper_arr=None,
+        deadline=1.0,
+    )
+    assert not improved
+
+
+# ---- _neighborhood_swap: deadline break in loop (line 1132) ----
+
+
+def test_neighborhood_swap_deadline_break(monkeypatch):
+    """Line 1132: break fires when _expired True inside the for-loop."""
+    monkeypatch.setattr(core_impl, "_expired", lambda _: True)
+    _set_integer_split(2)  # half=2 < num_vars=4 -> we enter the loop
+    sol = np.array([1.0, 1.0, 2.0, 2.0])
+    out, _ = core_impl._neighborhood_swap(
+        quad,
+        sol.copy(),
+        quad(sol),
+        num_vars=4,
+        first_improvement=True,
+        lower_arr=None,
+        upper_arr=None,
+        deadline=1.0,
+    )
+    np.testing.assert_array_equal(out, sol)
+
+
+# ---- _neighborhood_swap: else branch (no bounds, lines 1155-1156) ----
+
+
+def test_neighborhood_swap_no_bounds_else_branch():
+    """Lines 1155-1156: else branch (no bounds) perturbs cont+int without clipping."""
+    _set_integer_split(2)
+    sol = np.array([1.0, 1.0, 2.0, 2.0])
+    out, _ = core_impl._neighborhood_swap(
+        quad,
+        sol.copy(),
+        1000.0,
+        num_vars=4,
+        first_improvement=True,
+        max_attempts=10,
+        lower_arr=None,
+        upper_arr=None,
+    )
+    assert out.shape == (4,)
+
+
+# ---- _neighborhood_swap: improvement + first_improvement=False (1162->1165) ----
+
+
+def test_neighborhood_swap_improvement_no_first_improvement():
+    """Line 1162->1165: improvement found but first_improvement=False -> restore+continue."""
+    _set_integer_split(2)
+    sol = np.array([1.0, 1.0, 2.0, 2.0])
+    _, cost = core_impl._neighborhood_swap(
+        lambda _: -1.0,
+        sol.copy(),
+        0.0,
+        num_vars=4,
+        first_improvement=False,
+        max_attempts=5,
+        lower_arr=np.zeros(4),
+        upper_arr=np.ones(4) * 3,
+    )
+    assert cost == pytest.approx(-1.0)
+
+
+# ---- _neighborhood_group: zero attempts (1340->1372) ----
+
+
+def test_neighborhood_group_zero_attempts():
+    """Line 1340->1372: for loop runs 0 times with max_attempts=0."""
+    _set_integer_split(4)
+    _set_group_size(2)
+    sol = np.ones(8)
+    out, cost = _neighborhood_group(
+        quad,
+        sol.copy(),
+        quad(sol),
+        num_vars=8,
+        max_attempts=0,
+        lower_arr=np.zeros(8),
+        upper_arr=np.ones(8) * 3,
+    )
+    np.testing.assert_array_equal(out, sol)
+    assert cost == pytest.approx(quad(sol))
+
+
+# ---- _neighborhood_group: no improvement restores solution (lines 1369-1370) ----
+
+
+def test_neighborhood_group_no_improvement_restores():
+    """Lines 1369-1370: restore after perturbation doesn't improve cost."""
+    _set_integer_split(4)
+    _set_group_size(2)
+    sol = np.zeros(8)  # cost=0 is optimal -> any perturbation worsens
+    _, cost = _neighborhood_group(
+        quad,
+        sol.copy(),
+        0.0,
+        num_vars=8,
+        max_attempts=5,
+        lower_arr=np.zeros(8),
+        upper_arr=np.ones(8) * 3,
+    )
+    assert cost == pytest.approx(0.0)
+
+
+# ---- _neighborhood_group: improvement + first_improvement=False (1366->1369) ----
+
+
+def test_neighborhood_group_improvement_no_first_improvement():
+    """Line 1366->1369: improvement found but first_improvement=False -> restore+continue."""
+    _set_integer_split(4)
+    _set_group_size(2)
+    sol = np.ones(8)
+    _, cost = _neighborhood_group(
+        lambda _: -1.0,
+        sol.copy(),
+        0.0,
+        num_vars=8,
+        first_improvement=False,
+        max_attempts=3,
+        lower_arr=np.zeros(8),
+        upper_arr=np.ones(8) * 3,
+    )
+    assert cost == pytest.approx(-1.0)
+
+
+# ---- _neighborhood_block: zero attempts (1403->1435) ----
+
+
+def test_neighborhood_block_zero_attempts():
+    """Line 1403->1435: for loop runs 0 times with max_attempts=0."""
+    _set_integer_split(5)
+    _set_group_size(5)
+    sol = np.ones(10)
+    out, _ = _neighborhood_block(
+        quad,
+        sol.copy(),
+        quad(sol),
+        num_vars=10,
+        max_attempts=0,
+        lower_arr=np.zeros(10),
+        upper_arr=np.ones(10) * 3,
+    )
+    np.testing.assert_array_equal(out, sol)
+
+
+# ---- _neighborhood_block: improvement + first_improvement=False (1430->1433) ----
+
+
+def test_neighborhood_block_improvement_no_first_improvement():
+    """Line 1430->1433: improvement found but first_improvement=False -> restore+continue."""
+    _set_integer_split(5)
+    _set_group_size(5)
+    sol = np.ones(10)
+    _, cost = _neighborhood_block(
+        lambda _: -1.0,
+        sol.copy(),
+        0.0,
+        num_vars=10,
+        first_improvement=False,
+        max_attempts=3,
+        lower_arr=np.zeros(10),
+        upper_arr=np.ones(10) * 3,
+    )
+    assert cost == pytest.approx(-1.0)
+
+
+# ---- _find_best_move: deadline break (line 1452) ----
+
+
+def test_find_best_move_deadline_break(monkeypatch):
+    """Line 1452: break fires when _expired True in the for-loop."""
+    monkeypatch.setattr(core_impl, "_expired", lambda _: True)
+    current = np.array([1.0, 2.0, 3.0])
+    target = np.array([0.0, 1.0, 0.0])
+    source = current.copy()
+    indices = np.array([0, 1, 2])
+    best_idx, _ = core_impl._find_best_move(
+        quad, current, target, indices, source, quad(current), indices, deadline=1.0
+    )
+    assert best_idx is None  # break before any move was evaluated
+
+
+# ---- _neighborhood_multiflip: deadline break in loop (line 1204) ----
+
+
+def test_neighborhood_multiflip_deadline_break(monkeypatch):
+    """Line 1204: break fires when _expired True inside the for-loop."""
+    monkeypatch.setattr(core_impl, "_expired", lambda _: True)
+    _set_integer_split(2)
+    sol = np.array([1.0, 1.0, 2.0, 2.0])
+    out, _ = core_impl._neighborhood_multiflip(
+        quad,
+        sol.copy(),
+        quad(sol),
+        num_vars=4,
+        max_attempts=5,
+        deadline=1.0,
+    )
+    np.testing.assert_array_equal(out, sol)
+
+
+# ---- _handle_convergence_monitor: restart+verbose+no-pool (1746->1751) ----
+
+
+def test_handle_convergence_monitor_restart_verbose_no_pool():
+    """Line 1746->1751: restart+verbose but elite_pool is None -> skip to return 0."""
+    monitor = ConvergenceMonitor(restart_threshold=1)
+    monitor.update(10.0)
+    monitor.update(15.0)  # worse -> no_improve=1 -> should_restart=True
+    result = _handle_convergence_monitor(monitor, 15.0, elite_pool=None, verbose=True)
+    assert result == 0
+
+
+# ---- _process_path_relinking_pairs: expired break in inner j-loop (line 2011) ----
+
+
+def test_process_path_relinking_pairs_expired_break(monkeypatch):
+    """Line 2011: break in inner j-loop when _expired fires."""
+    monkeypatch.setattr(core_impl, "_expired", lambda _: True)
+    _set_integer_split(2)
+    sol1 = np.array([1.0, 1.0, 0.0, 0.0])
+    sol2 = np.array([0.0, 0.0, 1.0, 1.0])
+    sol3 = np.array([0.5, 0.5, 0.5, 0.5])
+    elite_solutions = [(sol1, 2.0), (sol2, 2.0), (sol3, 1.0)]
+    cfg = CoreConfig(use_elite_pool=True, vnd_iterations=1)
+    pool = ElitePool(max_size=5)
+    for s, c in elite_solutions:
+        pool.add(s, c)
+    best_cost, _, _ = core_impl._process_path_relinking_pairs(
+        elite_solutions,
+        quad,
+        num_vars=4,
+        config=cfg,
+        best_cost=2.0,
+        best_solution=sol1.copy(),
+        stagnation=0,
+        elite_pool=pool,
+        cache=None,
+        deadline=1.0,
+    )
+    assert np.isfinite(best_cost)
+
+
+# ---- grasp_ils_vnd: use_elite_pool=False covers 1885->1888 and 1961->1963 ----
+
+
+def test_grasp_ils_vnd_no_elite_pool_stagnation_branches():
+    """Lines 1885->1888, 1961->1963: use_elite_pool=False skips elite-pool adds.
+    Also covers line 1923: verbose logger.info inside stagnation restart."""
+    _set_integer_split(2)
+    cfg = CoreConfig(
+        max_iterations=3,
+        vnd_iterations=1,
+        ils_iterations=1,
+        use_elite_pool=False,
+        use_cache=False,
+        use_convergence_monitor=True,  # must be True so stagnation isn't auto-reset to 0
+        adaptive_alpha=False,
+    )
+    # Constant-cost function guarantees stagnation after iteration 1
+    _, cost = core_impl.grasp_ils_vnd(
+        lambda x: 1.0,
+        num_vars=4,
+        config=cfg,
+        lower=[0.0, 0.0, 0.0, 0.0],
+        upper=[2.0, 2.0, 2.0, 2.0],
+        verbose=True,
+    )
+    assert np.isfinite(cost)
+
+
+# ---- _path_relinking_best: move found but NOT better (1491->1475) ----
+
+
+def test_path_relinking_best_move_found_but_not_better(monkeypatch):
+    """Line 1491->1475: best_move_idx is not None but best_move_benefit >= best_benefit
+    -> if-body skipped, loop continues to while check (the False branch of line 1491).
+    """
+    # Monkeypatch _find_best_move: first call returns (0, 100.0) meaning a move was
+    # found but its cost is NOT less than best_benefit. Second call returns None -> break.
+    call_count = [0]
+
+    def fake_find_best_move(
+        cost_fn,
+        current,
+        target,
+        indices,
+        source,
+        best_benefit,
+        diff_indices,
+        deadline=0.0,
+    ):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            # Pretend idx=0 was "best" but with cost equal to best_benefit (not better)
+            current[0] = target[0]
+            return 0, best_benefit  # NOT less than best_benefit
+        return None, best_benefit  # break on second call
+
+    monkeypatch.setattr(core_impl, "_find_best_move", fake_find_best_move)
+    _set_integer_split(3)
+    src = np.array([1.0, 2.0, 3.0])
+    tgt = np.array([0.0, 0.0, 0.0])
+    out, _ = path_relinking(quad, src, tgt, strategy="best", deadline=0.0)
+    assert out.shape == (3,)
+    assert call_count[0] == 2  # both fake calls were made

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """Pure-utility helpers shared across the ``givp._core`` submodules.
 
 This module deliberately has zero internal dependencies (other than ``numpy``)

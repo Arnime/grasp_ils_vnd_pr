@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """Convergence monitor that recommends restarts/intensification."""
 
 from __future__ import annotations

@@ -64,3 +64,38 @@ Advisory):
 
 (Maintainers: when responding to a report, append a new row with dates
 and links to the advisory or release that fixes the issue.)
+
+## Security review
+
+A security review of the `givp` codebase was conducted by the maintainer
+in April 2026 covering the security requirements and the trust boundary
+of the library. The review considered:
+
+- **Attack surface:** `givp` is a pure-Python numerical library that
+  accepts user-supplied callables and numerical bounds. It performs no
+  network I/O, filesystem access, or process execution. The trust boundary
+  is entirely the Python process; no sandbox or privilege separation
+  applies.
+- **Threat model:** an adversary could supply a malicious objective
+  function, but that function already executes in the caller's process
+  with the caller's permissions — `givp` does not expand this attack
+  surface. Denial-of-service via an infinite loop in the callback is
+  possible but is the caller's responsibility to guard against.
+- **Input validation:** all public parameters are validated via
+  `GraspIlsVndConfig` at call time. Invalid types and out-of-range values
+  raise typed exceptions (`InvalidConfigError`, `BoundsError`) before
+  any computation begins.
+- **Dependency review:** the only runtime dependency is `numpy`. All CI
+  and release dependencies are hash-pinned and audited weekly with
+  `pip-audit` via the scheduled security workflow.
+- **Static analysis:** `mypy --strict` and `ruff` run on every commit.
+  `bandit` and `semgrep` are run in the security CI workflow to catch
+  common Python security anti-patterns.
+- **Fuzzing:** a `fuzz/fuzz_givp.py` target exercises the public API with
+  arbitrary inputs using `atheris` to detect unexpected crashes.
+- **Findings:** no security vulnerabilities were identified. The complete
+  security requirements and assurance case are documented in
+  [`docs/security-requirements.md`](docs/security-requirements.md).
+
+The review will be refreshed whenever a significant architectural change
+is made or at least once every five years.

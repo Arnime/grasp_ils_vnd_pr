@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """Result container returned by the public optimizer API."""
 
 from __future__ import annotations

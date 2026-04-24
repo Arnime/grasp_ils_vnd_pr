@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """Custom exceptions for the givp package.
 
 All givp-specific errors derive from :class:`GivpError`, which itself inherits
