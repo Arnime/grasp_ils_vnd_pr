@@ -1968,5 +1968,5 @@ fuzz = ["atheris"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.10,<3.14"
-content-hash = "e0200e2f519732df1a32a64c07a27c6dd8f7e0c85b6a70e53661d70dbec36366"
+python-versions = ">=3.10,<3.15"
+content-hash = "21342896a6ca2d12ac36720b1c2ec9535ac989e097caa1abbc85106791c52b77"
