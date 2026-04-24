@@ -9,56 +9,56 @@ env:
 permissions: read-all
 
 # ---------------------------------------------------------------------------
-# Dispatches the existing release.yml (which builds + signs + generates SLSA
-# provenance) for each legacy tag that is missing provenance.
-# Requires the GITHUB_TOKEN to have actions:write so it can trigger workflows.
+# For each legacy tag: checks out main (current build tooling + lock files),
+# overlays only the source from the tag, builds, signs with Sigstore, attests
+# provenance via actions/attest-build-provenance, and attaches the sigstore
+# files to the existing GitHub release.
 # ---------------------------------------------------------------------------
 
 jobs:
-  dispatch:
+  build:
     runs-on: ubuntu-latest
     permissions:
-      actions: write
-    env:
-      GH_TOKEN: ${{ github.token }}
-      REPO: ${{ github.repository }}
+      id-token: write
+      contents: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        tag: [v0.1.2, v0.2.0, v0.2.2, v0.3.0, v0.4.0]
     steps:
-      - name: Trigger release workflow for each legacy tag
+      - name: Check out main (build tooling)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Overlay source from ${{ matrix.tag }}
         run: |
-          TAGS="v0.1.2 v0.2.0 v0.2.2 v0.3.0 v0.4.0"
-          for TAG in $TAGS; do
-            echo "Dispatching release.yml for $TAG"
-            gh workflow run release.yml \
-              --repo "$REPO" \
-              --ref main \
-              --field tag="$TAG"
+          git fetch --tags --no-recurse-submodules origin ${{ matrix.tag }}
+          git checkout ${{ matrix.tag }} -- src pyproject.toml
 
-            # Poll until the run triggered above leaves the "queued" state
-            # before dispatching the next one (avoids race on concurrent OIDC
-            # token issuance limits).
-            echo "  Waiting for $TAG run to start..."
-            for i in $(seq 1 30); do
-              STATUS=$(gh run list \
-                --repo "$REPO" \
-                --workflow release.yml \
-                --limit 1 \
-                --json status \
-                --jq '.[0].status')
-              if [ "$STATUS" != "queued" ]; then
-                echo "  Run started (status: $STATUS)"
-                break
-              fi
-              sleep 10
-            done
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
 
-            # Wait for it to complete before triggering the next tag.
-            RUN_ID=$(gh run list \
-              --repo "$REPO" \
-              --workflow release.yml \
-              --limit 1 \
-              --json databaseId \
-              --jq '.[0].databaseId')
-            echo "  Waiting for run $RUN_ID to complete..."
-            gh run watch "$RUN_ID" --repo "$REPO" --exit-status
-            echo "  Done: $TAG"
-          done
+      - name: Build
+        run: |
+          pip install --require-hashes -r requirements/release-tools.txt
+          python -m build
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        with:
+          subject-path: dist/*
+
+      - name: Sign artifacts with Sigstore
+        uses: sigstore/gh-action-sigstore-python@04cffa1d795717b140764e8b640de88853c92acc # v3.3.0
+        with:
+          inputs: ./dist/*.tar.gz ./dist/*.whl
+
+      - name: Attach sigstore files to release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        with:
+          tag_name: ${{ matrix.tag }}
+          files: dist/*.sigstore.json
