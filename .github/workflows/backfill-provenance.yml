@@ -1,0 +1,64 @@
+name: Backfill Provenance
+
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions: read-all
+
+# ---------------------------------------------------------------------------
+# Dispatches the existing release.yml (which builds + signs + generates SLSA
+# provenance) for each legacy tag that is missing provenance.
+# Requires the GITHUB_TOKEN to have actions:write so it can trigger workflows.
+# ---------------------------------------------------------------------------
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Trigger release workflow for each legacy tag
+        run: |
+          TAGS="v0.1.2 v0.2.0 v0.2.2 v0.3.0 v0.4.0"
+          for TAG in $TAGS; do
+            echo "Dispatching release.yml for $TAG"
+            gh workflow run release.yml \
+              --repo "$REPO" \
+              --ref main \
+              --field tag="$TAG"
+
+            # Poll until the run triggered above leaves the "queued" state
+            # before dispatching the next one (avoids race on concurrent OIDC
+            # token issuance limits).
+            echo "  Waiting for $TAG run to start..."
+            for i in $(seq 1 30); do
+              STATUS=$(gh run list \
+                --repo "$REPO" \
+                --workflow release.yml \
+                --limit 1 \
+                --json status \
+                --jq '.[0].status')
+              if [ "$STATUS" != "queued" ]; then
+                echo "  Run started (status: $STATUS)"
+                break
+              fi
+              sleep 10
+            done
+
+            # Wait for it to complete before triggering the next tag.
+            RUN_ID=$(gh run list \
+              --repo "$REPO" \
+              --workflow release.yml \
+              --limit 1 \
+              --json databaseId \
+              --jq '.[0].databaseId')
+            echo "  Waiting for run $RUN_ID to complete..."
+            gh run watch "$RUN_ID" --repo "$REPO" --exit-status
+            echo "  Done: $TAG"
+          done
