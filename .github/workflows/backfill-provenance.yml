@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tag: [v0.1.2, v0.2.0, v0.2.2, v0.3.0, v0.4.0]
+        tag: [ v0.1.2, v0.2.0, v0.2.2, v0.3.0, v0.4.0, v0.4.1 ]
     steps:
       - name: Check out main (build tooling)
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -57,8 +57,11 @@ jobs:
         with:
           inputs: ./dist/*.tar.gz ./dist/*.whl
 
+      - name: Rename sigstore bundles for Scorecard compatibility
+        run: for f in dist/*.sigstore.json; do mv "$f" "${f%.json}"; done
+
       - name: Attach sigstore files to release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           tag_name: ${{ matrix.tag }}
-          files: dist/*.sigstore.json
+          files: dist/*.sigstore
