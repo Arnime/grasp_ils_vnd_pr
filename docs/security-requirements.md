@@ -144,8 +144,9 @@ implementation are secure.
 
 #### 4. Residual risks
 
-- **Bus factor = 1**: mitigated by fully automated release pipeline and
-  documented access continuity plan (see [GOVERNANCE.md](https://github.com/Arnime/grasp_ils_vnd_pr/blob/main/GOVERNANCE.md)).
+- **Bus factor ≥ 2**: multiple independent contributors; fully automated
+  release pipeline and access continuity plan documented in
+  [GOVERNANCE.md](https://github.com/Arnime/grasp_ils_vnd_pr/blob/main/GOVERNANCE.md).
 - **Caller-supplied objective function**: no mitigation possible within
   the library; documented as out-of-scope in the security requirements.
 

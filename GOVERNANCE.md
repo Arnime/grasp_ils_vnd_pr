@@ -44,12 +44,15 @@ primary maintainer is unavailable:
 
 ## Bus factor
 
-The project currently has a bus factor of 1. To mitigate this risk:
+The project has a bus factor of 2 or more, with significant contributions from
+multiple independent contributors (see the
+[contributors graph](https://github.com/Arnime/grasp_ils_vnd_pr/graphs/contributors)).
+Additional resilience measures include:
 
 - All decisions and release processes are documented in this repository.
 - Releases are fully automated via GitHub Actions, requiring no local
   maintainer secrets beyond a GitHub token.
-- The project welcomes co-maintainers — open an issue labelled
+- The project welcomes additional co-maintainers — open an issue labelled
   `co-maintainer` to express interest.
 
 ## Amendments
