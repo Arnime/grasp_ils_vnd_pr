@@ -5,7 +5,7 @@
 [![CI](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/branch/main/graph/badge.svg)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Arnime/grasp_ils_vnd_pr/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Arnime/grasp_ils_vnd_pr)
-[![Best Practices: Passing](https://img.shields.io/badge/Best%20Practices-Passing-brightgreen)](https://www.bestpractices.dev/en/projects/12627/passing)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12627/badge)](https://www.bestpractices.dev/projects/12627)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Ruff](https://img.shields.io/badge/linter-ruff-red)](https://github.com/astral-sh/ruff)
 [![Checked with mypy](https://img.shields.io/badge/type--checked-mypy-blue)](https://mypy-lang.org/)
