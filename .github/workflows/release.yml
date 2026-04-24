@@ -25,6 +25,8 @@ jobs:
       id-token: write
       contents: write
       attestations: write
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -37,6 +39,10 @@ jobs:
         run: |
           pip install --require-hashes -r requirements/release-tools.txt
           python -m build
+      - name: Generate artifact hashes
+        id: hash
+        run: |
+          cd dist && echo "hashes=$(sha256sum * | base64 -w0)" >> "$GITHUB_OUTPUT"
       - name: Attest build provenance
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
@@ -62,3 +68,15 @@ jobs:
           skip-existing: true
           packages-dir: dist
           attestations: true
+
+  provenance:
+    needs: [ build-and-publish ]
+    permissions:
+      actions: read
+      id-token: write
+      contents: write
+    # slsa-framework/slsa-github-generator is exempt from hash-pinning per Scorecard policy
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+    with:
+      base64-subjects: "${{ needs.build-and-publish.outputs.hashes }}"
+      upload-assets: true

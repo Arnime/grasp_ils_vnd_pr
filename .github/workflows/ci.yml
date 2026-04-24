@@ -59,7 +59,9 @@ jobs:
           python-version: "3.15"
           allow-prereleases: true
       - name: Install
-        run: pip install -e ".[dev]"
+        run: |
+          pip install --require-hashes -r requirements/ci.txt
+          sh .github/scripts/install-package.sh
       - name: Lint
         run: ruff check src tests
       - name: Type-check
