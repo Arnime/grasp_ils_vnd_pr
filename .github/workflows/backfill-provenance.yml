@@ -136,7 +136,7 @@ jobs:
           retention-days: 1
 
   provenance-v022:
-    needs: [build-v022]
+    needs: [build-v022, provenance-v020]
     permissions:
       actions: read
       id-token: write
@@ -199,7 +199,7 @@ jobs:
           retention-days: 1
 
   provenance-v030:
-    needs: [build-v030]
+    needs: [build-v030, provenance-v022]
     permissions:
       actions: read
       id-token: write
@@ -262,7 +262,7 @@ jobs:
           retention-days: 1
 
   provenance-v040:
-    needs: [build-v040]
+    needs: [build-v040, provenance-v030]
     permissions:
       actions: read
       id-token: write
@@ -325,7 +325,7 @@ jobs:
           retention-days: 1
 
   provenance-v041:
-    needs: [build-v041]
+    needs: [build-v041, provenance-v040]
     permissions:
       actions: read
       id-token: write
