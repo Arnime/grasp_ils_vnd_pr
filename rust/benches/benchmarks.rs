@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
 // SPDX-License-Identifier: MIT
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use givp::{givp, GivpConfig};
 
 fn sphere(x: &[f64]) -> f64 {
@@ -32,7 +32,7 @@ fn bench_sphere_5d(c: &mut Criterion) {
                 integer_split: Some(5),
                 ..Default::default()
             };
-            black_box(givp(sphere, &bounds, cfg).unwrap())
+            std::hint::black_box(givp(sphere, &bounds, cfg).unwrap())
         })
     });
 }
@@ -47,7 +47,7 @@ fn bench_rosenbrock_5d(c: &mut Criterion) {
                 integer_split: Some(5),
                 ..Default::default()
             };
-            black_box(givp(rosenbrock, &bounds, cfg).unwrap())
+            std::hint::black_box(givp(rosenbrock, &bounds, cfg).unwrap())
         })
     });
 }
@@ -62,7 +62,7 @@ fn bench_rastrigin_10d(c: &mut Criterion) {
                 integer_split: Some(10),
                 ..Default::default()
             };
-            black_box(givp(rastrigin, &bounds, cfg).unwrap())
+            std::hint::black_box(givp(rastrigin, &bounds, cfg).unwrap())
         })
     });
 }

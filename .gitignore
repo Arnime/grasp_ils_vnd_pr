@@ -26,4 +26,5 @@ julia/benchmarks/Manifest.toml
 # Rust
 rust/target/
 
-Notebooks/
+Notebooks/Resultados_Dissertacao/
+Notebooks/_rust_examples/

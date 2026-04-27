@@ -1,7 +1,8 @@
 # Julia
 
-`givp` is also available as a native Julia package (`GIVP.jl`), providing the
-same GRASP-ILS-VND with Path Relinking algorithm with an idiomatic Julia API.
+`givp` is also available as a native Julia package (`GIVPOptimizer.jl`),
+providing the same GRASP-ILS-VND with Path Relinking algorithm with an idiomatic
+Julia API.
 
 ## Installation
 
@@ -17,7 +18,7 @@ Requires Julia 1.9+.
 ## Quick start
 
 ```julia
-using GIVP
+using GIVPOptimizer
 
 sphere(x) = sum(x .^ 2)
 

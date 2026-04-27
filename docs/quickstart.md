@@ -57,7 +57,7 @@ result = givp(rosenbrock, [(-2.0, 2.0)] * 5, config=cfg)
 ### Minimize a function (Julia)
 
 ```julia
-using GIVP
+using GIVPOptimizer
 
 function rosenbrock(x::Vector{Float64})::Float64
     return sum(

@@ -146,15 +146,8 @@ mod tests {
         let func = |x: &[f64]| x.iter().map(|&xi| xi * xi).sum::<f64>();
         assert!((func(&sol1) - 0.0).abs() < 1e-10); // invoke closure body
         let deadline = Some(Instant::now() - Duration::from_secs(1));
-        let (result, _cost) = bidirectional_path_relinking(
-            &func,
-            &sol1,
-            &sol2,
-            3,
-            &mut None,
-            &mut rng,
-            deadline,
-        );
+        let (result, _cost) =
+            bidirectional_path_relinking(&func, &sol1, &sol2, 3, &mut None, &mut rng, deadline);
         assert_eq!(result.len(), 3);
     }
 
@@ -181,11 +174,13 @@ mod tests {
         };
         let sol1 = vec![0.0, 0.0, 0.0];
         let sol2 = vec![1.0, 1.0, 1.0];
-        let (result, cost) = bidirectional_path_relinking(
-            &func, &sol1, &sol2, 3, &mut None, &mut rng, None,
-        );
+        let (result, cost) =
+            bidirectional_path_relinking(&func, &sol1, &sol2, 3, &mut None, &mut rng, None);
         // Backward path: [1,1,1]→ set x[0]=0 → [0,1,1]=2.0 (best) → backward wins
-        assert!((cost - 2.0).abs() < 1e-10, "expected backward best 2.0, got {cost}");
+        assert!(
+            (cost - 2.0).abs() < 1e-10,
+            "expected backward best 2.0, got {cost}"
+        );
         assert!((result[0]).abs() < 1e-10);
         assert!((result[1] - 1.0).abs() < 1e-10);
         assert!((result[2] - 1.0).abs() < 1e-10);

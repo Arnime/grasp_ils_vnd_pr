@@ -53,7 +53,7 @@ print(result.x, result.fun)
 ### Julia example
 
 ```julia
-using GIVP
+using GIVPOptimizer
 
 sphere(x) = sum(x .^ 2)
 

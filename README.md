@@ -9,7 +9,7 @@
 [![Checked with mypy](https://img.shields.io/badge/type--checked-mypy-blue)](https://mypy-lang.org/)
 
 **Julia** &nbsp;
-[![JuliaHub](https://img.shields.io/badge/JuliaHub-GIVP-9558B2?logo=julia&logoColor=white)](https://juliahub.com/ui/Packages/General/GIVP)
+[![JuliaHub](https://img.shields.io/badge/JuliaHub-GIVPOptimizer-9558B2?logo=julia&logoColor=white)](https://juliahub.com/ui/Packages/General/GIVPOptimizer)
 [![Julia](https://img.shields.io/badge/Julia-1.9%2B-9558B2?logo=julia&logoColor=white)](https://julialang.org/)
 [![CI Julia](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml)
 
@@ -145,7 +145,7 @@ Default behavior:
 The Julia port exposes the same algorithm with an idiomatic Julia API:
 
 ```julia
-using GIVP
+using GIVPOptimizer
 
 function sphere(x::Vector{Float64})::Float64
     return sum(x .^ 2)

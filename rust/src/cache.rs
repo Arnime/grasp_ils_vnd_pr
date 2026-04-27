@@ -115,7 +115,7 @@ mod tests {
         let mut cache = EvaluationCache::new(10);
         cache.put(&[1.0, 2.0], 2, 10.0);
         cache.put(&[1.0, 2.0], 2, 99.0); // same key — should be ignored (early return)
-        // Value should still be 10.0
+                                         // Value should still be 10.0
         assert_eq!(cache.get(&[1.0, 2.0], 2), Some(10.0));
         assert_eq!(cache.stats().3, 1); // only 1 entry
     }

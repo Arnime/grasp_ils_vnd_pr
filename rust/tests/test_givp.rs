@@ -17,6 +17,7 @@ mod tests {
             .sum()
     }
 
+    #[allow(dead_code)]
     fn rastrigin(x: &[f64]) -> f64 {
         let n = x.len() as f64;
         10.0 * n

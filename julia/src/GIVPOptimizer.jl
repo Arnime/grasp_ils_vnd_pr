@@ -2,14 +2,14 @@
 # SPDX-License-Identifier: MIT
 
 """
-GIVP — GRASP-ILS-VND with Path Relinking optimizer (Julia port).
+GIVPOptimizer — GRASP-ILS-VND with Path Relinking optimizer (Julia port).
 
 Public API:
     givp(func, bounds; direction=:minimize, ...) -> OptimizeResult
     GIVPConfig          (algorithm hyper-parameters)
     OptimizeResult      (result struct)
 """
-module GIVP
+module GIVPOptimizer
 
 using Random
 using Statistics
@@ -18,8 +18,12 @@ using Printf
 using Dates
 
 export givp, GIVPConfig, OptimizeResult, TerminationReason, Direction, minimize, maximize
-export GivpError, InvalidBoundsError, InvalidInitialGuessError,
-       InvalidConfigError, EvaluatorError, EmptyPoolError
+export GivpError,
+    InvalidBoundsError,
+    InvalidInitialGuessError,
+    InvalidConfigError,
+    EvaluatorError,
+    EmptyPoolError
 export validate_config!, to_dict
 
 include("exceptions.jl")
@@ -36,6 +40,6 @@ include("pr.jl")
 include("impl.jl")
 include("api.jl")
 
-const __version__ = "0.5.2"
+const __version__ = "0.5.3"
 
 end # module
