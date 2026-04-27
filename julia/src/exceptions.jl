@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
 # SPDX-License-Identifier: MIT
 
-"""Custom exceptions for the GIVP package."""
+"""Custom exceptions for the GIVPOptimizer package."""
 
 abstract type GivpError <: Exception end
 

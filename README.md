@@ -1,22 +1,34 @@
 # givp — GRASP-ILS-VND with Path Relinking
 
+**Python** &nbsp;
 [![PyPI version](https://img.shields.io/pypi/v/givp?cacheSeconds=300)](https://pypi.org/project/givp/)
 [![Python versions](https://img.shields.io/pypi/pyversions/givp?cacheSeconds=300)](https://pypi.org/project/givp/)
-[![JuliaHub](https://juliahub.com/docs/GIVP/version.svg)](https://juliahub.com/ui/Packages/General/GIVP)
-[![Julia](https://img.shields.io/badge/Julia-1.9%2B-9558B2?logo=julia&logoColor=white)](https://julialang.org/)
-[![CI](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci.yml)
-[![CI Julia](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml)
+[![CI Python](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-python.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-python.yml)
 [![codecov](https://img.shields.io/codecov/c/github/Arnime/grasp_ils_vnd_pr?cacheSeconds=300)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr)
+[![Ruff](https://img.shields.io/badge/linter-ruff-red)](https://github.com/astral-sh/ruff)
+[![Checked with mypy](https://img.shields.io/badge/type--checked-mypy-blue)](https://mypy-lang.org/)
+
+**Julia** &nbsp;
+[![JuliaHub](https://img.shields.io/badge/JuliaHub-GIVPOptimizer-9558B2?logo=julia&logoColor=white)](https://juliahub.com/ui/Packages/General/GIVPOptimizer)
+[![Julia](https://img.shields.io/badge/Julia-1.9%2B-9558B2?logo=julia&logoColor=white)](https://julialang.org/)
+[![CI Julia](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml)
+
+**Rust** &nbsp;
+[![Rust](https://img.shields.io/badge/Rust-1.70%2B-000000?logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![Crates.io](https://img.shields.io/crates/v/givp?cacheSeconds=300)](https://crates.io/crates/givp)
+[![docs.rs](https://img.shields.io/docsrs/givp?cacheSeconds=300)](https://docs.rs/givp)
+[![CI Rust](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml)
+[![codecov (rust)](https://img.shields.io/codecov/c/github/Arnime/grasp_ils_vnd_pr?flag=rust&cacheSeconds=300&label=coverage%20%28rust%29)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/rust)
+
+**Project** &nbsp;
 [![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/Arnime/grasp_ils_vnd_pr?cacheSeconds=300)](https://securityscorecards.dev/viewer/?uri=github.com/Arnime/grasp_ils_vnd_pr)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12627/badge)](https://www.bestpractices.dev/projects/12627)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Ruff](https://img.shields.io/badge/linter-ruff-red)](https://github.com/astral-sh/ruff)
-[![Checked with mypy](https://img.shields.io/badge/type--checked-mypy-blue)](https://mypy-lang.org/)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 A direction-agnostic metaheuristic optimizer for **continuous,
 integer or mixed** black-box problems, available in **Python** (NumPy-native)
-and **Julia**. The library bundles:
+**Julia**, and **Rust**. The library bundles:
 
 - **GRASP** — Greedy Randomized Adaptive Search Procedure
 - **ILS** — Iterated Local Search
@@ -36,17 +48,18 @@ optional configuration, get back an `OptimizeResult` with `x`, `fun`, `nit`,
 1. [Install](#install)
 2. [Quick start](#quick-start)
 3. [Julia](#julia)
-4. [Choosing the optimization sense](#choosing-the-optimization-sense)
-5. [Bounds, integer variables and mixed problems](#bounds-integer-variables-and-mixed-problems)
-6. [Object-oriented API and multi-start](#object-oriented-api-and-multi-start)
-7. [Configuration cookbook](#configuration-cookbook)
-8. [Inspecting progress (callback and verbose)](#inspecting-progress-callback-and-verbose)
-9. [Public API reference](#public-api-reference)
-10. [Glossary of hyper-parameters](#glossary-of-hyper-parameters)
-11. [Adapting to a domain-specific model](#adapting-to-a-domain-specific-model)
-12. [Comparison with other optimizers](#comparison-with-other-optimizers)
-13. [Troubleshooting](#troubleshooting)
-14. [License](#license)
+4. [Rust](#rust)
+5. [Choosing the optimization sense](#choosing-the-optimization-sense)
+6. [Bounds, integer variables and mixed problems](#bounds-integer-variables-and-mixed-problems)
+7. [Object-oriented API and multi-start](#object-oriented-api-and-multi-start)
+8. [Configuration cookbook](#configuration-cookbook)
+9. [Inspecting progress (callback and verbose)](#inspecting-progress-callback-and-verbose)
+10. [Public API reference](#public-api-reference)
+11. [Glossary of hyper-parameters](#glossary-of-hyper-parameters)
+12. [Adapting to a domain-specific model](#adapting-to-a-domain-specific-model)
+13. [Comparison with other optimizers](#comparison-with-other-optimizers)
+14. [Troubleshooting](#troubleshooting)
+15. [License](#license)
 
 ---
 
@@ -82,6 +95,26 @@ julia --project=. -e 'using Pkg; Pkg.instantiate()'
 
 Requires Julia 1.9+.
 
+### Rust Installation
+
+Add to your `Cargo.toml` (once published to crates.io):
+
+```toml
+[dependencies]
+givp = "0.5"
+```
+
+From source:
+
+```bash
+git clone https://github.com/Arnime/grasp_ils_vnd_pr.git
+cd grasp_ils_vnd_pr/rust
+cargo build --release
+cargo test
+```
+
+Requires Rust 1.70+ (edition 2021).
+
 ---
 
 ## Quick start
@@ -112,7 +145,7 @@ Default behavior:
 The Julia port exposes the same algorithm with an idiomatic Julia API:
 
 ```julia
-using GIVP
+using GIVPOptimizer
 
 function sphere(x::Vector{Float64})::Float64
     return sum(x .^ 2)
@@ -149,6 +182,54 @@ Running benchmarks:
 ```bash
 cd julia
 julia --project=. benchmarks/benchmarks.jl
+```
+
+---
+
+## Rust
+
+The Rust port provides a zero-dependency-on-NumPy, native-performance implementation:
+
+```rust
+use givp::{givp, GivpConfig};
+
+let sphere = |x: &[f64]| -> f64 { x.iter().map(|v| v * v).sum() };
+let bounds: Vec<(f64, f64)> = vec![(-5.12, 5.12); 5];
+
+let config = GivpConfig {
+    max_iterations: 50,
+    seed: Some(42),
+    integer_split: Some(5), // all continuous
+    ..Default::default()
+};
+
+let result = givp(sphere, &bounds, config).unwrap();
+println!("Best: {:.6} at {:?}", result.fun, result.x);
+```
+
+Maximization:
+
+```rust
+use givp::{givp, GivpConfig, Direction};
+
+let config = GivpConfig {
+    direction: Direction::Maximize,
+    ..Default::default()
+};
+```
+
+Running tests:
+
+```bash
+cd rust
+cargo test
+```
+
+Running benchmarks:
+
+```bash
+cd rust
+cargo bench
 ```
 
 ---
@@ -432,7 +513,7 @@ see the SOG2 adapter in the upstream project repository
 | `scipy.optimize.dual_annealing`          | Always minimize                   | No              | No             | `maxiter` only       | Python       |
 | `optuna`                                 | Explicit (`direction`)            | Yes             | Per-trial only | Yes (`timeout`)      | Python       |
 | `pygad`                                  | Always maximize                   | Yes             | No             | No                   | Python       |
-| **`givp`**                               | Explicit (`minimize`/`direction`) | Yes (mixed)     | LRU cache      | Yes (`time_limit`)   | Python+Julia |
+| **`givp`**                               | Explicit (`minimize`/`direction`) | Yes (mixed)     | LRU cache      | Yes (`time_limit`)   | Python+Julia+Rust |
 
 ---
 

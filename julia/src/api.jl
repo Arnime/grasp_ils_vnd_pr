@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
 # SPDX-License-Identifier: MIT
 
-"""Public API for the GIVP library."""
+"""Public API for the GIVPOptimizer library."""
 
 """
     givp(func, bounds; kwargs...) -> OptimizeResult

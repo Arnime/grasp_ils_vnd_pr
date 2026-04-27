@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
 # SPDX-License-Identifier: MIT
 
-"""Pure-utility helpers shared across the GIVP core submodules."""
+"""Pure-utility helpers shared across the GIVPOptimizer core submodules."""
 
 # Type alias for the user-supplied objective function
 const EvaluatorFn = Function

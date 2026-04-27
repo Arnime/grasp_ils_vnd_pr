@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 """
-Performance benchmarks for the GIVP optimizer.
+Performance benchmarks for the GIVPOptimizer optimizer.
 
 Run with:
 
@@ -20,7 +20,7 @@ Pkg.develop(path=joinpath(@__DIR__, ".."))
 Pkg.instantiate()
 
 using BenchmarkTools
-using GIVP
+using GIVPOptimizer
 
 # ── Test functions ──────────────────────────────────────────────────────
 
@@ -75,7 +75,7 @@ for (name, (func, lo, hi)) in FUNCS
 end
 
 println("=" ^ 70)
-println("GIVP Benchmarks — $(length(suite)) cases")
+println("GIVPOptimizer Benchmarks — $(length(suite)) cases")
 println("=" ^ 70)
 
 # Warm-up: run each once to trigger compilation
@@ -85,7 +85,7 @@ for (name, (func, lo, hi)) in FUNCS
 end
 println("Warm-up complete.\n")
 
-results = run(suite; verbose=true)
+results = run(suite)
 
 println("\n", "=" ^ 70)
 println("Results")

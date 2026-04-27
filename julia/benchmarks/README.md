@@ -1,6 +1,6 @@
 # Benchmark Results
 
-Run the GIVP performance benchmarks with:
+Run the GIVPOptimizer performance benchmarks with:
 
 ```bash
 cd julia

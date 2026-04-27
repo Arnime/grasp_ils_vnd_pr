@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "givp"
-version = "0.5.2"
+version = "0.5.3"
 description = "GRASP-ILS-VND with Path Relinking — direction-agnostic metaheuristic optimizer."
 readme = "README.md"
 license = { text = "MIT" }
@@ -51,6 +51,13 @@ dev = [
 ]
 fuzz = ["atheris>=2.3.0; sys_platform == 'linux'"]
 docs = ["mkdocs>=1.6", "mkdocs-material>=9.5", "mkdocstrings[python]>=0.26"]
+notebooks = [
+    "jupyter>=1.1",
+    "ipykernel>=6.29",
+    "matplotlib>=3.8",
+    "pandas>=2.2",
+    "scipy>=1.13",
+]
 
 [project.scripts]
 givp = "givp.cli:main"
@@ -67,7 +74,13 @@ packages = ["python/src/givp"]
 "python/src/givp/py.typed" = "givp/py.typed"
 
 [tool.hatch.build.targets.sdist]
-include = ["python/src/givp", "python/tests", "README.md", "LICENSE", "pyproject.toml"]
+include = [
+    "python/src/givp",
+    "python/tests",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["python/tests"]
@@ -157,7 +170,7 @@ max-module-lines = 2000
 # ]
 
 [tool.poetry]
-packages = [{include = "givp", from = "python/src"}]
+packages = [{ include = "givp", from = "python/src" }]
 
 [tool.poetry.group.dev.dependencies]
 nox = "^2026.4.10"

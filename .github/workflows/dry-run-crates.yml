@@ -1,0 +1,44 @@
+name: Dry-run crates.io
+
+# Equivalent of TestPyPI for the Rust crate:
+# verifies that `cargo publish` would succeed without actually publishing.
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'rust/**'
+      - '.github/workflows/dry-run-crates.yml'
+  pull_request:
+    paths:
+      - 'rust/**'
+      - '.github/workflows/dry-run-crates.yml'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  CARGO_TERM_COLOR: always
+
+permissions: read-all
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          workspaces: "rust -> target"
+
+      - name: cargo publish --dry-run
+        working-directory: rust
+        run: cargo publish --dry-run --locked
+
+      - name: cargo package (verify tarball)
+        working-directory: rust
+        run: cargo package --locked --list
