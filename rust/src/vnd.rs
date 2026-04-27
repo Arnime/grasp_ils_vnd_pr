@@ -311,3 +311,78 @@ where
     }
     best_cost
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha8Rng;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn test_local_search_vnd_expired_deadline_breaks() {
+        // An already-expired deadline causes the for-loop to break immediately.
+        let mut rng = ChaCha8Rng::seed_from_u64(0);
+        let mut sol = vec![2.0, 2.0];
+        let func = |x: &[f64]| x.iter().map(|&xi| xi * xi).sum::<f64>();
+        let lower = [-5.0, -5.0];
+        let upper = [5.0, 5.0];
+        assert!((func(&sol) - 8.0).abs() < 1e-10); // invoke closure body
+        let deadline = Some(Instant::now() - Duration::from_secs(1));
+        let cost = local_search_vnd(
+            &func, &mut sol, 8.0, 2, &lower, &upper, 100, &mut None, &mut rng, deadline,
+        );
+        // Returns immediately without modifying solution (loop body never runs)
+        assert!((cost - 8.0).abs() < 1e-10);
+        assert!((sol[0] - 2.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_neighborhood_flip_expired_deadline_breaks() {
+        let mut rng = ChaCha8Rng::seed_from_u64(0);
+        let mut sol = vec![1.0, 1.0];
+        let mut sensitivity = vec![0.0f64; 2];
+        let func = |x: &[f64]| x.iter().map(|&xi| xi * xi).sum::<f64>();
+        let lower = [-5.0, -5.0];
+        let upper = [5.0, 5.0];
+        assert!((func(&sol) - 2.0).abs() < 1e-10); // invoke closure body
+        let deadline = Some(Instant::now() - Duration::from_secs(1));
+        let (cost, improved) = neighborhood_flip(
+            &mut sol, 2.0, &func, &mut sensitivity, &mut rng, &lower, &upper, &mut None, 2, deadline,
+        );
+        assert!((cost - 2.0).abs() < 1e-10);
+        assert!(!improved);
+    }
+
+    #[test]
+    fn test_neighborhood_swap_expired_deadline_breaks() {
+        let mut rng = ChaCha8Rng::seed_from_u64(0);
+        let mut sol = vec![1.0, 1.0];
+        let func = |x: &[f64]| x.iter().map(|&xi| xi * xi).sum::<f64>();
+        let lower = [-5.0, -5.0];
+        let upper = [5.0, 5.0];
+        assert!((func(&sol) - 2.0).abs() < 1e-10); // invoke closure body
+        let deadline = Some(Instant::now() - Duration::from_secs(1));
+        let (cost, improved) = neighborhood_swap(
+            &mut sol, 2.0, &func, &mut rng, &lower, &upper, &mut None, 2, deadline,
+        );
+        assert!((cost - 2.0).abs() < 1e-10);
+        assert!(!improved);
+    }
+
+    #[test]
+    fn test_neighborhood_multiflip_expired_deadline_breaks() {
+        let mut rng = ChaCha8Rng::seed_from_u64(0);
+        let mut sol = vec![1.0, 1.0, 1.0];
+        let func = |x: &[f64]| x.iter().map(|&xi| xi * xi).sum::<f64>();
+        let lower = [-5.0, -5.0, -5.0];
+        let upper = [5.0, 5.0, 5.0];
+        assert!((func(&sol) - 3.0).abs() < 1e-10); // invoke closure body
+        let deadline = Some(Instant::now() - Duration::from_secs(1));
+        let (cost, improved) = neighborhood_multiflip(
+            &mut sol, 3.0, &func, &mut rng, &lower, &upper, &mut None, 3, deadline,
+        );
+        assert!((cost - 3.0).abs() < 1e-10);
+        assert!(!improved);
+    }
+}

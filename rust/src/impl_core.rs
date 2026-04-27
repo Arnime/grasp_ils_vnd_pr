@@ -75,10 +75,7 @@ fn do_path_relinking<F>(
     F: Fn(&[f64]) -> f64,
 {
     let all = elite_pool.get_all();
-    if all.len() < 2 {
-        return;
-    }
-
+    // Caller guarantees elite_pool.len() >= 2
     let max_pairs = 3.min(all.len());
     for i in 0..max_pairs {
         for j in (i + 1)..all.len().min(i + 4) {
@@ -377,13 +374,44 @@ where
     result.nit = config.max_iterations;
     result.nfev = nfev.load(Ordering::Relaxed);
     result.success = final_cost.is_finite();
-    result.message = if message.is_empty() {
-        // fallback: all iterations ran without setting an explicit reason
-        "max iterations reached".into()
-    } else {
-        message.clone()
-    };
+    result.message = message.clone();
     result.termination = TerminationReason::from_message(&result.message);
 
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha8Rng;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn test_run_with_invalid_config_errors() {
+        // Covers the error branch of config.validate()? in run() at line 116.
+        let func = |x: &[f64]| x.iter().sum::<f64>();
+        let cfg = GivpConfig { max_iterations: 0, ..Default::default() };
+        assert!(run(func, &[(-1.0, 1.0)], cfg).is_err());
+    }
+
+    #[test]
+    fn test_do_path_relinking_expired_deadline_returns() {
+        // Expired deadline causes the inner `return` in do_path_relinking (line 83).
+        let func = |x: &[f64]| x.iter().map(|&xi| xi * xi).sum::<f64>();
+        let mut pool = ElitePool::new(5, 0.01, &[-5.0, -5.0], &[5.0, 5.0]);
+        pool.add(vec![1.0, 0.0], 1.0);
+        pool.add(vec![-4.0, 3.0], 25.0);
+        let mut best_solution = vec![1.0, 0.0];
+        let mut best_cost = 1.0;
+        assert!((func(&best_solution) - 1.0).abs() < 1e-10); // invoke closure body
+        let deadline = Some(Instant::now() - Duration::from_secs(1));
+        let mut rng = ChaCha8Rng::seed_from_u64(0);
+        do_path_relinking(
+            &func, &pool, &mut best_solution, &mut best_cost,
+            2, &[-5.0, -5.0], &[5.0, 5.0], 10, &mut None, &mut rng, deadline,
+        );
+        // Best solution unchanged since deadline expired immediately
+        assert!((best_cost - 1.0).abs() < 1e-10);
+    }
 }

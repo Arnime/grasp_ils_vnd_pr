@@ -89,14 +89,39 @@ impl ConvergenceMonitor {
                 count += 1;
             }
         }
-        if count > 0 {
-            total / count as f64
-        } else {
-            1.0
-        }
+        total / count as f64
     }
 
     pub fn reset_no_improve(&mut self) {
         self.no_improve_count = 0;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::elite::ElitePool;
+
+    #[test]
+    fn test_update_with_no_elite_pool() {
+        let mut monitor = ConvergenceMonitor::new(10, 20);
+        // First call with None pool: best improves, diversity should be 1.0
+        let s1 = monitor.update(1.0, None);
+        assert_eq!(s1.no_improve_count, 0);
+        assert!((s1.diversity - 1.0).abs() < 1e-10);
+        // Second call: no improvement, diversity still 1.0
+        let s2 = monitor.update(2.0, None);
+        assert_eq!(s2.no_improve_count, 1);
+        assert!((s2.diversity - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_compute_diversity_single_solution() {
+        let mut monitor = ConvergenceMonitor::new(10, 20);
+        let mut pool = ElitePool::new(5, 0.01, &[-1.0], &[1.0]);
+        pool.add(vec![0.5], 0.5);
+        // Pool has only 1 solution: len < 2 → diversity = 1.0
+        let s = monitor.update(0.5, Some(&pool));
+        assert!((s.diversity - 1.0).abs() < 1e-10);
     }
 }

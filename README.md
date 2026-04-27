@@ -1,6 +1,6 @@
 # givp — GRASP-ILS-VND with Path Relinking
 
-<!-- Python -->
+**Python** &nbsp;
 [![PyPI version](https://img.shields.io/pypi/v/givp?cacheSeconds=300)](https://pypi.org/project/givp/)
 [![Python versions](https://img.shields.io/pypi/pyversions/givp?cacheSeconds=300)](https://pypi.org/project/givp/)
 [![CI](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci.yml)
@@ -8,19 +8,19 @@
 [![Ruff](https://img.shields.io/badge/linter-ruff-red)](https://github.com/astral-sh/ruff)
 [![Checked with mypy](https://img.shields.io/badge/type--checked-mypy-blue)](https://mypy-lang.org/)
 
-<!-- Julia -->
+**Julia** &nbsp;
 [![JuliaHub](https://juliahub.com/docs/GIVP/version.svg)](https://juliahub.com/ui/Packages/General/GIVP)
 [![Julia](https://img.shields.io/badge/Julia-1.9%2B-9558B2?logo=julia&logoColor=white)](https://julialang.org/)
 [![CI Julia](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml)
 
-<!-- Rust -->
+**Rust** &nbsp;
 [![Rust](https://img.shields.io/badge/Rust-1.70%2B-000000?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![Crates.io](https://img.shields.io/crates/v/givp?cacheSeconds=300)](https://crates.io/crates/givp)
 [![docs.rs](https://img.shields.io/docsrs/givp?cacheSeconds=300)](https://docs.rs/givp)
 [![CI Rust](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml)
 [![codecov (rust)](https://img.shields.io/codecov/c/github/Arnime/grasp_ils_vnd_pr?flag=rust&cacheSeconds=300&label=coverage%20%28rust%29)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/rust)
 
-<!-- Project -->
+**Project** &nbsp;
 [![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/Arnime/grasp_ils_vnd_pr?cacheSeconds=300)](https://securityscorecards.dev/viewer/?uri=github.com/Arnime/grasp_ils_vnd_pr)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12627/badge)](https://www.bestpractices.dev/projects/12627)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

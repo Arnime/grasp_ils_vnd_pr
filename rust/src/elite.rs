@@ -27,25 +27,14 @@ impl ElitePool {
     }
 
     fn relative_distance(&self, a: &[f64], b: &[f64]) -> f64 {
-        match &self.range {
-            Some(r) => {
-                let n = a.len() as f64;
-                a.iter()
-                    .zip(b.iter())
-                    .zip(r.iter())
-                    .map(|((&ai, &bi), &ri)| (ai - bi).abs() / ri)
-                    .sum::<f64>()
-                    / n
-            }
-            None => {
-                // unreachable via public API (new() always sets Some)
-                a.iter()
-                    .zip(b.iter())
-                    .map(|(&ai, &bi)| (ai - bi).powi(2))
-                    .sum::<f64>()
-                    .sqrt()
-            }
-        }
+        let r = self.range.as_deref().expect("range always set by new()");
+        let n = a.len() as f64;
+        a.iter()
+            .zip(b.iter())
+            .zip(r.iter())
+            .map(|((&ai, &bi), &ri)| (ai - bi).abs() / ri)
+            .sum::<f64>()
+            / n
     }
 
     pub fn add(&mut self, solution: Vec<f64>, cost: f64) -> bool {
@@ -63,13 +52,12 @@ impl ElitePool {
         }
 
         // Replace worst if new is better
-        if let Some(worst) = self.pool.last() {
-            if cost < worst.1 {
-                self.pool.pop();
-                self.pool.push((solution, cost));
-                self.pool.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-                return true;
-            }
+        let worst_cost = self.pool.last().expect("pool non-empty when full").1;
+        if cost < worst_cost {
+            self.pool.pop();
+            self.pool.push((solution, cost));
+            self.pool.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+            return true;
         }
         false
     }

@@ -167,10 +167,37 @@ where
         costs.push(cost);
     }
 
-    // RCL selection
-    if let Some(idx) = select_from_rcl(&costs, alpha, rng) {
-        (candidates.swap_remove(idx), costs[idx])
-    } else {
-        (vec![0.0; num_vars], f64::INFINITY)
+    // RCL selection — costs is always non-empty here (heuristic candidate always added)
+    let idx = select_from_rcl(&costs, alpha, rng).expect("costs should not be empty");
+    (candidates.swap_remove(idx), costs[idx])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha8Rng;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn test_select_from_rcl_empty_returns_none() {
+        let mut rng = ChaCha8Rng::seed_from_u64(0);
+        assert!(select_from_rcl(&[], 0.5, &mut rng).is_none());
+    }
+
+    #[test]
+    fn test_construct_grasp_expired_deadline_breaks_fill_loop() {
+        // An already-expired deadline triggers the break in the fill-random loop.
+        // The heuristic candidate is still returned because it was added before the loop.
+        let mut rng = ChaCha8Rng::seed_from_u64(42);
+        let mut cache = None;
+        let lower = [-5.0f64, -5.0];
+        let upper = [5.0f64, 5.0];
+        let func = |x: &[f64]| x.iter().map(|&xi| xi * xi).sum::<f64>();
+        let deadline = Some(Instant::now() - Duration::from_secs(1));
+        let (sol, cost) =
+            construct_grasp(2, &lower, &upper, &func, None, 0.5, 2, 100, &mut cache, &mut rng, deadline);
+        assert_eq!(sol.len(), 2);
+        assert!(cost.is_finite());
     }
 }

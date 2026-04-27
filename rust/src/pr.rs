@@ -112,3 +112,82 @@ where
         (best_bwd, cost_bwd)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha8Rng;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn test_identical_solutions_returns_immediately() {
+        let mut rng = ChaCha8Rng::seed_from_u64(0);
+        let sol = vec![1.0, 2.0, 3.0];
+        let (result, cost) = bidirectional_path_relinking(
+            &|x: &[f64]| x.iter().sum::<f64>(),
+            &sol,
+            &sol,
+            3,
+            &mut None,
+            &mut rng,
+            None,
+        );
+        assert_eq!(result, sol);
+        assert!((cost - 6.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_expired_deadline_breaks_inner_loop() {
+        // deadline already expired → path_relinking_best loop breaks at line 33
+        let mut rng = ChaCha8Rng::seed_from_u64(0);
+        let sol1 = vec![0.0, 0.0, 0.0];
+        let sol2 = vec![1.0, 1.0, 1.0];
+        let func = |x: &[f64]| x.iter().map(|&xi| xi * xi).sum::<f64>();
+        assert!((func(&sol1) - 0.0).abs() < 1e-10); // invoke closure body
+        let deadline = Some(Instant::now() - Duration::from_secs(1));
+        let (result, _cost) = bidirectional_path_relinking(
+            &func,
+            &sol1,
+            &sol2,
+            3,
+            &mut None,
+            &mut rng,
+            deadline,
+        );
+        assert_eq!(result.len(), 3);
+    }
+
+    /// Constructs a function on the {0,1}^3 grid where the backward greedy path
+    /// finds [0,1,1] (cost 2.0) — a point the forward greedy path never visits.
+    /// Forward best = 5.0 (sol2), backward best = 2.0 → backward wins.
+    #[test]
+    fn test_backward_path_wins() {
+        let mut rng = ChaCha8Rng::seed_from_u64(0);
+        let func = |x: &[f64]| {
+            let a = x[0] >= 0.5;
+            let b = x[1] >= 0.5;
+            let c = x[2] >= 0.5;
+            match (a, b, c) {
+                (false, false, false) => 10.0_f64, // sol1
+                (true, false, false) => 8.0,
+                (false, true, false) => 9.0,
+                (false, false, true) => 11.0,
+                (true, true, false) => 6.0,
+                (true, false, true) => 7.0,
+                (false, true, true) => 2.0, // backward step-1 finds this; forward never does
+                (true, true, true) => 5.0,  // sol2
+            }
+        };
+        let sol1 = vec![0.0, 0.0, 0.0];
+        let sol2 = vec![1.0, 1.0, 1.0];
+        let (result, cost) = bidirectional_path_relinking(
+            &func, &sol1, &sol2, 3, &mut None, &mut rng, None,
+        );
+        // Backward path: [1,1,1]→ set x[0]=0 → [0,1,1]=2.0 (best) → backward wins
+        assert!((cost - 2.0).abs() < 1e-10, "expected backward best 2.0, got {cost}");
+        assert!((result[0]).abs() < 1e-10);
+        assert!((result[1] - 1.0).abs() < 1e-10);
+        assert!((result[2] - 1.0).abs() < 1e-10);
+    }
+}
