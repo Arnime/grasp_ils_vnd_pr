@@ -11,8 +11,16 @@ jobs:
         runs-on: ubuntu-latest
         if: github.actor == 'dependabot[bot]'
         permissions:
+            actions: read
+            checks: read
             contents: write
+            deployments: read
+            issues: read
+            packages: read
             pull-requests: write
+            repository-projects: read
+            security-events: read
+            statuses: read
         steps:
             - name: Enable auto-merge for Dependabot PRs
               # Requires "Allow auto-merge" enabled in Settings → General → Pull Requests
