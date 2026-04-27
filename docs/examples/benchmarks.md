@@ -4,12 +4,14 @@ Este documento mostra exemplos de uso das funções clássicas de otimização
 disponibilizadas em `givp.benchmarks`. As funções são úteis para validar e
 documentar comportamento do otimizador em problemas com ótimo conhecido.
 
-Importação básica::
+Importação básica:
 
-    from givp.benchmarks import (
-        sphere, rosenbrock, rastrigin, ackley, griewank, schwefel,
-        knapsack_dp, knapsack_penalty, qap_cost, g06
-    )
+```python
+from givp.benchmarks import (
+    sphere, rosenbrock, rastrigin, ackley, griewank, schwefel,
+    knapsack_dp, knapsack_penalty, qap_cost, g06
+)
+```
 
 Exemplo rápido — avaliar os valores ótimos conhecidos:
 

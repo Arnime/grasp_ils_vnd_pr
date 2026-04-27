@@ -526,6 +526,42 @@ def test_bidirectional_path_relinking_returns_best():
     assert cost <= max(quad(a), quad(b))
 
 
+def test_bidirectional_path_relinking_returns_first_when_cost1_wins(monkeypatch):
+    """Covers the `if cost1 <= cost2: return best1, cost1` branch."""
+    _set_integer_split(3)
+    expected = np.array([1.0, 0.0, 0.0])
+    call_count = 0
+
+    def fake_path_relinking(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return expected, 0.5  # cost1 — lower, wins
+        return expected, 2.0  # cost2 — higher
+
+    monkeypatch.setattr(pr_module, "path_relinking", fake_path_relinking)
+    _, result_cost = bidirectional_path_relinking(quad, expected, expected)
+    assert result_cost == pytest.approx(0.5)
+
+
+def test_bidirectional_path_relinking_returns_second_when_cost2_wins(monkeypatch):
+    """Covers the `return best2, cost2` branch (cost2 < cost1)."""
+    _set_integer_split(3)
+    expected = np.array([1.0, 0.0, 0.0])
+    call_count = 0
+
+    def fake_path_relinking(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return expected, 2.0  # cost1 — higher
+        return expected, 0.5  # cost2 — lower, wins
+
+    monkeypatch.setattr(pr_module, "path_relinking", fake_path_relinking)
+    _, result_cost = bidirectional_path_relinking(quad, expected, expected)
+    assert result_cost == pytest.approx(0.5)
+
+
 # ----------------------------- perturb / alpha -----------------------------
 
 
