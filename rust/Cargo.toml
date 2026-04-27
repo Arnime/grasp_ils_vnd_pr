@@ -9,7 +9,7 @@ repository = "https://github.com/Arnime/grasp_ils_vnd_pr"
 readme = "../README.md"
 keywords = ["optimization", "metaheuristic", "grasp", "vnd", "path-relinking"]
 categories = ["algorithms", "science", "mathematics"]
-rust-version = "1.71"
+rust-version = "1.85"
 
 [dependencies]
 rand = "0.9"

@@ -4,12 +4,12 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'rust/**'
-      - '.github/workflows/ci-rust.yml'
+      - "rust/**"
+      - ".github/workflows/ci-rust.yml"
   pull_request:
     paths:
-      - 'rust/**'
-      - '.github/workflows/ci-rust.yml'
+      - "rust/**"
+      - ".github/workflows/ci-rust.yml"
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -24,7 +24,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, windows-latest, macos-latest ]
-        rust: [ stable, "1.71" ]
+        rust: [ stable, "1.85" ]
+        include:
+          - rust: beta
+            os: ubuntu-latest
+    continue-on-error: ${{ matrix.rust == 'beta' }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
