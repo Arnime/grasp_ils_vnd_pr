@@ -20,6 +20,8 @@ permissions: read-all
 jobs:
   test:
     runs-on: ${{ matrix.os }}
+    permissions:
+      actions: write   # required by julia-actions/cache delete-old-caches
     strategy:
       fail-fast: false
       matrix:
