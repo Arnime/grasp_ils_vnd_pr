@@ -410,4 +410,4 @@ def get_current_alpha(iteration: int, config) -> float:
         )
         current_alpha += float(_new_rng().uniform(-0.02, 0.02))
         return float(np.clip(current_alpha, config.alpha_min, config.alpha_max))
-    return config.alpha
+    return float(config.alpha)
