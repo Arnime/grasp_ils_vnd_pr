@@ -6,18 +6,20 @@ Performance benchmarks for the GIVP optimizer.
 
 Run with:
 
-    julia --project=.. benchmarks.jl
+    cd julia/benchmarks && julia benchmarks.jl
 
 These benchmarks use BenchmarkTools.jl to track regressions.
 """
 
-using BenchmarkTools
 using Printf
 
-# Activate the parent project so GIVP is available
+# Set up benchmark environment with its own dependencies
 using Pkg
-Pkg.activate(joinpath(@__DIR__, ".."))
+Pkg.activate(@__DIR__)
+Pkg.develop(path=joinpath(@__DIR__, ".."))
+Pkg.instantiate()
 
+using BenchmarkTools
 using GIVP
 
 # ── Test functions ──────────────────────────────────────────────────────
