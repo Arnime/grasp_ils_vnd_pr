@@ -1,5 +1,3 @@
-# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
-# SPDX-License-Identifier: MIT
 """Convergence monitor that recommends restarts/intensification."""
 
 from __future__ import annotations
@@ -14,12 +12,12 @@ class ConvergenceMonitor:
     sugerindo restart com perturbação forte quando necessário.
 
     Args:
-        window_size (int): Tamanho da janela para análise de tendência.
-        restart_threshold (int): Iterações sem melhoria para sugerir restart.
+            window_size (int): Tamanho da janela para análise de tendência.
+            restart_threshold (int): Iterações sem melhoria para sugerir restart.
 
     Attributes:
-        history (list): Histórico dos melhores custos.
-        no_improve_count (int): Contador de iterações sem melhoria.
+            history (list): Histórico dos melhores custos.
+            no_improve_count (int): Contador de iterações sem melhoria.
     """
 
     def __init__(self, window_size: int = 20, restart_threshold: int = 50):
@@ -34,8 +32,8 @@ class ConvergenceMonitor:
         """Atualiza monitor com novo custo e retorna recomendações.
 
         Returns:
-            dict com chaves: ``should_restart``, ``should_intensify``,
-            ``diversity``, ``no_improve_count``.
+                dict com chaves: ``should_restart``, ``should_intensify``,
+                ``diversity``, ``no_improve_count``.
         """
         self.history.append(current_cost)
 

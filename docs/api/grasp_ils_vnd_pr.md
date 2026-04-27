@@ -1,3 +1,3 @@
-# `grasp_ils_vnd_pr`
+# `givp`
 
-::: givp.grasp_ils_vnd_pr
+::: givp.givp

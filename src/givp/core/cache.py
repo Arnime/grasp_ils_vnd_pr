@@ -1,5 +1,3 @@
-# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
-# SPDX-License-Identifier: MIT
 """LRU evaluation cache used by the GRASP/ILS/VND algorithm."""
 
 from __future__ import annotations
@@ -8,7 +6,7 @@ from collections import deque
 
 import numpy as np
 
-from givp._core._helpers import _get_half
+from givp.core.helpers import _get_half
 
 
 class EvaluationCache:
@@ -18,12 +16,12 @@ class EvaluationCache:
     especialmente em buscas locais que revisitam soluções similares.
 
     Args:
-        maxsize (int): Tamanho máximo do cache.
+            maxsize (int): Tamanho máximo do cache.
 
     Attributes:
-        cache (dict): Dicionário de cache ``{hash: custo}``.
-        hits (int): Contador de acertos no cache.
-        misses (int): Contador de falhas no cache.
+            cache (dict): Dicionário de cache ``{hash: custo}``.
+            hits (int): Contador de acertos no cache.
+            misses (int): Contador de falhas no cache.
     """
 
     def __init__(self, maxsize: int = 10000):

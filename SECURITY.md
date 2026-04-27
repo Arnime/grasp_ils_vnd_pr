@@ -82,7 +82,7 @@ of the library. The review considered:
   surface. Denial-of-service via an infinite loop in the callback is
   possible but is the caller's responsibility to guard against.
 - **Input validation:** all public parameters are validated via
-  `GraspIlsVndConfig` at call time. Invalid types and out-of-range values
+  `GIVPConfig` at call time. Invalid types and out-of-range values
   raise typed exceptions (`InvalidConfigError`, `BoundsError`) before
   any computation begins.
 - **Dependency review:** the only runtime dependency is `numpy`. All CI

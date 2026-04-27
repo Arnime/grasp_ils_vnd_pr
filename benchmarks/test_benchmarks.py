@@ -13,7 +13,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from givp import GraspIlsVndConfig, grasp_ils_vnd_pr
+from givp import GIVPConfig, givp
 
 
 def sphere(x: np.ndarray) -> float:
@@ -56,10 +56,10 @@ def test_benchmark_classics(benchmark, name, dim):
     """Benchmark classic test functions at two dimensionalities."""
     func, (lo, hi) = _FUNCS[name]
     bounds = [(lo, hi)] * dim
-    cfg = GraspIlsVndConfig(max_iterations=5, vnd_iterations=10)
+    cfg = GIVPConfig(max_iterations=5, vnd_iterations=10)
 
     def run():
-        return grasp_ils_vnd_pr(func, bounds, config=cfg)
+        return givp(func, bounds, config=cfg)
 
     result = benchmark(run)
     assert np.isfinite(result.fun)

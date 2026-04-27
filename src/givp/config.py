@@ -7,14 +7,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from . import _core
-from ._exceptions import InvalidConfigError
+from givp import core as _core
+from givp.exceptions import InvalidConfigError
 
 Direction = Literal["minimize", "maximize"]
 
 
 @dataclass
-class GraspIlsVndConfig:
+class GIVPConfig:
     """
     Hyper-parameters for the GRASP-ILS-VND-PR algorithm.
 
@@ -150,12 +150,12 @@ class GraspIlsVndConfig:
             )
 
     def as_core_config(self):
-        """Return an internal config object compatible with ``_core``.
+        """Return an internal config object compatible with ``core``.
 
-        ``_core`` defines its own ``GraspIlsVndConfig`` (without ``direction``),
+        ``core`` defines its own ``GIVPConfig`` (without ``direction``),
         so we copy field values across to keep the two layers decoupled.
         """
-        return _core.GraspIlsVndConfig(
+        return _core.GIVPConfig(
             max_iterations=self.max_iterations,
             alpha=self.alpha,
             vnd_iterations=self.vnd_iterations,

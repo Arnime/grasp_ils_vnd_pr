@@ -46,7 +46,7 @@ primary maintainer is unavailable:
 
 The project has a bus factor of 2 or more, with significant contributions from
 multiple independent contributors (see the
-[contributors graph](https://github.com/Arnime/grasp_ils_vnd_pr/graphs/contributors)).
+[contributors graph](https://github.com/Arnime/givp/graphs/contributors)).
 Additional resilience measures include:
 
 - All decisions and release processes are documented in this repository.

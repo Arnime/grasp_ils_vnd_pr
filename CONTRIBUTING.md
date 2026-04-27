@@ -6,8 +6,8 @@ preferred workflow for changes.
 ## Development setup
 
 ```bash
-git clone https://github.com/Arnime/grasp_ils_vnd_pr
-cd grasp_ils_vnd_pr
+git clone https://github.com/Arnime/givp
+cd givp
 python -m venv .venv
 .venv/Scripts/activate          # Windows
 # source .venv/bin/activate     # Linux/macOS
@@ -109,7 +109,7 @@ Open a GitHub issue with:
 ## Good first issues
 
 Issues labelled
-[`good first issue`](https://github.com/Arnime/grasp_ils_vnd_pr/labels/good%20first%20issue)
+[`good first issue`](https://github.com/Arnime/givp/labels/good%20first%20issue)
 are specifically scoped for new or casual contributors. They require no
 knowledge of the full algorithm — typical tasks include adding type stubs,
 improving error messages, expanding docstring examples, or writing a new

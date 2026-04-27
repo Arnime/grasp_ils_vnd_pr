@@ -1,4 +1,4 @@
-"""Tests for the public ``givp`` API (``grasp_ils_vnd_pr`` and ``GraspOptimizer``)."""
+"""Tests for the public ``givp`` API (``givp`` and ``GIVPOptimizer``)."""
 
 from __future__ import annotations
 
@@ -6,14 +6,14 @@ import numpy as np
 import pytest
 
 from givp import (
-    GraspIlsVndConfig,
-    GraspOptimizer,
+    GIVPConfig,
+    GIVPOptimizer,
     InvalidBoundsError,
     InvalidInitialGuessError,
     OptimizeResult,
-    grasp_ils_vnd_pr,
+    givp,
 )
-from givp._core import _validate_bounds_and_initial
+from givp.core import _validate_bounds_and_initial
 
 
 def sphere(x: np.ndarray) -> float:
@@ -25,8 +25,8 @@ def neg_sphere(x: np.ndarray) -> float:
 
 
 @pytest.fixture(name="fast_config")
-def fixture_fast_config() -> GraspIlsVndConfig:
-    return GraspIlsVndConfig(
+def fixture_fast_config() -> GIVPConfig:
+    return GIVPConfig(
         max_iterations=4,
         vnd_iterations=8,
         ils_iterations=2,
@@ -43,7 +43,7 @@ def fixture_fast_config() -> GraspIlsVndConfig:
 
 def test_minimize_sphere_returns_result(fast_config):
     bounds = [(-5.0, 5.0)] * 4
-    result = grasp_ils_vnd_pr(sphere, bounds, config=fast_config)
+    result = givp(sphere, bounds, config=fast_config)
     assert isinstance(result, OptimizeResult)
     assert result.direction == "minimize"
     assert result.x.shape == (4,)
@@ -53,9 +53,7 @@ def test_minimize_sphere_returns_result(fast_config):
 
 def test_maximize_returns_value_in_original_sign(fast_config):
     bounds = [(-5.0, 5.0)] * 4
-    result = grasp_ils_vnd_pr(
-        neg_sphere, bounds, direction="maximize", config=fast_config
-    )
+    result = givp(neg_sphere, bounds, direction="maximize", config=fast_config)
     assert result.direction == "maximize"
     assert result.fun <= 0.0
     assert np.isfinite(result.fun)
@@ -64,12 +62,12 @@ def test_maximize_returns_value_in_original_sign(fast_config):
 def test_bounds_as_lower_upper_tuple(fast_config):
     lower = [-1.0, -1.0, -1.0]
     upper = [1.0, 1.0, 1.0]
-    result = grasp_ils_vnd_pr(sphere, (lower, upper), config=fast_config)
+    result = givp(sphere, (lower, upper), config=fast_config)
     assert result.x.shape == (3,)
 
 
 def test_optimizer_class_keeps_history(fast_config):
-    opt = GraspOptimizer(sphere, [(-2.0, 2.0)] * 3, config=fast_config)
+    opt = GIVPOptimizer(sphere, [(-2.0, 2.0)] * 3, config=fast_config)
     r1 = opt.run()
     r2 = opt.run()
     assert len(opt.history) == 2
@@ -78,7 +76,7 @@ def test_optimizer_class_keeps_history(fast_config):
 
 
 def test_grasp_optimizer_maximize_tracks_best(fast_config):
-    opt = GraspOptimizer(
+    opt = GIVPOptimizer(
         neg_sphere,
         [(-1.0, 1.0)] * 2,
         direction="maximize",
@@ -91,7 +89,7 @@ def test_grasp_optimizer_maximize_tracks_best(fast_config):
 
 
 def test_result_is_iterable_for_legacy_unpacking(fast_config):
-    result = grasp_ils_vnd_pr(sphere, [(-1.0, 1.0)] * 2, config=fast_config)
+    result = givp(sphere, [(-1.0, 1.0)] * 2, config=fast_config)
     x, fun = result
     assert np.allclose(x, result.x)
     assert fun == result.fun
@@ -104,7 +102,7 @@ def test_objective_returning_nan_is_handled(fast_config):
     def nan_func(_x):
         return float("nan")
 
-    result = grasp_ils_vnd_pr(nan_func, [(0.0, 1.0)] * 2, config=fast_config)
+    result = givp(nan_func, [(0.0, 1.0)] * 2, config=fast_config)
     assert not result.success
 
 
@@ -112,18 +110,18 @@ def test_evaluator_raising_exception_is_handled(fast_config):
     def boom(_x):
         raise RuntimeError("explode")
 
-    result = grasp_ils_vnd_pr(boom, [(0.0, 1.0)] * 2, config=fast_config)
+    result = givp(boom, [(0.0, 1.0)] * 2, config=fast_config)
     assert not result.success
 
 
 def test_invalid_direction_raises(fast_config):
     with pytest.raises(ValueError):
-        grasp_ils_vnd_pr(sphere, [(0.0, 1.0)], direction="bogus", config=fast_config)
+        givp(sphere, [(0.0, 1.0)], direction="bogus", config=fast_config)
 
 
 def test_minimize_and_direction_conflict_raises(fast_config):
     with pytest.raises(ValueError):
-        grasp_ils_vnd_pr(
+        givp(
             sphere,
             [(0.0, 1.0)] * 2,
             minimize=True,
@@ -134,17 +132,17 @@ def test_minimize_and_direction_conflict_raises(fast_config):
 
 def test_bounds_num_vars_mismatch_raises(fast_config):
     with pytest.raises(ValueError):
-        grasp_ils_vnd_pr(sphere, [(0.0, 1.0)] * 2, num_vars=5, config=fast_config)
+        givp(sphere, [(0.0, 1.0)] * 2, num_vars=5, config=fast_config)
 
 
 def test_bounds_none_raises():
     with pytest.raises(ValueError):
-        grasp_ils_vnd_pr(sphere, None)  # type: ignore[arg-type]
+        givp(sphere, None)  # type: ignore[arg-type]
 
 
 def test_invalid_initial_guess_length_raises(fast_config):
     with pytest.raises(InvalidInitialGuessError):
-        grasp_ils_vnd_pr(
+        givp(
             sphere,
             [(-1.0, 1.0)] * 3,
             config=fast_config,
@@ -154,7 +152,7 @@ def test_invalid_initial_guess_length_raises(fast_config):
 
 def test_invalid_initial_guess_outside_bounds_raises(fast_config):
     with pytest.raises(InvalidInitialGuessError):
-        grasp_ils_vnd_pr(
+        givp(
             sphere,
             [(-1.0, 1.0)] * 3,
             config=fast_config,
@@ -178,7 +176,7 @@ def test_evaluator_raising_value_error_in_wrapper(fast_config):
     def bad(_x):
         raise ValueError("nope")
 
-    result = grasp_ils_vnd_pr(bad, [(0.0, 1.0)] * 2, config=fast_config)
+    result = givp(bad, [(0.0, 1.0)] * 2, config=fast_config)
     assert not result.success
 
 
@@ -188,7 +186,7 @@ def test_evaluator_raising_value_error_in_wrapper(fast_config):
 def test_initial_guess_warm_start(fast_config):
     bounds = [(-3.0, 3.0)] * 3
     initial = [0.1, 0.1, 0.1]
-    result = grasp_ils_vnd_pr(sphere, bounds, config=fast_config, initial_guess=initial)
+    result = givp(sphere, bounds, config=fast_config, initial_guess=initial)
     assert result.x.shape == (3,)
     assert np.isfinite(result.fun)
 
@@ -199,9 +197,7 @@ def test_iteration_callback_is_invoked(fast_config):
     def cb(it, cost, sol):
         calls.append((it, float(cost), np.array(sol)))
 
-    grasp_ils_vnd_pr(
-        sphere, [(-1.0, 1.0)] * 2, config=fast_config, iteration_callback=cb
-    )
+    givp(sphere, [(-1.0, 1.0)] * 2, config=fast_config, iteration_callback=cb)
     assert len(calls) >= 1
 
 
@@ -209,7 +205,7 @@ def test_iteration_callback_exception_is_swallowed(fast_config):
     def cb(_it, _cost, _sol):
         raise RuntimeError("callback boom")
 
-    result = grasp_ils_vnd_pr(
+    result = givp(
         sphere,
         [(-1.0, 1.0)] * 2,
         config=fast_config,
@@ -220,43 +216,43 @@ def test_iteration_callback_exception_is_swallowed(fast_config):
 
 
 def test_use_cache_path(fast_config):
-    cfg = GraspIlsVndConfig(**{**fast_config.__dict__, "use_cache": True})
-    result = grasp_ils_vnd_pr(sphere, [(-1.0, 1.0)] * 2, config=cfg)
+    cfg = GIVPConfig(**{**fast_config.__dict__, "use_cache": True})
+    result = givp(sphere, [(-1.0, 1.0)] * 2, config=cfg)
     assert np.isfinite(result.fun)
 
 
 def test_no_cache_path(fast_config):
-    cfg = GraspIlsVndConfig(**{**fast_config.__dict__, "use_cache": False})
-    result = grasp_ils_vnd_pr(sphere, [(-1.0, 1.0)] * 2, config=cfg)
+    cfg = GIVPConfig(**{**fast_config.__dict__, "use_cache": False})
+    result = givp(sphere, [(-1.0, 1.0)] * 2, config=cfg)
     assert np.isfinite(result.fun)
 
 
 def test_adaptive_alpha_disabled(fast_config):
-    cfg = GraspIlsVndConfig(**{**fast_config.__dict__, "adaptive_alpha": False})
-    result = grasp_ils_vnd_pr(sphere, [(-1.0, 1.0)] * 2, config=cfg)
+    cfg = GIVPConfig(**{**fast_config.__dict__, "adaptive_alpha": False})
+    result = givp(sphere, [(-1.0, 1.0)] * 2, config=cfg)
     assert np.isfinite(result.fun)
 
 
 def test_convergence_monitor_enabled(fast_config):
-    cfg = GraspIlsVndConfig(
+    cfg = GIVPConfig(
         **{
             **fast_config.__dict__,
             "use_convergence_monitor": True,
             "early_stop_threshold": 2,
         }
     )
-    result = grasp_ils_vnd_pr(sphere, [(-1.0, 1.0)] * 2, config=cfg)
+    result = givp(sphere, [(-1.0, 1.0)] * 2, config=cfg)
     assert np.isfinite(result.fun)
 
 
 def test_n_workers_parallel_path(fast_config):
-    cfg = GraspIlsVndConfig(**{**fast_config.__dict__, "n_workers": 2})
-    result = grasp_ils_vnd_pr(sphere, [(-1.0, 1.0)] * 3, config=cfg)
+    cfg = GIVPConfig(**{**fast_config.__dict__, "n_workers": 2})
+    result = givp(sphere, [(-1.0, 1.0)] * 3, config=cfg)
     assert np.isfinite(result.fun)
 
 
 def test_time_limit_triggers_early_stop(fast_config):
-    cfg = GraspIlsVndConfig(
+    cfg = GIVPConfig(
         **{
             **fast_config.__dict__,
             "max_iterations": 10_000,
@@ -265,20 +261,18 @@ def test_time_limit_triggers_early_stop(fast_config):
             "time_limit": 0.05,
         }
     )
-    result = grasp_ils_vnd_pr(sphere, [(-1.0, 1.0)] * 3, config=cfg)
+    result = givp(sphere, [(-1.0, 1.0)] * 3, config=cfg)
     assert np.isfinite(result.fun)
 
 
 def test_verbose_runs_without_error(fast_config, caplog):
     with caplog.at_level("INFO"):
-        result = grasp_ils_vnd_pr(
-            sphere, [(-1.0, 1.0)] * 2, config=fast_config, verbose=True
-        )
+        result = givp(sphere, [(-1.0, 1.0)] * 2, config=fast_config, verbose=True)
     assert np.isfinite(result.fun)
 
 
 def test_long_run_triggers_path_relinking_and_restart(fast_config):
-    cfg = GraspIlsVndConfig(
+    cfg = GIVPConfig(
         max_iterations=8,
         vnd_iterations=6,
         ils_iterations=2,
@@ -291,7 +285,7 @@ def test_long_run_triggers_path_relinking_and_restart(fast_config):
         use_convergence_monitor=True,
         early_stop_threshold=100,
     )
-    result = grasp_ils_vnd_pr(sphere, [(-2.0, 2.0)] * 4, config=cfg, verbose=True)
+    result = givp(sphere, [(-2.0, 2.0)] * 4, config=cfg, verbose=True)
     assert np.isfinite(result.fun)
 
 
@@ -300,7 +294,7 @@ def test_long_run_triggers_path_relinking_and_restart(fast_config):
 
 def test_wrap_objective_invalid_direction_raises():
     """`_wrap_objective` raises ValueError for an unknown direction string."""
-    from givp._api import _wrap_objective
+    from givp.api import _wrap_objective
 
     with pytest.raises(ValueError, match="direction must be"):
         _wrap_objective(sphere, "sideways", [0])
@@ -309,7 +303,7 @@ def test_wrap_objective_invalid_direction_raises():
 @pytest.mark.parametrize("direction", ["minimize", "maximize"])
 def test_wrap_objective_valid_directions(direction):
     """`_wrap_objective` accepts both valid direction strings."""
-    from givp._api import _wrap_objective
+    from givp.api import _wrap_objective
 
     counter: list[int] = [0]
     wrapped = _wrap_objective(sphere, direction, counter)
@@ -324,16 +318,16 @@ def test_wrap_objective_valid_directions(direction):
 def test_integer_split_preset_is_respected(fast_config):
     """When ``integer_split`` is already set on the config the branch that
     auto-fills it from ``n`` must NOT overwrite it (line 178 false-branch)."""
-    cfg = GraspIlsVndConfig(**{**fast_config.__dict__, "integer_split": 2})
+    cfg = GIVPConfig(**{**fast_config.__dict__, "integer_split": 2})
     # 4-variable problem but integer_split=2 pre-set — should not be overwritten
-    result = grasp_ils_vnd_pr(sphere, [(-2.0, 2.0)] * 4, config=cfg)
+    result = givp(sphere, [(-2.0, 2.0)] * 4, config=cfg)
     assert np.isfinite(result.fun)
 
 
 def test_grasp_optimizer_run_second_call_not_better(monkeypatch, fast_config):
     """Line 269->272: second run() result is NOT better -> best_fun/best_x unchanged."""
-    from givp import _api as api_mod
-    from givp._result import OptimizeResult
+    from givp import api as api_mod
+    from givp.result import OptimizeResult
 
     call_count = [0]
     results = [
@@ -362,9 +356,9 @@ def test_grasp_optimizer_run_second_call_not_better(monkeypatch, fast_config):
         call_count[0] += 1
         return r
 
-    monkeypatch.setattr(api_mod, "grasp_ils_vnd_pr", fake_run)
+    monkeypatch.setattr(api_mod, "givp", fake_run)
 
-    opt = GraspOptimizer(sphere, [(-1.0, 1.0)] * 2, config=fast_config)
+    opt = GIVPOptimizer(sphere, [(-1.0, 1.0)] * 2, config=fast_config)
     opt.run()  # best_fun set to 0.5
     opt.run()  # 2.0 is NOT better -> best_fun stays 0.5
     assert opt.best_fun == pytest.approx(0.5)

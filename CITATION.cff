@@ -11,7 +11,7 @@ authors:
   - family-names: "Mendes Pires Junior"
     given-names: "Arnaldo"
 license: MIT
-repository-code: "https://github.com/Arnime/grasp_ils_vnd_pr"
+repository-code: "https://github.com/Arnime/givp"
 keywords:
   - optimization
   - metaheuristic

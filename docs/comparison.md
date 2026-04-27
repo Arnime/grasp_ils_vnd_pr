@@ -26,7 +26,7 @@ The table below positions `givp` against widely used Python alternatives.
 import numpy as np
 from scipy.optimize import differential_evolution, dual_annealing
 
-from givp import GraspIlsVndConfig, grasp_ils_vnd_pr
+from givp import GIVPConfig, givp
 
 
 def rastrigin(x):
@@ -38,9 +38,9 @@ bounds = [(-5.12, 5.12)] * 30
 
 de = differential_evolution(rastrigin, bounds, seed=42, maxiter=100, tol=1e-8)
 sa = dual_annealing(rastrigin, bounds, seed=42, maxiter=500)
-gv = grasp_ils_vnd_pr(
+gv = givp(
     rastrigin, bounds, seed=42,
-    config=GraspIlsVndConfig(max_iterations=80, ils_iterations=10),
+    config=GIVPConfig(max_iterations=80, ils_iterations=10),
 )
 
 print(f"DE   -> fun={de.fun:.4f}  nfev={de.nfev}")
@@ -50,7 +50,7 @@ print(f"givp -> fun={gv.fun:.4f}  nfev={gv.nfev}")
 
 Typical (machine-dependent) numbers on a laptop CPU:
 
-```
+```text
 DE   -> fun=15.34  nfev=15203
 SA   -> fun= 8.21  nfev=12048
 givp -> fun= 3.97  nfev= 9210

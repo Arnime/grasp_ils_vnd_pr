@@ -1,12 +1,10 @@
-# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
-# SPDX-License-Identifier: MIT
 """Diversity-aware elite pool of high-quality solutions."""
 
 from __future__ import annotations
 
 import numpy as np
 
-from givp._exceptions import EmptyPoolError
+from givp.exceptions import EmptyPoolError
 
 
 class ElitePool:
@@ -17,13 +15,13 @@ class ElitePool:
     soluções elite.
 
     Args:
-        max_size (int): Tamanho máximo do pool.
-        min_distance (float): Distância relativa mínima normalizada (0-1).
-        lower (np.ndarray | None): Limites inferiores das variáveis.
-        upper (np.ndarray | None): Limites superiores das variáveis.
+            max_size (int): Tamanho máximo do pool.
+            min_distance (float): Distância relativa mínima normalizada (0-1).
+            lower (np.ndarray | None): Limites inferiores das variáveis.
+            upper (np.ndarray | None): Limites superiores das variáveis.
 
     Attributes:
-        pool (list[tuple[np.ndarray, float]]): ``(solução, benefício)``.
+            pool (list[tuple[np.ndarray, float]]): ``(solução, benefício)``.
     """
 
     def __init__(
@@ -50,7 +48,7 @@ class ElitePool:
         """Adiciona solução ao pool se for boa o suficiente e diversa.
 
         Returns:
-            ``True`` se a solução foi adicionada.
+                ``True`` se a solução foi adicionada.
         """
         solution = np.array(solution, dtype=float)
 

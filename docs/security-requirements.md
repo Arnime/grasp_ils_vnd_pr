@@ -146,14 +146,14 @@ implementation are secure.
 
 - **Bus factor ≥ 2**: multiple independent contributors; fully automated
   release pipeline and access continuity plan documented in
-  [GOVERNANCE.md](https://github.com/Arnime/grasp_ils_vnd_pr/blob/main/GOVERNANCE.md).
+  [GOVERNANCE.md](https://github.com/Arnime/givp/blob/main/GOVERNANCE.md).
 - **Caller-supplied objective function**: no mitigation possible within
   the library; documented as out-of-scope in the security requirements.
 
 ### Evidence links
 
-- Source: <https://github.com/Arnime/grasp_ils_vnd_pr/tree/main/src/givp>
-- CI security workflow: <https://github.com/Arnime/grasp_ils_vnd_pr/blob/main/.github/workflows/security.yml>
-- Audit workflow: <https://github.com/Arnime/grasp_ils_vnd_pr/blob/main/.github/workflows/audit.yml>
-- Release attestations: <https://github.com/Arnime/grasp_ils_vnd_pr/attestations>
-- Input validation: <https://github.com/Arnime/grasp_ils_vnd_pr/blob/main/src/givp/_config.py>
+- Source: <https://github.com/Arnime/givp/tree/main/src/givp>
+- CI security workflow: <https://github.com/Arnime/givp/blob/main/.github/workflows/security.yml>
+- Audit workflow: <https://github.com/Arnime/givp/blob/main/.github/workflows/audit.yml>
+- Release attestations: <https://github.com/Arnime/givp/attestations>
+- Input validation: <https://github.com/Arnime/givp/blob/main/src/givp/_config.py>
