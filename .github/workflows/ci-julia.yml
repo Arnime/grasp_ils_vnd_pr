@@ -4,12 +4,14 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'julia/**'
-      - '.github/workflows/ci-julia.yml'
+      - "julia/**"
+      - ".github/workflows/ci-julia.yml"
+      - "codecov.yml"
   pull_request:
     paths:
-      - 'julia/**'
-      - '.github/workflows/ci-julia.yml'
+      - "julia/**"
+      - ".github/workflows/ci-julia.yml"
+      - "codecov.yml"
   workflow_dispatch:
 
 env:
@@ -21,7 +23,7 @@ jobs:
   test:
     runs-on: ${{ matrix.os }}
     permissions:
-      actions: write   # required by julia-actions/cache delete-old-caches
+      actions: write # required by julia-actions/cache delete-old-caches
     strategy:
       fail-fast: false
       matrix:
