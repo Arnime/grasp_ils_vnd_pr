@@ -106,3 +106,41 @@ jobs:
     with:
       base64-subjects: "${{ needs.build-and-publish.outputs.hashes }}"
       upload-assets: true
+
+  publish-rust:
+    needs: [ build-and-publish ]
+    runs-on: ubuntu-latest
+    environment:
+      name: crates-io
+      url: https://crates.io/crates/givp
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}',
+            inputs.tag) || github.ref }}
+
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          workspaces: "rust -> target"
+
+      - name: Verify crate version matches tag
+        run: |
+          TAG="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
+          CRATE_VERSION="$(grep '^version' rust/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')"
+          EXPECTED="v${CRATE_VERSION}"
+          if [ "$TAG" != "$EXPECTED" ]; then
+            echo "::error::Tag $TAG does not match Cargo.toml version $EXPECTED"
+            exit 1
+          fi
+
+      - name: Publish to crates.io
+        working-directory: rust
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --locked
