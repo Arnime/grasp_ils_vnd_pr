@@ -1,0 +1,24 @@
+name = "GIVP"
+uuid = "52b765d9-9955-43cf-8457-2e847d316e43"
+license = "MIT"
+version = "0.5.2"
+authors = ["Arnaldo Mendes Pires Junior"]
+description = "GRASP-ILS-VND with Path Relinking metaheuristic for continuous black-box optimization"
+
+[deps]
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
+[compat]
+JSON = "0.21"
+julia = "1.9"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

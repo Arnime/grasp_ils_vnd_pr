@@ -6,11 +6,16 @@ available contributor time.
 
 ## Current version
 
-**v0.3.x** — stable, feature-complete implementation of the GRASP + ILS +
+**v0.5.x** — stable, feature-complete implementation of the GRASP + ILS +
 VND + Path Relinking metaheuristic for continuous black-box optimization.
+Available in **Python** (NumPy-native) and **Julia**.
 
 ## Short-term (next 3 months)
 
+- **Publish Julia package to General Registry**: register `GIVP.jl`
+  on the Julia General Registry via
+  [Registrator.jl](https://github.com/JuliaRegistries/Registrator.jl)
+  so users can `Pkg.add("GIVP")`.
 - **Parallel neighbourhood evaluation**: allow users to provide a
   parallelism hint so VND neighbourhoods can be evaluated concurrently
   on multi-core machines.

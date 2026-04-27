@@ -5,9 +5,11 @@ preferred workflow for changes.
 
 ## Development setup
 
+### Python setup
+
 ```bash
 git clone https://github.com/Arnime/grasp_ils_vnd_pr
-cd givp
+cd grasp_ils_vnd_pr
 python -m venv .venv
 .venv/Scripts/activate          # Windows
 # source .venv/bin/activate     # Linux/macOS
@@ -15,12 +17,23 @@ pip install -e .[dev,docs]
 pre-commit install
 ```
 
+### Julia setup
+
+```bash
+cd julia
+julia --project=. -e 'using Pkg; Pkg.instantiate()'
+```
+
+Requires Julia 1.9+.
+
 ## Quality gates
 
 Before opening a PR, please confirm locally that:
 
+### Python checks
+
 ```bash
-ruff check src tests
+ruff check python/src python/tests
 mypy
 pytest
 mkdocs build --strict
@@ -31,6 +44,13 @@ Or run all of the above with `nox`:
 ```bash
 pip install nox
 nox
+```
+
+### Julia checks
+
+```bash
+cd julia
+julia --project=. -e 'using Pkg; Pkg.test()'
 ```
 
 ## Pull request checklist
@@ -101,7 +121,7 @@ the repository settings on GitHub.
 
 Open a GitHub issue with:
 
-- `givp` version, Python version, OS;
+- `givp` version, Python/Julia version, OS;
 - minimal reproducer (function + bounds + config);
 - expected vs actual behaviour;
 - traceback if any.

@@ -23,7 +23,7 @@ jobs:
                   python-version: "3.12"
             - name: Install
               run: |
-                  pip install --require-hashes -r requirements/audit.txt
+                  pip install --require-hashes -r python/requirements/audit.txt
                   sh .github/scripts/install-package.sh
             - name: Audit
               run: |

@@ -5,7 +5,7 @@ abstract: >
   A direction-agnostic metaheuristic optimizer combining GRASP construction,
   Iterated Local Search (ILS), Variable Neighborhood Descent (VND) and
   bidirectional Path Relinking for continuous, integer and mixed-variable
-  problems.
+  problems. Available in Python and Julia.
 type: software
 authors:
   - family-names: "Mendes Pires Junior"
@@ -20,5 +20,7 @@ keywords:
   - vnd
   - path-relinking
   - global-optimization
+  - julia
+  - python
 version: 0.1.0
 date-released: 2026-04-21

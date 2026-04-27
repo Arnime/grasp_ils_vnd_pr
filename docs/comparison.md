@@ -11,14 +11,14 @@ faster there. It targets the regime where:
 
 The table below positions `givp` against widely used Python alternatives.
 
-| Library / method | Black-box? | Multimodal? | Integers? | Budget control | Reproducible | Notes |
-|---|---|---|---|---|---|---|
-| `scipy.optimize.minimize` (BFGS, L-BFGS-B, ...) | requires gradient | local only | no | iter only | yes | great when smooth + unimodal |
-| `scipy.optimize.differential_evolution` | yes | yes | continuous | maxiter | yes | global, but no native integer support |
-| `scipy.optimize.dual_annealing` | yes | yes | continuous | maxiter | yes | strong on basins of attraction |
-| `optuna` (TPE/CMA) | yes | yes | yes | n_trials, timeout | yes | great for HP tuning, no SciPy-style API |
-| `pyomo`/`gurobi` | structured | depends | yes (MIP) | yes | yes | needs the model to be expressible analytically |
-| **`givp`** | yes | yes | yes (mixed) | iter + time | yes (`seed=`) | SciPy-style API, hybrid GRASP/ILS/VND/PR |
+| Library / method | Black-box? | Multimodal? | Integers? | Budget control | Reproducible | Language | Notes |
+|---|---|---|---|---|---|---|---|
+| `scipy.optimize.minimize` (BFGS, L-BFGS-B, ...) | requires gradient | local only | no | iter only | yes | Python | great when smooth + unimodal |
+| `scipy.optimize.differential_evolution` | yes | yes | continuous | maxiter | yes | Python | global, but no native integer support |
+| `scipy.optimize.dual_annealing` | yes | yes | continuous | maxiter | yes | Python | strong on basins of attraction |
+| `optuna` (TPE/CMA) | yes | yes | yes | n_trials, timeout | yes | Python | great for HP tuning, no SciPy-style API |
+| `pyomo`/`gurobi` | structured | depends | yes (MIP) | yes | yes | Python | needs the model to be expressible analytically |
+| **`givp`** | yes | yes | yes (mixed) | iter + time | yes (`seed=`) | Python+Julia | SciPy-style API, hybrid GRASP/ILS/VND/PR |
 
 ## Apples-to-apples: Rastrigin-30D
 

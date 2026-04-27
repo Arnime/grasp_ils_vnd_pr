@@ -34,7 +34,7 @@ plugins:
       default_handler: python
       handlers:
         python:
-          paths: [ src ]
+          paths: [ python/src ]
           options:
             show_source: false
             show_root_heading: true
@@ -58,6 +58,7 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Quickstart: quickstart.md
+  - Julia: julia.md
   - CLI Reference: cli.md
   - Algorithm: algorithm.md
   - Examples: examples.md

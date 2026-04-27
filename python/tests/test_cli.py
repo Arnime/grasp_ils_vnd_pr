@@ -338,7 +338,6 @@ def test_termination_reason_from_message_unknown():
 
 def test_optimize_result_to_dict_types():
     import numpy as np
-
     from givp.result import OptimizeResult
 
     result = OptimizeResult(
@@ -365,7 +364,6 @@ def test_optimize_result_to_dict_types():
 def test_optimize_result_to_dict_no_meta():
     """to_dict() must not leak the meta dict (internal details)."""
     import numpy as np
-
     from givp.result import OptimizeResult
 
     result = OptimizeResult(

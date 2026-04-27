@@ -1,0 +1,28 @@
+name: Julia CompatHelper
+
+on:
+  schedule:
+    - cron: "0 0 * * 0" # Weekly on Sunday at midnight
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions: read-all
+
+jobs:
+  CompatHelper:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: julia-actions/setup-julia@4c0cb0fce8556fdb04a90347310e5db8b1f98fb9 # v2
+        with:
+          version: "1.12"
+      - uses: JuliaRegistries/CompatHelper.jl@5cf29123e1d355fcaa8420bb85014818fd06a84f # v3.13.1
+        with:
+          subdirs: julia
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMPATHELPER_PRIV: ${{ secrets.DOCUMENTER_KEY }}

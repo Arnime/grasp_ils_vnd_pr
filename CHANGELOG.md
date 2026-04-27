@@ -2,6 +2,16 @@
 
 <!-- markdownlint-disable MD024 -->
 
+## [0.5.2](https://github.com/Arnime/grasp_ils_vnd_pr/compare/v0.5.1...v0.5.2) (2026-04-27)
+
+### Features
+
+* add Julia port with full feature parity (GRASP, ILS, VND, Path Relinking,
+  elite pool, convergence monitor, LRU cache, adaptive α, time budget)
+* add Julia CI workflow (`ci-julia.yml`) with multi-OS/version matrix
+* add Julia benchmarks (`BenchmarkTools.jl`) with regression tracking
+* update documentation, badges, and metadata to cover both Python and Julia
+
 ## [0.5.1](https://github.com/Arnime/grasp_ils_vnd_pr/compare/v0.5.0...v0.5.1) (2026-04-27)
 
 ### Bug Fixes

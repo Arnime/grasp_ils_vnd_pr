@@ -11,7 +11,8 @@ attaches to a running Python process without instrumentation overhead.
 
 ```powershell
 pip install py-spy
-py-spy record -o profile.svg -- python -m pytest benchmarks/ --benchmark-only -k "sphere and 30"
+py-spy record -o profile.svg -- \
+  python -m pytest benchmarks/ --benchmark-only -k "sphere and 30"
 ```
 
 Open `profile.svg` in a browser to inspect the flamegraph.
@@ -39,3 +40,18 @@ pytest-benchmark compare 0001 0002 --columns=mean,stddev,ops
 
 Pin the master RNG via the public `seed=` parameter to make timing
 comparisons deterministic across runs.
+
+## Julia benchmarks
+
+The Julia port includes a `BenchmarkTools.jl`-based benchmark suite under
+`julia/benchmarks/`. It covers four classic test functions (sphere,
+rosenbrock, rastrigin, ackley) at dimensions 5 and 10:
+
+```bash
+cd julia
+julia --project=. benchmarks/benchmarks.jl
+```
+
+Results are saved to `julia/benchmarks/results.json`. On subsequent runs, the
+script automatically compares against the previous results and flags
+regressions (>10% time increase).

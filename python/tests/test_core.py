@@ -6,10 +6,9 @@ import contextlib
 import logging
 import time
 
+import givp.core.pr as pr_module
 import numpy as np
 import pytest
-
-import givp.core.pr as pr_module
 from givp import EmptyPoolError, GIVPConfig, givp
 from givp import InvalidBoundsError as IBE
 from givp.config import GIVPConfig as PublicConfig
@@ -1226,7 +1225,7 @@ def test_initialize_optimization_components_all_on():
 def expired_deadline(monkeypatch):
     """Make ``_expired`` always return True regardless of deadline value."""
     monkeypatch.setattr(core_impl, "_expired", lambda _d: True)
-    yield
+    return
 
 
 def test_path_relinking_loops_short_circuit(expired_deadline):

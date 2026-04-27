@@ -8,15 +8,14 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from hypothesis import HealthCheck, assume, given, settings
-from hypothesis import strategies as st
-
 from givp import (
     GIVPConfig,
     InvalidBoundsError,
     InvalidInitialGuessError,
     givp,
 )
+from hypothesis import HealthCheck, assume, given, settings
+from hypothesis import strategies as st
 
 _FAST = settings(
     max_examples=15,

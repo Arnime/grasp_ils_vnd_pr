@@ -1,6 +1,8 @@
 # Quickstart
 
-## Minimize a function
+## Python
+
+### Minimize a function
 
 ```python
 import numpy as np
@@ -14,13 +16,13 @@ result = givp(rosenbrock, [(-2.0, 2.0)] * 5, config=cfg)
 print(result)
 ```
 
-## Maximize
+### Maximize
 
 ```python
 result = givp(my_score, bounds, direction="maximize")
 ```
 
-## Object-oriented API
+### Object-oriented API
 
 `GIVPOptimizer` keeps the run history when you call `.run()` repeatedly:
 
@@ -33,7 +35,7 @@ opt.run()
 print(opt.best_x, opt.best_fun, len(opt.history))
 ```
 
-## Warm start
+### Warm start
 
 ```python
 result = givp(
@@ -43,11 +45,60 @@ result = givp(
 )
 ```
 
-## Stopping by wall clock
+### Stopping by wall clock
 
 ```python
 cfg = GIVPConfig(time_limit=2.0)  # seconds
 result = givp(rosenbrock, [(-2.0, 2.0)] * 5, config=cfg)
+```
+
+## Julia
+
+### Minimize a function (Julia)
+
+```julia
+using GIVP
+
+function rosenbrock(x::Vector{Float64})::Float64
+    return sum(
+        100.0 .* (x[2:end] .- x[1:end-1] .^ 2) .^ 2
+        .+ (1.0 .- x[1:end-1]) .^ 2
+    )
+end
+
+cfg = GIVPConfig(; max_iterations=20, vnd_iterations=30)
+result = givp(rosenbrock, [(-2.0, 2.0) for _ in 1:5]; config=cfg)
+println(result)
+```
+
+### Maximize (Julia)
+
+```julia
+result = givp(my_score, bounds; direction=maximize)
+```
+
+### Warm start (Julia)
+
+```julia
+result = givp(
+    rosenbrock,
+    [(-2.0, 2.0) for _ in 1:5];
+    initial_guess=[1.0, 1.0, 1.0, 1.0, 1.0],
+)
+```
+
+### Stopping by wall clock (Julia)
+
+```julia
+cfg = GIVPConfig(; time_limit=2.0)
+result = givp(rosenbrock, [(-2.0, 2.0) for _ in 1:5]; config=cfg)
+```
+
+### Running benchmarks
+
+```bash
+cd julia
+julia --project=. benchmarks/benchmarks.jl
 ```
 
 ## Serializing the result

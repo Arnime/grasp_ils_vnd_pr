@@ -1,0 +1,70 @@
+name: CI Julia
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'julia/**'
+      - '.github/workflows/ci-julia.yml'
+  pull_request:
+    paths:
+      - 'julia/**'
+      - '.github/workflows/ci-julia.yml'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions: read-all
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        julia-version: [ "1.9", "1.10", "1.11", "1.12" ]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: julia-actions/setup-julia@4c0cb0fce8556fdb04a90347310e5db8b1f98fb9 # v2
+        with:
+          version: ${{ matrix.julia-version }}
+
+      - uses: julia-actions/cache@d10a6fd8f31b12404a54613ebad242900567f2b9 # v2
+
+      - name: Install dependencies
+        run: |
+          julia --project=julia -e '
+            using Pkg
+            Pkg.Registry.update()
+            rm(joinpath("julia", "Manifest.toml"); force=true)
+            Pkg.instantiate()
+          '
+
+      - name: Run tests
+        run: julia --project=julia -e 'using Pkg; Pkg.test()'
+
+      - name: Run tests with coverage
+        if: matrix.os == 'ubuntu-latest' && matrix.julia-version == '1.12'
+        run: julia --project=julia -e 'using Pkg; Pkg.test(; coverage=true)'
+
+      - name: Process coverage
+        if: matrix.os == 'ubuntu-latest' && matrix.julia-version == '1.12'
+        run: |
+          julia -e '
+            using Pkg
+            Pkg.add("CoverageTools")
+            using CoverageTools
+            coverage = process_folder("julia/src")
+            LCOV.writefile("julia-lcov.info", coverage)
+          '
+
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest' && matrix.julia-version == '1.12'
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6
+        with:
+          files: julia-lcov.info
+          flags: julia
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
