@@ -64,6 +64,30 @@ jobs:
             dist/*
       - name: Move sigstore files out of dist
         run: mv dist/*.sigstore .
+      - name: Validate README badges and links
+        run: |
+          echo "::group::Checking badge URLs"
+          urls=(
+            "https://img.shields.io/pypi/v/givp"
+            "https://img.shields.io/pypi/pyversions/givp"
+            "https://img.shields.io/codecov/c/github/Arnime/grasp_ils_vnd_pr"
+            "https://img.shields.io/ossf-scorecard/github.com/Arnime/grasp_ils_vnd_pr"
+            "https://www.bestpractices.dev/projects/12627/badge"
+          )
+          failed=0
+          for url in "${urls[@]}"; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$url")
+            if [ "$code" -ge 200 ] && [ "$code" -lt 400 ]; then
+              echo "✓ $code $url"
+            else
+              echo "✗ $code $url"
+              failed=1
+            fi
+          done
+          echo "::endgroup::"
+          if [ "$failed" -eq 1 ]; then
+            echo "::warning::One or more badge URLs returned errors. PyPI publish continues but badges may show broken on the PyPI page."
+          fi
       - name: Publish to PyPI (trusted publisher)
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
         with:
