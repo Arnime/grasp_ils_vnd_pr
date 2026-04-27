@@ -2,9 +2,9 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/givp?cacheSeconds=300)](https://pypi.org/project/givp/)
 [![Python versions](https://img.shields.io/pypi/pyversions/givp?cacheSeconds=300)](https://pypi.org/project/givp/)
-[![CI](https://github.com/Arnime/givp/actions/workflows/ci.yml/badge.svg)](https://github.com/Arnime/givp/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/Arnime/givp/branch/main/graph/badge.svg)](https://codecov.io/gh/Arnime/givp)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Arnime/givp/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Arnime/givp)
+[![CI](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/branch/main/graph/badge.svg)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Arnime/grasp_ils_vnd_pr/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Arnime/grasp_ils_vnd_pr)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12627/badge)](https://www.bestpractices.dev/projects/12627)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Ruff](https://img.shields.io/badge/linter-ruff-red)](https://github.com/astral-sh/ruff)
@@ -56,8 +56,8 @@ pip install givp
 From source (editable):
 
 ```bash
-git clone https://github.com/Arnime/givp.git
-cd givp
+git clone https://github.com/Arnime/grasp_ils_vnd_pr.git
+cd grasp_ils_vnd_pr
 pip install -e .[dev]
 ```
 
