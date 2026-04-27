@@ -9,7 +9,7 @@
 [![Checked with mypy](https://img.shields.io/badge/type--checked-mypy-blue)](https://mypy-lang.org/)
 
 **Julia** &nbsp;
-[![JuliaHub](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fjuliahub.com%2Fapi%2Fpackages%2Fgeneral%2FGIVP&query=%24.version&label=JuliaHub&logo=julia&logoColor=white&color=9558B2&cacheSeconds=3600)](https://juliahub.com/ui/Packages/General/GIVP)
+[![JuliaHub](https://img.shields.io/badge/JuliaHub-GIVP-9558B2?logo=julia&logoColor=white)](https://juliahub.com/ui/Packages/General/GIVP)
 [![Julia](https://img.shields.io/badge/Julia-1.9%2B-9558B2?logo=julia&logoColor=white)](https://julialang.org/)
 [![CI Julia](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml)
 
