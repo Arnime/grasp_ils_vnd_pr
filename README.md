@@ -12,6 +12,7 @@
 [![JuliaHub](https://img.shields.io/badge/JuliaHub-GIVPOptimizer-9558B2?logo=julia&logoColor=white)](https://juliahub.com/ui/Packages/General/GIVPOptimizer)
 [![Julia](https://img.shields.io/badge/Julia-1.9%2B-9558B2?logo=julia&logoColor=white)](https://julialang.org/)
 [![CI Julia](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml)
+[![codecov (julia)](https://img.shields.io/codecov/c/github/Arnime/grasp_ils_vnd_pr?flag=julia&cacheSeconds=300&label=coverage%20%28julia%29)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/julia)
 
 **Rust** &nbsp;
 [![Rust](https://img.shields.io/badge/Rust-1.85%2B-000000?logo=rust&logoColor=white)](https://www.rust-lang.org/)
