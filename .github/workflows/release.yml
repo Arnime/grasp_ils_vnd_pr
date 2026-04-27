@@ -136,11 +136,11 @@ jobs:
           INPUT_TAG: ${{ inputs.tag }}
         run: |
           if [ "$GH_EVENT_NAME" = "workflow_dispatch" ]; then
-            TAG="$INPUT_TAG"
+            TAG="$(echo "$INPUT_TAG" | tr -d '[:space:]')"
           else
-            TAG="$GH_REF_NAME"
+            TAG="$(echo "$GH_REF_NAME" | tr -d '[:space:]')"
           fi
-          CRATE_VERSION="$(grep '^version' rust/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')"
+          CRATE_VERSION="$(grep '^version' rust/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/' | tr -d '[:space:]')"
           EXPECTED="v${CRATE_VERSION}"
           if [ "$TAG" != "$EXPECTED" ]; then
             echo "::error::Tag $TAG does not match Cargo.toml version $EXPECTED"
