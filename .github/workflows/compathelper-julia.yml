@@ -14,8 +14,16 @@ jobs:
   CompatHelper:
     runs-on: ubuntu-latest
     permissions:
+      actions: read
+      checks: read
       contents: write
+      deployments: read
+      issues: read
+      packages: read
       pull-requests: write
+      repository-projects: read
+      security-events: read
+      statuses: read
     steps:
       - uses: julia-actions/setup-julia@4c0cb0fce8556fdb04a90347310e5db8b1f98fb9 # v2
         with:
