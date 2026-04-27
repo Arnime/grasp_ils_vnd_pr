@@ -16,7 +16,7 @@
 - [ ] Tests added or updated.
 - [ ] `pytest` passes locally (`coverage >= 95%`).
 - [ ] `mypy` is clean.
-- [ ] `ruff check src tests` is clean.
+- [ ] `ruff check python/src python/tests` is clean.
 - [ ] Public API changes are reflected in `docs/`.
 - [ ] Commit messages follow Conventional Commits.
 

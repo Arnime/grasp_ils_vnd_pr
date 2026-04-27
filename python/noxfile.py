@@ -22,7 +22,7 @@ def tests(session: nox.Session) -> None:
 def lint(session: nox.Session) -> None:
     """Run ruff."""
     session.install("ruff>=0.6")
-    session.run("ruff", "check", "src", "tests")
+    session.run("ruff", "check", "python/src", "python/tests")
 
 
 @nox.session
@@ -45,7 +45,7 @@ def benchmarks(session: nox.Session) -> None:
     session.install("-e", _DEV)
     session.run(
         "pytest",
-        "benchmarks/",
+        "python/benchmarks/",
         "--benchmark-only",
         "--benchmark-autosave",
         *session.posargs,

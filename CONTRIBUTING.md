@@ -20,7 +20,7 @@ pre-commit install
 Before opening a PR, please confirm locally that:
 
 ```bash
-ruff check src tests
+ruff check python/src python/tests
 mypy
 pytest
 mkdocs build --strict

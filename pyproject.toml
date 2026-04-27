@@ -60,16 +60,16 @@ Repository = "https://github.com/Arnime/grasp_ils_vnd_pr"
 Issues = "https://github.com/Arnime/grasp_ils_vnd_pr/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/givp"]
+packages = ["python/src/givp"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"src/givp/py.typed" = "givp/py.typed"
+"python/src/givp/py.typed" = "givp/py.typed"
 
 [tool.hatch.build.targets.sdist]
-include = ["src/givp", "tests", "README.md", "LICENSE", "pyproject.toml"]
+include = ["python/src/givp", "python/tests", "README.md", "LICENSE", "pyproject.toml"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["python/tests"]
 addopts = "-q --cov=givp --cov-report=term-missing --cov-fail-under=95 --strict-markers"
 markers = ["slow: tests that are not run by default; use -m slow to enable"]
 
@@ -87,7 +87,7 @@ exclude_also = [
 
 [tool.mypy]
 python_version = "3.10"
-files = ["src/givp"]
+files = ["python/src/givp"]
 # Strict-ish settings: every check that previously needed an opt-out has
 # been resolved. Future regressions show up in CI immediately.
 warn_unused_configs = true
