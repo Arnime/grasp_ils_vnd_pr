@@ -1,7 +1,7 @@
 name = "GIVP"
 uuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 license = "MIT"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Arnaldo Mendes Pires Junior"]
 
 [deps]

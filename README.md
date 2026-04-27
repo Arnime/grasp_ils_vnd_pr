@@ -2,7 +2,9 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/givp?cacheSeconds=300)](https://pypi.org/project/givp/)
 [![Python versions](https://img.shields.io/pypi/pyversions/givp?cacheSeconds=300)](https://pypi.org/project/givp/)
+[![Julia](https://img.shields.io/badge/Julia-1.9%2B-9558B2?logo=julia&logoColor=white)](https://julialang.org/)
 [![CI](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci.yml)
+[![CI Julia](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml)
 [![codecov](https://img.shields.io/codecov/c/github/Arnime/grasp_ils_vnd_pr?cacheSeconds=300)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr)
 [![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/Arnime/grasp_ils_vnd_pr?cacheSeconds=300)](https://securityscorecards.dev/viewer/?uri=github.com/Arnime/grasp_ils_vnd_pr)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12627/badge)](https://www.bestpractices.dev/projects/12627)
@@ -11,8 +13,9 @@
 [![Checked with mypy](https://img.shields.io/badge/type--checked-mypy-blue)](https://mypy-lang.org/)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-A direction-agnostic, NumPy-native metaheuristic optimizer for **continuous,
-integer or mixed** black-box problems. The library bundles:
+A direction-agnostic metaheuristic optimizer for **continuous,
+integer or mixed** black-box problems, available in **Python** (NumPy-native)
+and **Julia**. The library bundles:
 
 - **GRASP** — Greedy Randomized Adaptive Search Procedure
 - **ILS** — Iterated Local Search
@@ -31,21 +34,24 @@ optional configuration, get back an `OptimizeResult` with `x`, `fun`, `nit`,
 
 1. [Install](#install)
 2. [Quick start](#quick-start)
-3. [Choosing the optimization sense](#choosing-the-optimization-sense)
-4. [Bounds, integer variables and mixed problems](#bounds-integer-variables-and-mixed-problems)
-5. [Object-oriented API and multi-start](#object-oriented-api-and-multi-start)
-6. [Configuration cookbook](#configuration-cookbook)
-7. [Inspecting progress (callback and verbose)](#inspecting-progress-callback-and-verbose)
-8. [Public API reference](#public-api-reference)
-9. [Glossary of hyper-parameters](#glossary-of-hyper-parameters)
-10. [Adapting to a domain-specific model](#adapting-to-a-domain-specific-model)
-11. [Comparison with other optimizers](#comparison-with-other-optimizers)
-12. [Troubleshooting](#troubleshooting)
-13. [License](#license)
+3. [Julia](#julia)
+4. [Choosing the optimization sense](#choosing-the-optimization-sense)
+5. [Bounds, integer variables and mixed problems](#bounds-integer-variables-and-mixed-problems)
+6. [Object-oriented API and multi-start](#object-oriented-api-and-multi-start)
+7. [Configuration cookbook](#configuration-cookbook)
+8. [Inspecting progress (callback and verbose)](#inspecting-progress-callback-and-verbose)
+9. [Public API reference](#public-api-reference)
+10. [Glossary of hyper-parameters](#glossary-of-hyper-parameters)
+11. [Adapting to a domain-specific model](#adapting-to-a-domain-specific-model)
+12. [Comparison with other optimizers](#comparison-with-other-optimizers)
+13. [Troubleshooting](#troubleshooting)
+14. [License](#license)
 
 ---
 
 ## Install
+
+### Python
 
 From PyPI (once published):
 
@@ -62,6 +68,18 @@ pip install -e .[dev]
 ```
 
 Requires Python 3.10+ and NumPy.
+
+### Julia installation
+
+From a local clone:
+
+```bash
+git clone https://github.com/Arnime/grasp_ils_vnd_pr.git
+cd grasp_ils_vnd_pr/julia
+julia --project=. -e 'using Pkg; Pkg.instantiate()'
+```
+
+Requires Julia 1.9+.
 
 ---
 
@@ -85,6 +103,52 @@ Default behavior:
 - **Minimization** (`minimize=True` / `direction="minimize"`).
 - All variables treated as continuous.
 - Default hyper-parameters (`GIVPConfig()`).
+
+---
+
+## Julia
+
+The Julia port exposes the same algorithm with an idiomatic Julia API:
+
+```julia
+using GIVP
+
+function sphere(x::Vector{Float64})::Float64
+    return sum(x .^ 2)
+end
+
+result = givp(sphere, [(-5.0, 5.0) for _ in 1:10])
+println(result.x)       # best vector found
+println(result.fun)     # best objective value
+println(result.nfev)    # number of evaluations
+```
+
+Maximization:
+
+```julia
+result = givp(my_score, bounds; direction=maximize)
+```
+
+Configuration:
+
+```julia
+cfg = GIVPConfig(; max_iterations=50, vnd_iterations=100, time_limit=30.0)
+result = givp(sphere, bounds; config=cfg, seed=42, verbose=true)
+```
+
+Running tests:
+
+```bash
+cd julia
+julia --project=. -e 'using Pkg; Pkg.test()'
+```
+
+Running benchmarks:
+
+```bash
+cd julia
+julia --project=. benchmarks/benchmarks.jl
+```
 
 ---
 
@@ -360,14 +424,14 @@ see the SOG2 adapter in the upstream project repository
 
 ## Comparison with other optimizers
 
-| Library                                  | Sense convention                  | Discrete vars?  | Built-in cache | Built-in time budget |
-|------------------------------------------|-----------------------------------|-----------------|----------------|----------------------|
-| `scipy.optimize.minimize`                | Always minimize                   | No              | No             | No                   |
-| `scipy.optimize.differential_evolution`  | Always minimize                   | Continuous only | No             | Via callback         |
-| `scipy.optimize.dual_annealing`          | Always minimize                   | No              | No             | `maxiter` only       |
-| `optuna`                                 | Explicit (`direction`)            | Yes             | Per-trial only | Yes (`timeout`)      |
-| `pygad`                                  | Always maximize                   | Yes             | No             | No                   |
-| **`givp`**                               | Explicit (`minimize`/`direction`) | Yes (mixed)     | LRU cache      | Yes (`time_limit`)   |
+| Library                                  | Sense convention                  | Discrete vars?  | Built-in cache | Built-in time budget | Language     |
+|------------------------------------------|-----------------------------------|-----------------|----------------|----------------------|--------------|
+| `scipy.optimize.minimize`                | Always minimize                   | No              | No             | No                   | Python       |
+| `scipy.optimize.differential_evolution`  | Always minimize                   | Continuous only | No             | Via callback         | Python       |
+| `scipy.optimize.dual_annealing`          | Always minimize                   | No              | No             | `maxiter` only       | Python       |
+| `optuna`                                 | Explicit (`direction`)            | Yes             | Per-trial only | Yes (`timeout`)      | Python       |
+| `pygad`                                  | Always maximize                   | Yes             | No             | No                   | Python       |
+| **`givp`**                               | Explicit (`minimize`/`direction`) | Yes (mixed)     | LRU cache      | Yes (`time_limit`)   | Python+Julia |
 
 ---
 
