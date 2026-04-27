@@ -2,6 +2,13 @@
 
 <!-- markdownlint-disable MD024 -->
 
+## [0.5.1](https://github.com/Arnime/grasp_ils_vnd_pr/compare/v0.5.0...v0.5.1) (2026-04-27)
+
+### Bug Fixes
+
+* fix badge and repository links in PyPI README — replace stale `Arnime/givp`
+  references with `Arnime/grasp_ils_vnd_pr` for CI, Codecov and OpenSSF Scorecard
+
 ## [0.5.0](https://github.com/Arnime/grasp_ils_vnd_pr/compare/v0.3.0...v0.5.0) (2026-04-26)
 
 ### Features
