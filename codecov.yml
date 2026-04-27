@@ -1,0 +1,25 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+
+flags:
+  python:
+    paths:
+      - python/src/
+    carryforward: true
+  julia:
+    paths:
+      - julia/src/
+    carryforward: true
+  rust:
+    paths:
+      - rust/src/
+    carryforward: true
+
+comment:
+  layout: "reach,diff,flags,files"
+  behavior: default
+  require_changes: false
