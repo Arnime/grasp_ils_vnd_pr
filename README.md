@@ -9,6 +9,7 @@
 [![CI Julia](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml)
 [![CI Rust](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml)
 [![codecov](https://img.shields.io/codecov/c/github/Arnime/grasp_ils_vnd_pr?cacheSeconds=300)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr)
+[![codecov (rust)](https://img.shields.io/codecov/c/github/Arnime/grasp_ils_vnd_pr?flag=rust&cacheSeconds=300&label=coverage%20%28rust%29)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/rust)
 [![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/Arnime/grasp_ils_vnd_pr?cacheSeconds=300)](https://securityscorecards.dev/viewer/?uri=github.com/Arnime/grasp_ils_vnd_pr)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12627/badge)](https://www.bestpractices.dev/projects/12627)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -40,16 +41,16 @@ optional configuration, get back an `OptimizeResult` with `x`, `fun`, `nit`,
 3. [Julia](#julia)
 4. [Rust](#rust)
 5. [Choosing the optimization sense](#choosing-the-optimization-sense)
-5. [Bounds, integer variables and mixed problems](#bounds-integer-variables-and-mixed-problems)
-6. [Object-oriented API and multi-start](#object-oriented-api-and-multi-start)
-7. [Configuration cookbook](#configuration-cookbook)
-8. [Inspecting progress (callback and verbose)](#inspecting-progress-callback-and-verbose)
-9. [Public API reference](#public-api-reference)
-10. [Glossary of hyper-parameters](#glossary-of-hyper-parameters)
-11. [Adapting to a domain-specific model](#adapting-to-a-domain-specific-model)
-12. [Comparison with other optimizers](#comparison-with-other-optimizers)
-13. [Troubleshooting](#troubleshooting)
-14. [License](#license)
+6. [Bounds, integer variables and mixed problems](#bounds-integer-variables-and-mixed-problems)
+7. [Object-oriented API and multi-start](#object-oriented-api-and-multi-start)
+8. [Configuration cookbook](#configuration-cookbook)
+9. [Inspecting progress (callback and verbose)](#inspecting-progress-callback-and-verbose)
+10. [Public API reference](#public-api-reference)
+11. [Glossary of hyper-parameters](#glossary-of-hyper-parameters)
+12. [Adapting to a domain-specific model](#adapting-to-a-domain-specific-model)
+13. [Comparison with other optimizers](#comparison-with-other-optimizers)
+14. [Troubleshooting](#troubleshooting)
+15. [License](#license)
 
 ---
 
@@ -85,7 +86,7 @@ julia --project=. -e 'using Pkg; Pkg.instantiate()'
 
 Requires Julia 1.9+.
 
-### Rust
+### Rust Installation
 
 Add to your `Cargo.toml` (once published to crates.io):
 
