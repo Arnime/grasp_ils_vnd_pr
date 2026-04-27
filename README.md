@@ -1,10 +1,10 @@
 # givp — GRASP-ILS-VND with Path Relinking
 
 **Python** &nbsp;
+[![Python versions](https://img.shields.io/badge/python-3.10--3.15-blue?logo=python&logoColor=white)](https://pypi.org/project/givp/)
 [![PyPI version](https://img.shields.io/pypi/v/givp?cacheSeconds=300)](https://pypi.org/project/givp/)
-[![Python versions](https://img.shields.io/pypi/pyversions/givp?cacheSeconds=300)](https://pypi.org/project/givp/)
 [![CI Python](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-python.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-python.yml)
-[![codecov](https://img.shields.io/codecov/c/github/Arnime/grasp_ils_vnd_pr?cacheSeconds=300)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr)
+[![codecov (python)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=python)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/python)
 [![Ruff](https://img.shields.io/badge/linter-ruff-red)](https://github.com/astral-sh/ruff)
 [![Checked with mypy](https://img.shields.io/badge/type--checked-mypy-blue)](https://mypy-lang.org/)
 
@@ -12,14 +12,14 @@
 [![JuliaHub](https://img.shields.io/badge/JuliaHub-GIVPOptimizer-9558B2?logo=julia&logoColor=white)](https://juliahub.com/ui/Packages/General/GIVPOptimizer)
 [![Julia](https://img.shields.io/badge/Julia-1.9%2B-9558B2?logo=julia&logoColor=white)](https://julialang.org/)
 [![CI Julia](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml)
-[![codecov (julia)](https://img.shields.io/codecov/c/github/Arnime/grasp_ils_vnd_pr?flag=julia&cacheSeconds=300&label=coverage%20%28julia%29)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/julia)
+[![codecov (julia)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=julia)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/julia)
 
 **Rust** &nbsp;
 [![Rust](https://img.shields.io/badge/Rust-1.85%2B-000000?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![Crates.io](https://img.shields.io/crates/v/givp?cacheSeconds=300)](https://crates.io/crates/givp)
 [![docs.rs](https://img.shields.io/docsrs/givp?cacheSeconds=300)](https://docs.rs/givp)
 [![CI Rust](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml)
-[![codecov (rust)](https://img.shields.io/codecov/c/github/Arnime/grasp_ils_vnd_pr?flag=rust&cacheSeconds=300&label=coverage%20%28rust%29)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/rust)
+[![codecov (rust)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=rust)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/rust)
 
 **Project** &nbsp;
 [![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/Arnime/grasp_ils_vnd_pr?cacheSeconds=300)](https://securityscorecards.dev/viewer/?uri=github.com/Arnime/grasp_ils_vnd_pr)
@@ -46,21 +46,32 @@ optional configuration, get back an `OptimizeResult` with `x`, `fun`, `nit`,
 
 ## Table of contents
 
-1. [Install](#install)
-2. [Quick start](#quick-start)
-3. [Julia](#julia)
-4. [Rust](#rust)
-5. [Choosing the optimization sense](#choosing-the-optimization-sense)
-6. [Bounds, integer variables and mixed problems](#bounds-integer-variables-and-mixed-problems)
-7. [Object-oriented API and multi-start](#object-oriented-api-and-multi-start)
-8. [Configuration cookbook](#configuration-cookbook)
-9. [Inspecting progress (callback and verbose)](#inspecting-progress-callback-and-verbose)
-10. [Public API reference](#public-api-reference)
-11. [Glossary of hyper-parameters](#glossary-of-hyper-parameters)
-12. [Adapting to a domain-specific model](#adapting-to-a-domain-specific-model)
-13. [Comparison with other optimizers](#comparison-with-other-optimizers)
-14. [Troubleshooting](#troubleshooting)
-15. [License](#license)
+- [givp — GRASP-ILS-VND with Path Relinking](#givp--grasp-ils-vnd-with-path-relinking)
+  - [Table of contents](#table-of-contents)
+  - [Install](#install)
+    - [Python](#python)
+    - [Julia installation](#julia-installation)
+    - [Rust Installation](#rust-installation)
+  - [Quick start](#quick-start)
+  - [Julia](#julia)
+  - [Rust](#rust)
+  - [Choosing the optimization sense](#choosing-the-optimization-sense)
+    - [Boolean flag (recommended)](#boolean-flag-recommended)
+    - [String flag (SciPy/Optuna compatible)](#string-flag-scipyoptuna-compatible)
+  - [Bounds, integer variables and mixed problems](#bounds-integer-variables-and-mixed-problems)
+  - [Object-oriented API and multi-start](#object-oriented-api-and-multi-start)
+  - [Configuration cookbook](#configuration-cookbook)
+  - [Inspecting progress (callback and verbose)](#inspecting-progress-callback-and-verbose)
+  - [Public API reference](#public-api-reference)
+    - [`givp(...) -> OptimizeResult`](#givp---optimizeresult)
+    - [`class GIVPOptimizer`](#class-givpoptimizer)
+    - [`class GIVPConfig` (dataclass)](#class-givpconfig-dataclass)
+    - [`class OptimizeResult`](#class-optimizeresult)
+  - [Glossary of hyper-parameters](#glossary-of-hyper-parameters)
+  - [Adapting to a domain-specific model](#adapting-to-a-domain-specific-model)
+  - [Comparison with other optimizers](#comparison-with-other-optimizers)
+  - [Troubleshooting](#troubleshooting)
+  - [License](#license)
 
 ---
 

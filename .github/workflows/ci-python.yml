@@ -42,6 +42,7 @@ jobs:
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6
         with:
           files: coverage.xml
+          flags: python
           token: ${{ secrets.CODECOV_TOKEN }}
           version: v11.2.8
           fail_ci_if_error: false

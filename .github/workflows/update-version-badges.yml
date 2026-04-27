@@ -1,0 +1,89 @@
+name: Update version badges
+
+on:
+    push:
+        branches: [ main ]
+        paths:
+            - "pyproject.toml"
+            - "julia/Project.toml"
+            - "rust/Cargo.toml"
+    workflow_dispatch:
+
+permissions:
+    contents: write
+
+jobs:
+    update-badges:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+              with:
+                  ref: ${{ github.ref }}
+
+            - name: Update version badges in README
+              run: |
+                  python3 - <<'PY'
+                  import re, pathlib, tomllib
+
+                  readme = pathlib.Path("README.md")
+                  content = readme.read_text()
+
+                  # --- Python: reads requires-python from pyproject.toml ---
+                  pyproject = tomllib.loads(pathlib.Path("pyproject.toml").read_text())
+                  spec = pyproject["project"]["requires-python"]  # e.g. ">=3.10,<3.16"
+                  lo = re.search(r">=(\d+\.\d+)", spec)
+                  hi = re.search(r"<(\d+)\.(\d+)", spec)
+                  if lo and hi:
+                      lo_ver = lo.group(1)
+                      hi_ver = f"{hi.group(1)}.{int(hi.group(2))-1}"
+                      label = f"{lo_ver}%E2%80%93{hi_ver}"
+                      new_badge = f"[![Python versions](https://img.shields.io/badge/python-{label}-blue?logo=python&logoColor=white)](https://pypi.org/project/givp/)"
+                      content = re.sub(
+                          r"\[!\[Python versions\]\(https://img\.shields\.io/badge/python-[^\)]+\)\]\(https://pypi\.org/project/givp/\)",
+                          new_badge,
+                          content,
+                      )
+                      print(f"Python badge: python-{lo_ver}–{hi_ver}")
+
+                  # --- Julia: reads [compat] julia from julia/Project.toml ---
+                  julia_toml = tomllib.loads(pathlib.Path("julia/Project.toml").read_text())
+                  julia_ver = julia_toml.get("compat", {}).get("julia", "")
+                  # compat entry may be "1.9" or "1.9, 2" — take the lowest
+                  julia_min = re.split(r"[,\s]+", julia_ver.strip())[0]
+                  if julia_min:
+                      label = f"{julia_min}%2B"
+                      new_badge = f"[![Julia](https://img.shields.io/badge/Julia-{label}-9558B2?logo=julia&logoColor=white)](https://julialang.org/)"
+                      content = re.sub(
+                          r"\[!\[Julia\]\(https://img\.shields\.io/badge/Julia-[^\)]+\)\]\(https://julialang\.org/\)",
+                          new_badge,
+                          content,
+                      )
+                      print(f"Julia badge: Julia-{julia_min}+")
+
+                  # --- Rust: reads rust-version from rust/Cargo.toml ---
+                  cargo = tomllib.loads(pathlib.Path("rust/Cargo.toml").read_text())
+                  rust_ver = cargo.get("package", {}).get("rust-version", "")
+                  if rust_ver:
+                      label = f"{rust_ver}%2B"
+                      new_badge = f"[![Rust](https://img.shields.io/badge/Rust-{label}-000000?logo=rust&logoColor=white)](https://www.rust-lang.org/)"
+                      content = re.sub(
+                          r"\[!\[Rust\]\(https://img\.shields\.io/badge/Rust-[^\)]+\)\]\(https://www\.rust-lang\.org/\)",
+                          new_badge,
+                          content,
+                      )
+                      print(f"Rust badge: Rust-{rust_ver}+")
+
+                  readme.write_text(content)
+                  PY
+
+            - name: Commit if changed
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+                  git diff --quiet README.md || (
+                    git add README.md &&
+                    git commit -m "chore(docs): update version badges from config files [skip ci]"
+                  )
+
+            - name: Push
+              run: git push
