@@ -44,6 +44,7 @@ fn perturb_solution(
 }
 
 /// Iterated Local Search.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn ils_search<F>(
     func: &F,
     solution: &mut Vec<f64>,

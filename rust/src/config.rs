@@ -4,17 +4,12 @@
 use crate::error::{GivpError, Result};
 
 /// Optimization direction.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Direction {
+    #[default]
     Minimize,
     Maximize,
-}
-
-impl Default for Direction {
-    fn default() -> Self {
-        Self::Minimize
-    }
 }
 
 /// Algorithm hyper-parameters.

@@ -62,6 +62,7 @@ impl ElitePool {
         false
     }
 
+    #[allow(dead_code)]
     pub fn get_best(&self) -> Result<(&[f64], f64), GivpError> {
         self.pool
             .first()
@@ -77,6 +78,7 @@ impl ElitePool {
         self.pool.len()
     }
 
+    #[allow(dead_code)]
     pub fn clear(&mut self) {
         self.pool.clear();
     }
@@ -124,7 +126,7 @@ mod tests {
         let mut pool = make_pool(2);
         pool.add(vec![1.0, 0.0], 1.0); // cost 1
         pool.add(vec![-4.0, 3.0], 2.0); // cost 2 (diverse enough)
-        // Pool is full; add something with worse cost (3.0) → rejected
+                                        // Pool is full; add something with worse cost (3.0) → rejected
         let added = pool.add(vec![4.0, -4.0], 3.0);
         assert!(!added);
         assert_eq!(pool.len(), 2);

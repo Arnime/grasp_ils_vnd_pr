@@ -13,6 +13,7 @@ pub(crate) struct ConvergenceMonitor {
     diversity_scores: Vec<f64>,
 }
 
+#[allow(dead_code)]
 pub(crate) struct ConvergenceSignal {
     pub should_restart: bool,
     pub should_intensify: bool,

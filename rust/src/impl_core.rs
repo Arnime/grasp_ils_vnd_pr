@@ -59,6 +59,7 @@ fn validate_bounds(
 }
 
 /// Perform path relinking on elite pool pairs.
+#[allow(clippy::too_many_arguments)]
 fn do_path_relinking<F>(
     func: &F,
     elite_pool: &ElitePool,
@@ -391,7 +392,10 @@ mod tests {
     fn test_run_with_invalid_config_errors() {
         // Covers the error branch of config.validate()? in run() at line 116.
         let func = |x: &[f64]| x.iter().sum::<f64>();
-        let cfg = GivpConfig { max_iterations: 0, ..Default::default() };
+        let cfg = GivpConfig {
+            max_iterations: 0,
+            ..Default::default()
+        };
         assert!(run(func, &[(-1.0, 1.0)], cfg).is_err());
     }
 
@@ -408,8 +412,17 @@ mod tests {
         let deadline = Some(Instant::now() - Duration::from_secs(1));
         let mut rng = ChaCha8Rng::seed_from_u64(0);
         do_path_relinking(
-            &func, &pool, &mut best_solution, &mut best_cost,
-            2, &[-5.0, -5.0], &[5.0, 5.0], 10, &mut None, &mut rng, deadline,
+            &func,
+            &pool,
+            &mut best_solution,
+            &mut best_cost,
+            2,
+            &[-5.0, -5.0],
+            &[5.0, 5.0],
+            10,
+            &mut None,
+            &mut rng,
+            deadline,
         );
         // Best solution unchanged since deadline expired immediately
         assert!((best_cost - 1.0).abs() < 1e-10);

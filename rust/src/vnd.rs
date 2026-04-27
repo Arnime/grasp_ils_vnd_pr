@@ -9,9 +9,10 @@ use rand_chacha::ChaCha8Rng;
 use std::time::Instant;
 
 /// Try integer moves for a single variable: base-1, base, base+1.
+#[allow(clippy::too_many_arguments)]
 fn try_integer_moves<F>(
     idx: usize,
-    solution: &mut Vec<f64>,
+    solution: &mut [f64],
     best_cost: f64,
     func: &F,
     lower: &[f64],
@@ -45,9 +46,10 @@ where
 }
 
 /// Try a continuous move: ±5% of span.
+#[allow(clippy::too_many_arguments)]
 fn try_continuous_move<F>(
     idx: usize,
-    solution: &mut Vec<f64>,
+    solution: &mut [f64],
     best_cost: f64,
     func: &F,
     rng: &mut ChaCha8Rng,
@@ -95,8 +97,9 @@ fn perturb_index(
 }
 
 /// Neighborhood 1: single-variable flip (prioritized by sensitivity).
+#[allow(clippy::too_many_arguments)]
 fn neighborhood_flip<F>(
-    solution: &mut Vec<f64>,
+    solution: &mut [f64],
     best_cost: f64,
     func: &F,
     sensitivity: &mut [f64],
@@ -147,8 +150,9 @@ where
 }
 
 /// Neighborhood 2: paired variable swap.
+#[allow(clippy::too_many_arguments)]
 fn neighborhood_swap<F>(
-    solution: &mut Vec<f64>,
+    solution: &mut [f64],
     best_cost: f64,
     func: &F,
     rng: &mut ChaCha8Rng,
@@ -193,8 +197,9 @@ where
 }
 
 /// Neighborhood 3: simultaneous k-variable changes.
+#[allow(clippy::too_many_arguments)]
 fn neighborhood_multiflip<F>(
-    solution: &mut Vec<f64>,
+    solution: &mut [f64],
     best_cost: f64,
     func: &F,
     rng: &mut ChaCha8Rng,
@@ -239,9 +244,10 @@ where
 }
 
 /// VND: Variable Neighborhood Descent.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn local_search_vnd<F>(
     func: &F,
-    solution: &mut Vec<f64>,
+    solution: &mut [f64],
     current_cost: f64,
     half: usize,
     lower: &[f64],
@@ -348,7 +354,16 @@ mod tests {
         assert!((func(&sol) - 2.0).abs() < 1e-10); // invoke closure body
         let deadline = Some(Instant::now() - Duration::from_secs(1));
         let (cost, improved) = neighborhood_flip(
-            &mut sol, 2.0, &func, &mut sensitivity, &mut rng, &lower, &upper, &mut None, 2, deadline,
+            &mut sol,
+            2.0,
+            &func,
+            &mut sensitivity,
+            &mut rng,
+            &lower,
+            &upper,
+            &mut None,
+            2,
+            deadline,
         );
         assert!((cost - 2.0).abs() < 1e-10);
         assert!(!improved);

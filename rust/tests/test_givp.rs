@@ -567,7 +567,7 @@ mod tests {
     fn test_pr_early_return_single_elite() {
         let cfg = GivpConfig {
             max_iterations: 5,
-            elite_size: 1, // pool never reaches 2 members
+            elite_size: 1,            // pool never reaches 2 members
             path_relink_frequency: 1, // trigger PR every iteration
             seed: Some(42),
             integer_split: Some(2),
@@ -607,7 +607,7 @@ mod tests {
             ..Default::default()
         };
         let bounds = vec![(0.1_f64, 0.9_f64); 3]; // degenerate integer range
-        // Should not panic
+                                                  // Should not panic
         let _result = givp(sphere, &bounds, cfg);
     }
 }

@@ -118,6 +118,7 @@ fn build_heuristic_candidate(
 }
 
 /// GRASP construction phase.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn construct_grasp<F>(
     num_vars: usize,
     lower: &[f64],
@@ -195,8 +196,9 @@ mod tests {
         let upper = [5.0f64, 5.0];
         let func = |x: &[f64]| x.iter().map(|&xi| xi * xi).sum::<f64>();
         let deadline = Some(Instant::now() - Duration::from_secs(1));
-        let (sol, cost) =
-            construct_grasp(2, &lower, &upper, &func, None, 0.5, 2, 100, &mut cache, &mut rng, deadline);
+        let (sol, cost) = construct_grasp(
+            2, &lower, &upper, &func, None, 0.5, 2, 100, &mut cache, &mut rng, deadline,
+        );
         assert_eq!(sol.len(), 2);
         assert!(cost.is_finite());
     }
