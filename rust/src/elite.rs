@@ -37,13 +37,12 @@ impl ElitePool {
                     .sum::<f64>()
                     / n
             }
-            None => {
-                a.iter()
-                    .zip(b.iter())
-                    .map(|(&ai, &bi)| (ai - bi).powi(2))
-                    .sum::<f64>()
-                    .sqrt()
-            }
+            None => a
+                .iter()
+                .zip(b.iter())
+                .map(|(&ai, &bi)| (ai - bi).powi(2))
+                .sum::<f64>()
+                .sqrt(),
         }
     }
 

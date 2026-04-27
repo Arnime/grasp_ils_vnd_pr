@@ -86,13 +86,7 @@ fn do_path_relinking<F>(
                 return;
             }
             let (mut pr_sol, pr_cost) = bidirectional_path_relinking(
-                func,
-                &all[i].0,
-                &all[j].0,
-                half,
-                cache,
-                rng,
-                deadline,
+                func, &all[i].0, &all[j].0, half, cache, rng, deadline,
             );
 
             // VND refinement on PR result
@@ -134,7 +128,11 @@ where
     let wrapped = |x: &[f64]| -> f64 {
         nfev.fetch_add(1, Ordering::Relaxed);
         let v = func(x);
-        if is_maximize { -v } else { v }
+        if is_maximize {
+            -v
+        } else {
+            v
+        }
     };
 
     let mut rng = new_rng(config.seed);
@@ -357,7 +355,7 @@ where
         }
 
         // Early stop
-        if let Some(ref cm) = conv_monitor {
+        if let Some(ref mut cm) = conv_monitor {
             let signal = cm.update(best_cost, Some(&elite_pool));
             if signal.no_improve_count >= config.early_stop_threshold {
                 message = "early stop due to stagnation".into();

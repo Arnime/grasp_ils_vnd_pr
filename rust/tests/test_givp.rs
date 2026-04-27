@@ -39,10 +39,7 @@ mod tests {
             max_iterations: 0,
             ..Default::default()
         };
-        assert!(matches!(
-            cfg.validate(),
-            Err(GivpError::InvalidConfig(_))
-        ));
+        assert!(matches!(cfg.validate(), Err(GivpError::InvalidConfig(_))));
     }
 
     #[test]
@@ -51,10 +48,7 @@ mod tests {
             vnd_iterations: 0,
             ..Default::default()
         };
-        assert!(matches!(
-            cfg.validate(),
-            Err(GivpError::InvalidConfig(_))
-        ));
+        assert!(matches!(cfg.validate(), Err(GivpError::InvalidConfig(_))));
     }
 
     #[test]
@@ -63,10 +57,7 @@ mod tests {
             alpha: -0.1,
             ..Default::default()
         };
-        assert!(matches!(
-            cfg.validate(),
-            Err(GivpError::InvalidConfig(_))
-        ));
+        assert!(matches!(cfg.validate(), Err(GivpError::InvalidConfig(_))));
     }
 
     #[test]
@@ -76,10 +67,7 @@ mod tests {
             alpha_max: 0.1,
             ..Default::default()
         };
-        assert!(matches!(
-            cfg.validate(),
-            Err(GivpError::InvalidConfig(_))
-        ));
+        assert!(matches!(cfg.validate(), Err(GivpError::InvalidConfig(_))));
     }
 
     // ── Bounds validation ───────────────────────────────────────────

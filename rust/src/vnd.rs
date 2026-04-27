@@ -125,7 +125,15 @@ where
             try_integer_moves(idx, solution, current_best, func, lower, upper, cache, half)
         } else {
             try_continuous_move(
-                idx, solution, current_best, func, rng, lower, upper, cache, half,
+                idx,
+                solution,
+                current_best,
+                func,
+                rng,
+                lower,
+                upper,
+                cache,
+                half,
             )
         };
         if improved {

@@ -32,7 +32,11 @@ impl ConvergenceMonitor {
         }
     }
 
-    pub fn update(&mut self, current_cost: f64, elite_pool: Option<&ElitePool>) -> ConvergenceSignal {
+    pub fn update(
+        &mut self,
+        current_cost: f64,
+        elite_pool: Option<&ElitePool>,
+    ) -> ConvergenceSignal {
         if current_cost < self.best_ever {
             self.best_ever = current_cost;
             self.no_improve_count = 0;

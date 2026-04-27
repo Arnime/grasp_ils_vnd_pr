@@ -67,5 +67,10 @@ fn bench_rastrigin_10d(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_sphere_5d, bench_rosenbrock_5d, bench_rastrigin_10d);
+criterion_group!(
+    benches,
+    bench_sphere_5d,
+    bench_rosenbrock_5d,
+    bench_rastrigin_10d
+);
 criterion_main!(benches);

@@ -74,7 +74,8 @@ where
         let effective_strength =
             perturbation_strength.max((perturbation_strength as f64 * (1.0 + progress)) as usize);
 
-        let mut candidate = perturb_solution(&best_sol, half, effective_strength, lower, upper, rng);
+        let mut candidate =
+            perturb_solution(&best_sol, half, effective_strength, lower, upper, rng);
         let perturbed_cost = crate::grasp::evaluate_with_cache(&candidate, func, cache, half);
 
         let vnd_cost = local_search_vnd(
