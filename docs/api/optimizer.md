@@ -1,3 +1,3 @@
-# `GraspOptimizer`
+# `GIVPOptimizer`
 
-::: givp.GraspOptimizer
+::: givp.GIVPOptimizer

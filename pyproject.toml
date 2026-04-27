@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "givp"
-version = "0.4.1"
+version = "0.5.0"
 description = "GRASP-ILS-VND with Path Relinking — direction-agnostic metaheuristic optimizer."
 readme = "README.md"
 license = { text = "MIT" }
@@ -51,10 +51,13 @@ dev = [
 fuzz = ["atheris>=2.3.0; sys_platform == 'linux'"]
 docs = ["mkdocs>=1.6", "mkdocs-material>=9.5", "mkdocstrings[python]>=0.26"]
 
+[project.scripts]
+givp = "givp.cli:main"
+
 [project.urls]
-Homepage = "https://github.com/Arnime/grasp_ils_vnd_pr"
-Repository = "https://github.com/Arnime/grasp_ils_vnd_pr"
-Issues = "https://github.com/Arnime/grasp_ils_vnd_pr/issues"
+Homepage = "https://github.com/Arnime/givp"
+Repository = "https://github.com/Arnime/givp"
+Issues = "https://github.com/Arnime/givp/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/givp"]
@@ -110,8 +113,8 @@ ignore = [
     "S101",    # asserts are fine in tests
     "S311",    # numpy/random not crypto
     "PT011",   # pytest.raises(Exception) is fine in our negative tests
-    "PERF401", # list.extend micro-opt; revisit during _impl split
-    "RUF046",  # int() over already-int; revisit during _impl split
+    "PERF401", # list.extend micro-opt; revisit during impl split
+    "RUF046",  # int() over already-int; revisit during impl split
     "RUF002",  # ambiguous unicode in PT-BR docstrings
     "RET504",  # unnecessary assignment before return; readability win
 ]

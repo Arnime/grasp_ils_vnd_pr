@@ -84,4 +84,4 @@ updated with any improvement found along the way.
 4. **Multimodal landscape?** Enable `adaptive_alpha=True` and raise
    `path_relink_frequency`.
 5. **Need reproducible benchmarks?** Pass `seed=42` (or any int) to
-   `grasp_ils_vnd_pr` / `GraspOptimizer`.
+   `givp` / `GIVPOptimizer`.

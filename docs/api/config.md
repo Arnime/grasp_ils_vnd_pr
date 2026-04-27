@@ -1,3 +1,3 @@
-# `GraspIlsVndConfig`
+# `GIVPConfig`
 
-::: givp.GraspIlsVndConfig
+::: givp.GIVPConfig

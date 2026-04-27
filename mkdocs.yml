@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
 site_name: givp
 site_description: GRASP-ILS-VND with Path Relinking — direction-agnostic metaheuristic optimizer.
-repo_url: https://github.com/Arnime/grasp_ils_vnd_pr
+repo_url: https://github.com/Arnime/givp
 edit_uri: edit/main/docs/
 
 theme:
@@ -58,6 +58,7 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Quickstart: quickstart.md
+  - CLI Reference: cli.md
   - Algorithm: algorithm.md
   - Examples: examples.md
   - Comparison: comparison.md
@@ -65,8 +66,8 @@ nav:
   - Roadmap: roadmap.md
   - Security requirements: security-requirements.md
   - API Reference:
-      - grasp_ils_vnd_pr: api/grasp_ils_vnd_pr.md
-      - GraspOptimizer: api/optimizer.md
+      - givp: api/grasp_ils_vnd_pr.md
+      - GIVPOptimizer: api/optimizer.md
       - Configuration: api/config.md
       - Result: api/result.md
       - Exceptions: api/exceptions.md

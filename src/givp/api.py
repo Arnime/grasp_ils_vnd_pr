@@ -3,9 +3,9 @@
 """
 Public API for the ``givp`` library.
 
-Exposes a SciPy-style functional entry point ``grasp_ils_vnd_pr`` and an
-sklearn-style class ``GraspOptimizer``. Both wrap the internal minimizer in
-``givp._core`` and add direction-agnostic objective handling
+Exposes a SciPy-style functional entry point ``givp`` and an
+sklearn-style class ``GIVPOptimizer``. Both wrap the internal minimizer in
+``givp.core`` and add direction-agnostic objective handling
 (``direction='minimize' | 'maximize'``).
 """
 
@@ -16,10 +16,10 @@ from collections.abc import Callable, Iterable, Sequence
 import numpy as np
 from numpy.typing import NDArray
 
-from givp import _core
-from givp._config import GraspIlsVndConfig
-from givp._core._helpers import _set_seed
-from givp._result import OptimizeResult
+from givp import core
+from givp.config import GIVPConfig
+from givp.core.helpers import _set_seed
+from givp.result import OptimizeResult
 
 BoundsLike = Sequence[tuple[float, float]] | tuple[Sequence[float], Sequence[float]]
 ObjectiveFn = Callable[[NDArray[np.float64]], float]
@@ -89,10 +89,10 @@ def _resolve_direction(
     """Reconcile the boolean ``minimize`` flag with the string ``direction``.
 
     Rules:
-        * Both ``None`` -> ``default``.
-        * Only ``minimize`` set -> map to direction.
-        * Only ``direction`` set -> validate and return it.
-        * Both set -> values must agree, otherwise ``ValueError``.
+            * Both ``None`` -> ``default``.
+            * Only ``minimize`` set -> map to direction.
+            * Only ``direction`` set -> validate and return it.
+            * Both set -> values must agree, otherwise ``ValueError``.
     """
     if direction is not None and direction not in ("minimize", "maximize"):
         raise ValueError(
@@ -111,14 +111,14 @@ def _resolve_direction(
     return derived
 
 
-def grasp_ils_vnd_pr(
+def givp(
     func: ObjectiveFn,
     bounds: BoundsLike,
     *,
     num_vars: int | None = None,
     minimize: bool | None = None,
     direction: str | None = None,
-    config: GraspIlsVndConfig | None = None,
+    config: GIVPConfig | None = None,
     initial_guess: Sequence[float] | None = None,
     iteration_callback: IterationCallback | None = None,
     seed: int | None = None,
@@ -128,42 +128,40 @@ def grasp_ils_vnd_pr(
     Minimize (or maximize) a scalar function with GRASP-ILS-VND-PR.
 
     Args:
-        func: Objective callable mapping a 1-D ``np.ndarray`` to a scalar.
-        bounds: Either a sequence of ``(low, high)`` pairs (SciPy style) or a
-            ``(lower, upper)`` tuple of two equally-sized sequences.
-        num_vars: Optional explicit number of variables. Inferred from
-            ``bounds`` when omitted.
-        minimize: Boolean flag for the optimization sense. ``True`` minimizes,
-            ``False`` maximizes. Preferred over ``direction`` for new code.
-        direction: ``'minimize'`` or ``'maximize'`` (SciPy/Optuna style). Kept
-            for backward compatibility. Ignored when ``minimize`` is given.
-            Defaults to ``'minimize'`` when neither flag is supplied.
-        config: Algorithm hyper-parameters. ``GraspIlsVndConfig()`` is used
-            when omitted. Any sense field on ``config`` is overridden by the
-            explicit ``minimize``/``direction`` kwargs when provided.
-        initial_guess: Optional warm-start vector, evaluated and inserted in
-            the elite pool before the first iteration.
-        iteration_callback: Optional callable invoked once per outer iteration
-            with ``(iteration, best_cost_in_core_sign, best_solution)``.
-        seed: Optional integer seed for full reproducibility. When given,
-            every internal RNG is derived deterministically from this seed,
-            so two calls with the same inputs return the same result.
-        verbose: If True, prints progress information to stdout.
+            func: Objective callable mapping a 1-D ``np.ndarray`` to a scalar.
+            bounds: Either a sequence of ``(low, high)`` pairs (SciPy style) or a
+                    ``(lower, upper)`` tuple of two equally-sized sequences.
+            num_vars: Optional explicit number of variables. Inferred from
+                    ``bounds`` when omitted.
+            minimize: Boolean flag for the optimization sense. ``True`` minimizes,
+                    ``False`` maximizes. Preferred over ``direction`` for new code.
+            direction: ``'minimize'`` or ``'maximize'`` (SciPy/Optuna style). Kept
+                    for backward compatibility. Ignored when ``minimize`` is given.
+                    Defaults to ``'minimize'`` when neither flag is supplied.
+            config: Algorithm hyper-parameters. ``GIVPConfig()`` is used
+                    when omitted. Any sense field on ``config`` is overridden by the
+                    explicit ``minimize``/``direction`` kwargs when provided.
+            initial_guess: Optional warm-start vector, evaluated and inserted in
+                    the elite pool before the first iteration.
+            iteration_callback: Optional callable invoked once per outer iteration
+                    with ``(iteration, best_cost_in_core_sign, best_solution)``.
+            seed: Optional integer seed for full reproducibility. When given,
+                    every internal RNG is derived deterministically from this seed,
+                    so two calls with the same inputs return the same result.
+            verbose: If True, prints progress information to stdout.
 
     Returns:
-        OptimizeResult: Dataclass with ``x`` (best solution), ``fun`` (best
-        objective value in the **user's original sign**) and metadata.
+            OptimizeResult: Dataclass with ``x`` (best solution), ``fun`` (best
+            objective value in the **user's original sign**) and metadata.
 
     Raises:
-        ValueError: If both ``minimize`` and ``direction`` are passed with
-            conflicting values, or if ``direction`` is not one of
-            ``'minimize'`` / ``'maximize'``.
+            ValueError: If both ``minimize`` and ``direction`` are passed with
+                    conflicting values, or if ``direction`` is not one of
+                    ``'minimize'`` / ``'maximize'``.
     """
     resolved_direction = _resolve_direction(minimize, direction)
-    cfg = config or GraspIlsVndConfig()
-    cfg = GraspIlsVndConfig(
-        **{**cfg.__dict__, "minimize": resolved_direction == "minimize"}
-    )
+    cfg = config or GIVPConfig()
+    cfg = GIVPConfig(**{**cfg.__dict__, "minimize": resolved_direction == "minimize"})
 
     # Pin the master RNG when a seed was supplied so all internal helpers
     # derive deterministic child seeds. ``None`` restores the default
@@ -176,11 +174,11 @@ def grasp_ils_vnd_pr(
     # split. Callers with mixed continuous/integer models must set
     # ``config.integer_split`` explicitly (or use the legacy adapter).
     if cfg.integer_split is None:
-        cfg = GraspIlsVndConfig(**{**cfg.__dict__, "integer_split": n})
+        cfg = GIVPConfig(**{**cfg.__dict__, "integer_split": n})
     nfev_counter = [0]
     wrapped = _wrap_objective(func, cfg.direction, nfev_counter)
 
-    sol_list, core_value = _core.grasp_ils_vnd(
+    sol_list, core_value = core.grasp_ils_vnd(
         wrapped,
         n,
         cfg.as_core_config(),
@@ -207,9 +205,9 @@ def grasp_ils_vnd_pr(
     )
 
 
-class GraspOptimizer:
+class GIVPOptimizer:
     """
-    Object-oriented wrapper around :func:`grasp_ils_vnd_pr`.
+    Object-oriented wrapper around :func:`givp`.
 
     Holds configuration and bounds, exposes a ``run()`` method that returns an
     :class:`OptimizeResult`. The instance also caches the best solution across
@@ -224,7 +222,7 @@ class GraspOptimizer:
         num_vars: int | None = None,
         minimize: bool | None = None,
         direction: str | None = None,
-        config: GraspIlsVndConfig | None = None,
+        config: GIVPConfig | None = None,
         initial_guess: Sequence[float] | None = None,
         iteration_callback: IterationCallback | None = None,
         seed: int | None = None,
@@ -235,7 +233,7 @@ class GraspOptimizer:
         self.num_vars = num_vars
         self.direction = _resolve_direction(minimize, direction)
         self.minimize = self.direction == "minimize"
-        self.config = config or GraspIlsVndConfig()
+        self.config = config or GIVPConfig()
         self.initial_guess = initial_guess
         self.iteration_callback = iteration_callback
         self.seed = seed
@@ -254,7 +252,7 @@ class GraspOptimizer:
 
     def run(self) -> OptimizeResult:
         """Execute one optimization round and update the historical best."""
-        result = grasp_ils_vnd_pr(
+        result = givp(
             self.func,
             self.bounds,
             num_vars=self.num_vars,

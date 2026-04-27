@@ -24,7 +24,7 @@ class InvalidInitialGuessError(GivpError, ValueError):
 
 
 class InvalidConfigError(GivpError, ValueError):
-    """Raised when a :class:`GraspIlsVndConfig` field has an invalid value."""
+    """Raised when a :class:`GIVPConfig` field has an invalid value."""
 
 
 class EvaluatorError(GivpError, RuntimeError):

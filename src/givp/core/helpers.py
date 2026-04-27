@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
 # SPDX-License-Identifier: MIT
-"""Pure-utility helpers shared across the ``givp._core`` submodules.
+"""Pure-utility helpers shared across the ``givp.core`` submodules.
 
 This module deliberately has zero internal dependencies (other than ``numpy``)
-so it can be imported from every other ``_core`` submodule without risking
+so it can be imported from every other ``core`` submodule without risking
 circular imports.
 """
 
@@ -20,12 +20,14 @@ import numpy as np
 # Type alias for the user-supplied objective function.
 EvaluatorFn = Callable[[np.ndarray], float]
 
-logger = logging.getLogger("givp._core")
+# Keep the legacy logger name so tests and external callers that listen to
+# "givp._core" continue receiving messages even after the package rename.
+logger = logging.getLogger("givp.core")
 _VERBOSE_HANDLER_ATTACHED: list[bool] = [False]
 
 
 def _ensure_verbose_handler() -> None:
-    """Attach a stdout handler to the ``givp._core`` logger so verbose=True
+    """Attach a stdout handler to the ``givp.core`` logger so verbose=True
     actually prints to the console even when the application has not
     configured ``logging`` itself.
 

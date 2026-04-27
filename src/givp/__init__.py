@@ -4,9 +4,9 @@
 givp — GRASP-ILS-VND with Path Relinking optimizer.
 
 Public API:
-    grasp_ils_vnd_pr(func, bounds, direction='minimize', ...) -> OptimizeResult
-    GraspOptimizer(...).run() -> OptimizeResult
-    GraspIlsVndConfig          (algorithm hyper-parameters)
+    givp(func, bounds, direction='minimize', ...) -> OptimizeResult
+    GIVPOptimizer(...).run() -> OptimizeResult
+    GIVPConfig          (algorithm hyper-parameters)
     OptimizeResult             (result dataclass, scipy-like)
 
 The algorithm is direction-agnostic: pass ``direction='minimize'`` (default) or
@@ -14,9 +14,9 @@ The algorithm is direction-agnostic: pass ``direction='minimize'`` (default) or
 while always returning the value in the user's original sign.
 """
 
-from givp._api import GraspOptimizer, grasp_ils_vnd_pr
-from givp._config import GraspIlsVndConfig
-from givp._exceptions import (
+from givp.api import GIVPOptimizer, givp
+from givp.config import GIVPConfig
+from givp.exceptions import (
     EmptyPoolError,
     EvaluatorError,
     GivpError,
@@ -24,19 +24,20 @@ from givp._exceptions import (
     InvalidConfigError,
     InvalidInitialGuessError,
 )
-from givp._result import OptimizeResult
+from givp.result import OptimizeResult, TerminationReason
 
 __all__ = [
     "EmptyPoolError",
     "EvaluatorError",
+    "GIVPConfig",
+    "GIVPOptimizer",
     "GivpError",
-    "GraspIlsVndConfig",
-    "GraspOptimizer",
     "InvalidBoundsError",
     "InvalidConfigError",
     "InvalidInitialGuessError",
     "OptimizeResult",
-    "grasp_ils_vnd_pr",
+    "TerminationReason",
+    "givp",
 ]
 
-__version__ = "0.4.1"
+__version__ = "0.5.0"

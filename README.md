@@ -2,9 +2,9 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/givp?cacheSeconds=300)](https://pypi.org/project/givp/)
 [![Python versions](https://img.shields.io/pypi/pyversions/givp?cacheSeconds=300)](https://pypi.org/project/givp/)
-[![CI](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/branch/main/graph/badge.svg)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Arnime/grasp_ils_vnd_pr/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Arnime/grasp_ils_vnd_pr)
+[![CI](https://github.com/Arnime/givp/actions/workflows/ci.yml/badge.svg)](https://github.com/Arnime/givp/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/Arnime/givp/branch/main/graph/badge.svg)](https://codecov.io/gh/Arnime/givp)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Arnime/givp/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Arnime/givp)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12627/badge)](https://www.bestpractices.dev/projects/12627)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Ruff](https://img.shields.io/badge/linter-ruff-red)](https://github.com/astral-sh/ruff)
@@ -56,8 +56,8 @@ pip install givp
 From source (editable):
 
 ```bash
-git clone https://github.com/Arnime/grasp_ils_vnd_pr.git
-cd grasp_ils_vnd_pr
+git clone https://github.com/Arnime/givp.git
+cd givp
 pip install -e .[dev]
 ```
 
@@ -69,12 +69,12 @@ Requires Python 3.10+ and NumPy.
 
 ```python
 import numpy as np
-from givp import grasp_ils_vnd_pr
+from givp import givp
 
 def sphere(x: np.ndarray) -> float:
     return float(np.sum(x ** 2))
 
-result = grasp_ils_vnd_pr(sphere, bounds=[(-5.0, 5.0)] * 10)
+result = givp(sphere, bounds=[(-5.0, 5.0)] * 10)
 print(result.x)        # best vector found
 print(result.fun)      # best objective value
 print(result.nfev)     # number of evaluations performed
@@ -84,7 +84,7 @@ Default behavior:
 
 - **Minimization** (`minimize=True` / `direction="minimize"`).
 - All variables treated as continuous.
-- Default hyper-parameters (`GraspIlsVndConfig()`).
+- Default hyper-parameters (`GIVPConfig()`).
 
 ---
 
@@ -96,23 +96,23 @@ value of `func`. Two equivalent ways to declare it:
 ### Boolean flag (recommended)
 
 ```python
-from givp import grasp_ils_vnd_pr
+from givp import givp
 
 def gain(x):
     return float((x ** 2).sum())  # higher is better
 
-result = grasp_ils_vnd_pr(gain, [(-5, 5)] * 10, minimize=False)
+result = givp(gain, [(-5, 5)] * 10, minimize=False)
 assert result.direction == "maximize"
 ```
 
 ### String flag (SciPy/Optuna compatible)
 
 ```python
-result = grasp_ils_vnd_pr(gain, [(-5, 5)] * 10, direction="maximize")
+result = givp(gain, [(-5, 5)] * 10, direction="maximize")
 ```
 
-Both flags are accepted on `grasp_ils_vnd_pr`, on `GraspOptimizer` and on
-`GraspIlsVndConfig`. Setting **both** simultaneously is allowed only when they
+Both flags are accepted on `givp`, on `GIVPOptimizer` and on
+`GIVPConfig`. Setting **both** simultaneously is allowed only when they
 agree; conflicting values raise `ValueError`.
 
 > **Internal note.** The core algorithm always minimizes. When you ask for
@@ -139,14 +139,14 @@ continuous variables followed by some integer variables in the decision
 vector), use `integer_split` on the configuration:
 
 ```python
-from givp import GraspIlsVndConfig, grasp_ils_vnd_pr
+from givp import GIVPConfig, givp
 
 n_cont, n_int = 12, 8
 bounds = [(-5.0, 5.0)] * n_cont + [(0.0, 4.0)] * n_int
 
-cfg = GraspIlsVndConfig(integer_split=n_cont)  # indices >= n_cont are integer
+cfg = GIVPConfig(integer_split=n_cont)  # indices >= n_cont are integer
 
-result = grasp_ils_vnd_pr(my_objective, bounds, config=cfg)
+result = givp(my_objective, bounds, config=cfg)
 ```
 
 Special cases:
@@ -163,16 +163,16 @@ Special cases:
 ## Object-oriented API and multi-start
 
 When you want to keep configuration around, run the optimizer multiple times
-and track the best result automatically, use `GraspOptimizer`:
+and track the best result automatically, use `GIVPOptimizer`:
 
 ```python
-from givp import GraspIlsVndConfig, GraspOptimizer
+from givp import GIVPConfig, GIVPOptimizer
 
-opt = GraspOptimizer(
+opt = GIVPOptimizer(
     func=sphere,
     bounds=[(-5.0, 5.0)] * 10,
     minimize=True,
-    config=GraspIlsVndConfig(max_iterations=50, time_limit=30.0),
+    config=GIVPConfig(max_iterations=50, time_limit=30.0),
     verbose=True,
 )
 for _ in range(5):
@@ -189,10 +189,10 @@ all `run()` calls, in the **user's original sign**.
 ## Configuration cookbook
 
 ```python
-from givp import GraspIlsVndConfig
+from givp import GIVPConfig
 
 # 1) Fast triage (small budget, no warm-up)
-cfg_fast = GraspIlsVndConfig(
+cfg_fast = GIVPConfig(
     max_iterations=20,
     vnd_iterations=50,
     ils_iterations=5,
@@ -202,7 +202,7 @@ cfg_fast = GraspIlsVndConfig(
 )
 
 # 2) Production-quality run with wall-clock budget
-cfg_quality = GraspIlsVndConfig(
+cfg_quality = GIVPConfig(
     max_iterations=200,
     vnd_iterations=300,
     ils_iterations=15,
@@ -216,7 +216,7 @@ cfg_quality = GraspIlsVndConfig(
 )
 
 # 3) Expensive objective: maximize cache reuse, keep evaluations few
-cfg_expensive = GraspIlsVndConfig(
+cfg_expensive = GIVPConfig(
     num_candidates_per_step=8,
     cache_size=50_000,
     use_cache=True,
@@ -224,7 +224,7 @@ cfg_expensive = GraspIlsVndConfig(
 )
 
 # 4) Maximization with hourly-shaped layout (3 plants × 24 hours)
-cfg_hydro = GraspIlsVndConfig(
+cfg_hydro = GIVPConfig(
     minimize=False,
     integer_split=72,         # first 72 vars continuous, rest integer
     max_iterations=120,
@@ -236,7 +236,7 @@ cfg_hydro = GraspIlsVndConfig(
 
 ## Inspecting progress (callback and verbose)
 
-Both `grasp_ils_vnd_pr` and `GraspOptimizer` accept:
+Both `givp` and `GIVPOptimizer` accept:
 
 - `verbose=True` — prints per-iteration cost and cache statistics.
 - `iteration_callback=fn` — calls `fn(iteration_index, best_cost, best_solution)`
@@ -250,7 +250,7 @@ costs = []
 def log_iter(i, cost, sol):
     costs.append(cost)
 
-result = grasp_ils_vnd_pr(
+result = givp(
     sphere,
     [(-5, 5)] * 10,
     iteration_callback=log_iter,
@@ -262,29 +262,29 @@ result = grasp_ils_vnd_pr(
 
 ## Public API reference
 
-### `grasp_ils_vnd_pr(...) -> OptimizeResult`
+### `givp(...) -> OptimizeResult`
 
 ```python
-grasp_ils_vnd_pr(
+givp(
     func: Callable[[np.ndarray], float],
     bounds: Sequence[tuple[float, float]] | tuple[Sequence[float], Sequence[float]],
     *,
     num_vars: int | None = None,
     minimize: bool | None = None,
     direction: str | None = None,         # 'minimize' or 'maximize'
-    config: GraspIlsVndConfig | None = None,
+    config: GIVPConfig | None = None,
     initial_guess: Sequence[float] | None = None,
     iteration_callback: Callable[[int, float, np.ndarray], None] | None = None,
     verbose: bool = False,
 ) -> OptimizeResult
 ```
 
-### `class GraspOptimizer`
+### `class GIVPOptimizer`
 
 Same constructor signature, exposes `.run() -> OptimizeResult` and tracks
 `.best_x`, `.best_fun`, `.history`.
 
-### `class GraspIlsVndConfig` (dataclass)
+### `class GIVPConfig` (dataclass)
 
 All hyper-parameters listed in the [glossary](#glossary-of-hyper-parameters).
 
@@ -349,12 +349,12 @@ def make_objective(model):
             return float("inf")  # treat infeasibility as worst possible cost
     return f
 
-result = grasp_ils_vnd_pr(make_objective(my_model), bounds=my_bounds)
+result = givp(make_objective(my_model), bounds=my_bounds)
 ```
 
 For an end-to-end example with a mixed continuous/integer hydropower model,
 see the SOG2 adapter in the upstream project repository
-(`grasp_ils_vnd_pr.py`).
+(`givp.py`).
 
 ---
 

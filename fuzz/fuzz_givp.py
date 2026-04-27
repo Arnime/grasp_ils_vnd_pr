@@ -32,9 +32,9 @@ import numpy as np
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from givp import GraspIlsVndConfig, grasp_ils_vnd_pr
+from givp import GIVPConfig, givp
 
-_FAST_CFG = GraspIlsVndConfig(
+_FAST_CFG = GIVPConfig(
     max_iterations=2,
     vnd_iterations=3,
     ils_iterations=1,
@@ -69,7 +69,7 @@ def _fuzz_bytes(data: bytes) -> None:
             return
         bounds.append((lo, lo + abs(width)))
 
-    result = grasp_ils_vnd_pr(
+    result = givp(
         _sphere,
         bounds,
         direction=direction,
@@ -105,7 +105,7 @@ _bounds_st = st.lists(
 @given(bounds=_bounds_st, direction=st.sampled_from(["minimize", "maximize"]))
 def fuzz_with_hypothesis(bounds: list[tuple[float, float]], direction: str) -> None:
     """Hypothesis-based fuzz target: works on Windows, macOS and Linux."""
-    result = grasp_ils_vnd_pr(
+    result = givp(
         _sphere,
         bounds,
         direction=direction,

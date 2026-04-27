@@ -1,31 +1,31 @@
-"""Tests covering ``GraspIlsVndConfig`` validation and direction logic."""
+"""Tests covering ``GIVPConfig`` validation and direction logic."""
 
 from __future__ import annotations
 
 import pytest
 
-from givp import GraspIlsVndConfig, InvalidConfigError
+from givp import GIVPConfig, InvalidConfigError
 
 
 def test_default_config_is_valid():
-    cfg = GraspIlsVndConfig()
+    cfg = GIVPConfig()
     assert cfg.minimize is True
     assert cfg.direction == "minimize"
 
 
 def test_minimize_false_sets_direction_maximize():
-    cfg = GraspIlsVndConfig(minimize=False)
+    cfg = GIVPConfig(minimize=False)
     assert cfg.direction == "maximize"
 
 
 def test_direction_maximize_sets_minimize_false():
-    cfg = GraspIlsVndConfig(direction="maximize")
+    cfg = GIVPConfig(direction="maximize")
     assert cfg.minimize is False
 
 
 def test_invalid_direction_raises_invalid_config():
     with pytest.raises(InvalidConfigError):
-        GraspIlsVndConfig(direction="bogus")  # type: ignore[arg-type]
+        GIVPConfig(direction="bogus")  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(
@@ -44,48 +44,48 @@ def test_invalid_direction_raises_invalid_config():
 )
 def test_positive_int_fields_reject_zero(field, value):
     with pytest.raises(InvalidConfigError):
-        GraspIlsVndConfig(**{field: value})
+        GIVPConfig(**{field: value})
 
 
 def test_perturbation_strength_negative_rejected():
     with pytest.raises(InvalidConfigError):
-        GraspIlsVndConfig(perturbation_strength=-1)
+        GIVPConfig(perturbation_strength=-1)
 
 
 @pytest.mark.parametrize("alpha", [-0.1, 1.1, 2.0])
 def test_alpha_out_of_range_rejected(alpha):
     with pytest.raises(InvalidConfigError):
-        GraspIlsVndConfig(alpha=alpha)
+        GIVPConfig(alpha=alpha)
 
 
 def test_alpha_min_greater_than_alpha_max_rejected():
     with pytest.raises(InvalidConfigError):
-        GraspIlsVndConfig(alpha_min=0.5, alpha_max=0.1)
+        GIVPConfig(alpha_min=0.5, alpha_max=0.1)
 
 
 @pytest.mark.parametrize("field", ["alpha_min", "alpha_max"])
 def test_alpha_bounds_out_of_range_rejected(field):
     with pytest.raises(InvalidConfigError):
-        GraspIlsVndConfig(**{field: 1.5})  # type: ignore[arg-type]
+        GIVPConfig(**{field: 1.5})  # type: ignore[arg-type]
 
 
 def test_time_limit_negative_rejected():
     with pytest.raises(InvalidConfigError):
-        GraspIlsVndConfig(time_limit=-1.0)
+        GIVPConfig(time_limit=-1.0)
 
 
 def test_integer_split_negative_rejected():
     with pytest.raises(InvalidConfigError):
-        GraspIlsVndConfig(integer_split=-1)
+        GIVPConfig(integer_split=-1)
 
 
 def test_integer_split_none_allowed():
-    cfg = GraspIlsVndConfig(integer_split=None)
+    cfg = GIVPConfig(integer_split=None)
     assert cfg.integer_split is None
 
 
 def test_as_core_config_copies_fields():
-    cfg = GraspIlsVndConfig(max_iterations=7, alpha=0.3)
+    cfg = GIVPConfig(max_iterations=7, alpha=0.3)
     core_cfg = cfg.as_core_config()
     assert core_cfg.max_iterations == 7
     assert core_cfg.alpha == pytest.approx(0.3)
