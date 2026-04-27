@@ -52,5 +52,5 @@ The following are explicitly out of scope for this project:
 ## Feedback
 
 If a feature you need is missing, please open a
-[GitHub Issue](https://github.com/Arnime/givp/issues) with the
+[GitHub Issue](https://github.com/Arnime/grasp_ils_vnd_pr/issues) with the
 label `enhancement`.

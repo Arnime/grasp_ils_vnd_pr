@@ -55,9 +55,9 @@ docs = ["mkdocs>=1.6", "mkdocs-material>=9.5", "mkdocstrings[python]>=0.26"]
 givp = "givp.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/Arnime/givp"
-Repository = "https://github.com/Arnime/givp"
-Issues = "https://github.com/Arnime/givp/issues"
+Homepage = "https://github.com/Arnime/grasp_ils_vnd_pr"
+Repository = "https://github.com/Arnime/grasp_ils_vnd_pr"
+Issues = "https://github.com/Arnime/grasp_ils_vnd_pr/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/givp"]
