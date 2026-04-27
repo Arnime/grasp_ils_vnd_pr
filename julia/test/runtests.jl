@@ -158,8 +158,10 @@ using LinearAlgebra
             @test x == [1.0, 2.0]
             @test fun == 3.0
             @test length(r) == 2
-            # Third iteration returns nothing
-            @test iterate(r, 3) === nothing
+            # Explicit state-by-state iteration to cover all branches
+            @test iterate(r) == ([1.0, 2.0], 2)       # state=1
+            @test iterate(r, 2) == (3.0, 3)            # state=2
+            @test iterate(r, 3) === nothing             # state=3
         end
     end
 
@@ -535,9 +537,10 @@ using LinearAlgebra
             @test val == round(val)
             @test 1.0 <= val <= 5.0
 
-            # hi < lo (degenerate) → midpoint
-            val = GIVP.sample_integer_from_bounds(2.9, 3.1, rng)
-            @test val == 3.0
+            # hi < lo (degenerate) → midpoint fallback
+            # ceil(3.1)=4, floor(3.9)=3, so hi(3) < lo(4) → fallback
+            val = GIVP.sample_integer_from_bounds(3.1, 3.9, rng)
+            @test val == round(Int, (3.1 + 3.9) / 2.0)  # midpoint = 4
         end
 
         @testset "build_random_candidate" begin
@@ -634,19 +637,26 @@ using LinearAlgebra
 
         @testset "try_integer_moves" begin
             GIVP.set_integer_split!(0)  # all integer
-            # sol where changing index improves cost
-            sol = [5.0, 5.0]
             cost_fn(x) = sum(x.^2)
+
+            # with bounds — should improve (covers return result, c, true with bounds)
+            sol = [5.0, 5.0]
             new_sol, new_cost, improved = GIVP.try_integer_moves(
-                1, sol, cost_fn(sol), cost_fn, [0.0, 0.0], [10.0, 10.0])
+                1, copy(sol), cost_fn(sol), cost_fn, [0.0, 0.0], [10.0, 10.0])
             @test improved
             @test new_cost < 50.0
 
             # with no bounds
             sol2 = [5.0]
             new_sol2, new_cost2, imp2 = GIVP.try_integer_moves(
-                1, sol2, cost_fn(sol2), cost_fn, nothing, nothing)
+                1, copy(sol2), cost_fn(sol2), cost_fn, nothing, nothing)
             @test imp2
+
+            # no improvement possible — already at optimal for that index
+            sol3 = [0.0, 0.0]
+            new_sol3, new_cost3, imp3 = GIVP.try_integer_moves(
+                1, copy(sol3), cost_fn(sol3), cost_fn, [0.0, 0.0], [0.0, 0.0])
+            @test !imp3
             GIVP.set_integer_split!(nothing)
         end
 
@@ -740,6 +750,14 @@ using LinearAlgebra
             new_sol, new_cost = GIVP.neighborhood_swap(sphere, sol, sphere(sol), 4;
                 lower=lower, upper=upper)
             @test new_cost <= sphere(sol)
+
+            # no improvement scenario (covers final return at end of loop)
+            # Use a function where current sol is already optimal-ish
+            flat_fn(x) = 0.0  # always returns 0, no swap can improve
+            ns_sol, ns_cost = GIVP.neighborhood_swap(flat_fn, [1.0, 1.0, 1.0, 1.0],
+                0.0, 4; lower=[-5.0,-5.0,0.0,0.0], upper=[5.0,5.0,5.0,5.0],
+                max_attempts=5, first_improvement=false)
+            @test ns_cost == 0.0
 
             # without bounds
             new_sol2, _ = GIVP.neighborhood_swap(sphere, sol, sphere(sol), 4)
@@ -867,11 +885,22 @@ using LinearAlgebra
             @test best_cost <= sphere(sol)
             @test length(best_sol) == 4
 
-            # with cache
+            # with cache (large enough to always hit)
             cache = GIVP.EvaluationCache()
             best_sol2, best_cost2 = GIVP.ils_search(sol, sphere(sol), 4, sphere, config;
                 lower=lower, upper=upper, cache=cache)
             @test best_cost2 <= sphere(sol)
+
+            # with tiny cache (maxsize=1) to force cache misses after VND evicts entries
+            tiny_cache = GIVP.EvaluationCache(; maxsize=1)
+            best_sol5, best_cost5 = GIVP.ils_search(sol, sphere(sol), 4, sphere, config;
+                lower=lower, upper=upper, cache=tiny_cache)
+            @test best_cost5 <= sphere(sol)
+
+            # without cache (covers else branch: cost_fn(perturbed))
+            best_sol4, best_cost4 = GIVP.ils_search(sol, sphere(sol), 4, sphere, config;
+                lower=lower, upper=upper)
+            @test best_cost4 <= sphere(sol)
 
             # expired deadline
             best_sol3, best_cost3 = GIVP.ils_search(sol, sphere(sol), 4, sphere, config;
@@ -901,6 +930,17 @@ using LinearAlgebra
             best_sol, best_cost = GIVP.path_relinking(sphere, source, target;
                 strategy=:best, seed=42)
             @test best_cost <= sphere(source)
+        end
+
+        @testset "path_relinking_best no improving move (break)" begin
+            # cost function where moving towards target never improves
+            # source is at optimum, target is worse in every component
+            opt_fn(x) = sum((x .- 1.0).^2)  # optimum at [1,1,1]
+            source = [1.0, 1.0, 1.0]
+            target = [10.0, 10.0, 10.0]
+            best_sol, best_cost = GIVP.path_relinking(opt_fn, source, target;
+                strategy=:best, seed=42)
+            @test best_cost == opt_fn(source)  # can't improve
         end
 
         @testset "identical solutions" begin
@@ -1038,6 +1078,42 @@ using LinearAlgebra
             elapsed = time() - t0
             @test elapsed < 5.0  # should stop well before 1000 iterations
             @test isfinite(cost)
+        end
+
+        @testset "grasp_ils_vnd with time_limit verbose" begin
+            GIVP.set_seed!(42)
+            sphere(x) = sum(x.^2)
+            # Very short time limit + verbose to cover the TIME LIMIT log lines
+            cfg = GIVPConfig(; max_iterations=10000, vnd_iterations=50, ils_iterations=5,
+                            time_limit=0.01, integer_split=2)
+            sol, cost = GIVP.grasp_ils_vnd(sphere, 2, cfg;
+                verbose=true, lower=[0.0, 0.0], upper=[10.0, 10.0])
+            @test isfinite(cost)
+        end
+
+        @testset "grasp_ils_vnd stagnation restart improves best" begin
+            # Flat function that forces stagnation (all iterations get same cost),
+            # then switches to real landscape so restart can improve.
+            call_count = Ref(0)
+            function flat_then_real(x)
+                call_count[] += 1
+                if call_count[] < 800
+                    return 1000.0  # flat → forces stagnation
+                else
+                    return sum(x.^2)  # restart evaluations get real cost
+                end
+            end
+            GIVP.set_seed!(42)
+            # max_iterations=8 → stagnation threshold = 2
+            cfg = GIVPConfig(; max_iterations=8, vnd_iterations=5, ils_iterations=1,
+                            early_stop_threshold=200, use_elite_pool=false,
+                            use_cache=false, use_convergence_monitor=false,
+                            integer_split=2, perturbation_strength=1,
+                            num_candidates_per_step=3)
+            sol, cost = GIVP.grasp_ils_vnd(flat_then_real, 2, cfg;
+                lower=[0.0, 0.0], upper=[10.0, 10.0])
+            @test isfinite(cost)
+            @test cost < 1000.0  # restart found better than flat
         end
 
         @testset "grasp_ils_vnd without optional components" begin

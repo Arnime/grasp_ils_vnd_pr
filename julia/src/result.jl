@@ -65,4 +65,7 @@ end
 
 # Allow tuple unpacking: x, fun = result
 Base.iterate(r::OptimizeResult, state=1) = state == 1 ? (r.x, 2) : state == 2 ? (r.fun, 3) : nothing
-Base.length(::OptimizeResult) = 2
+
+function Base.length(::OptimizeResult)
+    return 2
+end

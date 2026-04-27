@@ -16,3 +16,7 @@ htmlcov/
 .idea/
 .vscode/
 site/
+
+# Julia coverage files
+*.cov
+julia/benchmarks/results.json

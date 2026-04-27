@@ -153,5 +153,8 @@ max-module-lines = 2000
 #     "duplicate-code",
 # ]
 
+[tool.poetry]
+packages = [{include = "givp", from = "python/src"}]
+
 [tool.poetry.group.dev.dependencies]
 nox = "^2026.4.10"
