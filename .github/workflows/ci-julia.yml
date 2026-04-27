@@ -34,7 +34,7 @@ jobs:
       - uses: julia-actions/cache@d10a6fd8f31b12404a54613ebad242900567f2b9 # v2
 
       - name: Install dependencies
-        run: julia --project=julia -e 'using Pkg; Pkg.instantiate()'
+        run: julia --project=julia -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
 
       - name: Run tests
         run: julia --project=julia -e 'using Pkg; Pkg.test()'
