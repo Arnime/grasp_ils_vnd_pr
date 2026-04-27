@@ -38,4 +38,4 @@ print(result.x, result.fun)
 ```
 
 See the [Quickstart](quickstart.md) for richer examples and the
-[API Reference](api/givp.md) for the full surface.
+[API Reference](api/grasp_ils_vnd_pr.md) for the full surface.

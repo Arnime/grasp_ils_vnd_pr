@@ -317,7 +317,7 @@ best_sol, best_cost = path_relinking(
     cost_fn=sphere,
     source=source,
     target=target,
-    strategy="best",   # "best" picks the locally optimal step; "forward" takes all steps
+    strategy="best",   # "best" picks the locally optimal step;
     seed=0,
 )
 print("PR best cost:", best_cost)

@@ -66,7 +66,7 @@ nav:
   - Roadmap: roadmap.md
   - Security requirements: security-requirements.md
   - API Reference:
-      - givp: api/givp.md
+      - givp: api/grasp_ils_vnd_pr.md
       - GIVPOptimizer: api/optimizer.md
       - Configuration: api/config.md
       - Result: api/result.md
