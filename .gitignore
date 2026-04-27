@@ -22,3 +22,8 @@ site/
 julia/benchmarks/results.json
 julia/Manifest.toml
 julia/benchmarks/Manifest.toml
+
+# Rust
+rust/target/
+
+Notebooks/
