@@ -10,6 +10,7 @@ on:
     paths:
       - 'julia/**'
       - '.github/workflows/ci-julia.yml'
+  workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -19,6 +20,8 @@ permissions: read-all
 jobs:
   test:
     runs-on: ${{ matrix.os }}
+    permissions:
+      actions: write   # required by julia-actions/cache delete-old-caches
     strategy:
       fail-fast: false
       matrix:
