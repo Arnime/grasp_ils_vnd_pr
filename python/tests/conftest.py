@@ -7,8 +7,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from givp import benchmarks
+
 from tests.fixtures import problems as _problems
 
 

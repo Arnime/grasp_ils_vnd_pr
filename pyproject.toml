@@ -122,7 +122,9 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S", "PT"]
+"python/tests/**/*.py" = ["S", "PT"]
 "benchmarks/**/*.py" = ["S", "PT"]
+"python/benchmarks/**/*.py" = ["S", "PT"]
 
 [tool.pylint.main]
 # Ruff is the canonical linter; Pylint runs only inside IDEs.
