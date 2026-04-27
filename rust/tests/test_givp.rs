@@ -293,4 +293,321 @@ mod tests {
         let result = givp(sphere, &bounds, cfg).unwrap();
         assert!(result.success);
     }
+
+    // ── Additional config validation ────────────────────────────────
+
+    #[test]
+    fn test_config_invalid_ils_iterations() {
+        let cfg = GivpConfig {
+            ils_iterations: 0,
+            ..Default::default()
+        };
+        assert!(matches!(cfg.validate(), Err(GivpError::InvalidConfig(_))));
+    }
+
+    #[test]
+    fn test_config_invalid_elite_size() {
+        let cfg = GivpConfig {
+            elite_size: 0,
+            ..Default::default()
+        };
+        assert!(matches!(cfg.validate(), Err(GivpError::InvalidConfig(_))));
+    }
+
+    #[test]
+    fn test_config_invalid_path_relink_frequency() {
+        let cfg = GivpConfig {
+            path_relink_frequency: 0,
+            ..Default::default()
+        };
+        assert!(matches!(cfg.validate(), Err(GivpError::InvalidConfig(_))));
+    }
+
+    #[test]
+    fn test_config_invalid_alpha_min_out_of_range() {
+        let cfg = GivpConfig {
+            alpha_min: -0.1,
+            ..Default::default()
+        };
+        assert!(matches!(cfg.validate(), Err(GivpError::InvalidConfig(_))));
+    }
+
+    #[test]
+    fn test_config_invalid_alpha_max_out_of_range() {
+        let cfg = GivpConfig {
+            alpha_max: 1.5,
+            ..Default::default()
+        };
+        assert!(matches!(cfg.validate(), Err(GivpError::InvalidConfig(_))));
+    }
+
+    #[test]
+    fn test_config_invalid_perturbation_strength() {
+        let cfg = GivpConfig {
+            perturbation_strength: 0,
+            ..Default::default()
+        };
+        assert!(matches!(cfg.validate(), Err(GivpError::InvalidConfig(_))));
+    }
+
+    #[test]
+    fn test_config_invalid_cache_size() {
+        let cfg = GivpConfig {
+            cache_size: 0,
+            ..Default::default()
+        };
+        assert!(matches!(cfg.validate(), Err(GivpError::InvalidConfig(_))));
+    }
+
+    #[test]
+    fn test_config_invalid_early_stop_threshold() {
+        let cfg = GivpConfig {
+            early_stop_threshold: 0,
+            ..Default::default()
+        };
+        assert!(matches!(cfg.validate(), Err(GivpError::InvalidConfig(_))));
+    }
+
+    #[test]
+    fn test_config_invalid_num_candidates_per_step() {
+        let cfg = GivpConfig {
+            num_candidates_per_step: 0,
+            ..Default::default()
+        };
+        assert!(matches!(cfg.validate(), Err(GivpError::InvalidConfig(_))));
+    }
+
+    #[test]
+    fn test_direction_default_is_minimize() {
+        use givp::Direction;
+        assert_eq!(Direction::default(), Direction::Minimize);
+    }
+
+    // ── Non-finite bounds ───────────────────────────────────────────
+
+    #[test]
+    fn test_non_finite_bounds() {
+        let cfg = GivpConfig::default();
+        let result = givp(sphere, &[(f64::NEG_INFINITY, 5.0)], cfg);
+        assert!(matches!(result, Err(GivpError::InvalidBounds(_))));
+    }
+
+    // ── Integer variables ───────────────────────────────────────────
+
+    #[test]
+    fn test_integer_variables() {
+        let cfg = GivpConfig {
+            max_iterations: 20,
+            seed: Some(42),
+            integer_split: Some(2), // 2 continuous, 3 integer
+            ..Default::default()
+        };
+        let bounds = vec![(-5.0, 5.0); 2]
+            .into_iter()
+            .chain(vec![(0.0, 4.0); 3])
+            .collect::<Vec<_>>();
+        let result = givp(sphere, &bounds, cfg).unwrap();
+        assert!(result.success);
+        // Integer vars should be rounded
+        for v in &result.x[2..] {
+            assert!((v - v.round()).abs() < 1e-9, "not integer: {v}");
+        }
+    }
+
+    #[test]
+    fn test_all_integer_variables() {
+        let cfg = GivpConfig {
+            max_iterations: 20,
+            seed: Some(42),
+            integer_split: Some(0), // all integer
+            ..Default::default()
+        };
+        let bounds = vec![(0.0, 10.0); 3];
+        let result = givp(sphere, &bounds, cfg).unwrap();
+        assert!(result.success);
+        for v in &result.x {
+            assert!((v - v.round()).abs() < 1e-9, "not integer: {v}");
+        }
+    }
+
+    // ── Initial guess ───────────────────────────────────────────────
+
+    #[test]
+    fn test_initial_guess_used() {
+        let cfg = GivpConfig {
+            max_iterations: 10,
+            seed: Some(42),
+            integer_split: Some(3),
+            initial_guess: Some(vec![0.1, 0.2, 0.3]),
+            ..Default::default()
+        };
+        let bounds = vec![(-5.0, 5.0); 3];
+        let result = givp(sphere, &bounds, cfg).unwrap();
+        assert!(result.success);
+    }
+
+    // ── Early stop ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_early_stop() {
+        let cfg = GivpConfig {
+            max_iterations: 200,
+            early_stop_threshold: 3,
+            seed: Some(42),
+            integer_split: Some(2),
+            ..Default::default()
+        };
+        let bounds = vec![(-5.0, 5.0); 2];
+        let result = givp(sphere, &bounds, cfg).unwrap();
+        assert!(result.success);
+        assert_eq!(result.termination, TerminationReason::EarlyStop);
+    }
+
+    // ── TerminationReason::NoFeasible ───────────────────────────────
+
+    #[test]
+    fn test_termination_no_feasible() {
+        assert_eq!(
+            TerminationReason::from_message("no feasible solution found"),
+            TerminationReason::NoFeasible
+        );
+        assert_eq!(
+            TerminationReason::from_message("no_feasible"),
+            TerminationReason::NoFeasible
+        );
+    }
+
+    // ── Path relinking with identical solutions ─────────────────────
+
+    #[test]
+    fn test_pr_identical_solutions_via_small_pool() {
+        // Force path relinking by setting high elite pool frequency and many iterations
+        let cfg = GivpConfig {
+            max_iterations: 15,
+            path_relink_frequency: 1,
+            elite_size: 5,
+            seed: Some(42),
+            integer_split: Some(3),
+            ..Default::default()
+        };
+        let bounds = vec![(-5.0, 5.0); 3];
+        let result = givp(sphere, &bounds, cfg).unwrap();
+        assert!(result.success);
+    }
+
+    // ── Large number of variables (exercises MAX_PR_VARS truncation) ─
+
+    #[test]
+    fn test_many_variables_pr_truncation() {
+        let cfg = GivpConfig {
+            max_iterations: 10,
+            seed: Some(42),
+            integer_split: Some(30),
+            path_relink_frequency: 1,
+            ..Default::default()
+        };
+        let bounds = vec![(-5.0, 5.0); 30];
+        let result = givp(sphere, &bounds, cfg).unwrap();
+        assert!(result.success);
+    }
+
+    // ── Without seed (exercises from_os_rng branch) ─────────────────
+
+    #[test]
+    fn test_no_seed() {
+        let cfg = GivpConfig {
+            max_iterations: 5,
+            seed: None,
+            integer_split: Some(2),
+            ..Default::default()
+        };
+        let bounds = vec![(-5.0, 5.0); 2];
+        let result = givp(sphere, &bounds, cfg).unwrap();
+        assert!(result.success);
+    }
+
+    // ── Panicking objective (exercises safe_evaluate) ────────────────
+
+    #[test]
+    fn test_panicking_objective() {
+        let panicker = |_x: &[f64]| -> f64 { panic!("intentional panic in test") };
+        let cfg = GivpConfig {
+            max_iterations: 5,
+            seed: Some(42),
+            integer_split: Some(2),
+            ..Default::default()
+        };
+        let bounds = vec![(-5.0, 5.0); 2];
+        // Should not propagate the panic; optimizer returns infinity cost
+        let result = givp(panicker, &bounds, cfg).unwrap();
+        // All evaluations return infinity → success=false
+        assert!(!result.success);
+    }
+
+    // ── Adaptive alpha off ───────────────────────────────────────────
+
+    #[test]
+    fn test_non_adaptive_alpha() {
+        let cfg = GivpConfig {
+            max_iterations: 10,
+            adaptive_alpha: false,
+            alpha: 0.15,
+            seed: Some(42),
+            integer_split: Some(2),
+            ..Default::default()
+        };
+        let bounds = vec![(-5.0, 5.0); 2];
+        let result = givp(sphere, &bounds, cfg).unwrap();
+        assert!(result.success);
+    }
+
+    // ── do_path_relinking early return (elite_size=1 → len < 2) ─────
+
+    #[test]
+    fn test_pr_early_return_single_elite() {
+        let cfg = GivpConfig {
+            max_iterations: 5,
+            elite_size: 1, // pool never reaches 2 members
+            path_relink_frequency: 1, // trigger PR every iteration
+            seed: Some(42),
+            integer_split: Some(2),
+            ..Default::default()
+        };
+        let bounds = vec![(-5.0, 5.0); 2];
+        let result = givp(sphere, &bounds, cfg).unwrap();
+        assert!(result.success);
+    }
+
+    // ── PR with >MAX_PR_VARS different variables ──────────────────────
+
+    #[test]
+    fn test_pr_many_diffs_truncation() {
+        let cfg = GivpConfig {
+            max_iterations: 10,
+            seed: Some(7),
+            integer_split: Some(30),
+            path_relink_frequency: 1,
+            elite_size: 5,
+            ..Default::default()
+        };
+        let bounds = vec![(-100.0, 100.0); 30];
+        let result = givp(sphere, &bounds, cfg).unwrap();
+        assert!(result.success);
+    }
+
+    // ── Integer bounds where ceil > floor (degenerate) ───────────────
+
+    #[test]
+    fn test_integer_degenerate_bounds() {
+        // bounds like (0.1, 0.9) for integer vars: ceil(0.1)=1 > floor(0.9)=0
+        let cfg = GivpConfig {
+            max_iterations: 10,
+            seed: Some(42),
+            integer_split: Some(0), // all integer
+            ..Default::default()
+        };
+        let bounds = vec![(0.1_f64, 0.9_f64); 3]; // degenerate integer range
+        // Should not panic
+        let _result = givp(sphere, &bounds, cfg);
+    }
 }

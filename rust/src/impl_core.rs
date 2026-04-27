@@ -378,7 +378,8 @@ where
     result.nfev = nfev.load(Ordering::Relaxed);
     result.success = final_cost.is_finite();
     result.message = if message.is_empty() {
-        "optimization completed".into()
+        // fallback: all iterations ran without setting an explicit reason
+        "max iterations reached".into()
     } else {
         message.clone()
     };

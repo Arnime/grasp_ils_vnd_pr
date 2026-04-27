@@ -37,12 +37,14 @@ impl ElitePool {
                     .sum::<f64>()
                     / n
             }
-            None => a
-                .iter()
-                .zip(b.iter())
-                .map(|(&ai, &bi)| (ai - bi).powi(2))
-                .sum::<f64>()
-                .sqrt(),
+            None => {
+                // unreachable via public API (new() always sets Some)
+                a.iter()
+                    .zip(b.iter())
+                    .map(|(&ai, &bi)| (ai - bi).powi(2))
+                    .sum::<f64>()
+                    .sqrt()
+            }
         }
     }
 
@@ -94,5 +96,61 @@ impl ElitePool {
     /// Keep only the top `n` entries.
     pub fn keep_top(&mut self, n: usize) {
         self.pool.truncate(n);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_pool(max_size: usize) -> ElitePool {
+        ElitePool::new(max_size, 0.01, &[-5.0, -5.0], &[5.0, 5.0])
+    }
+
+    #[test]
+    fn test_get_best_empty_returns_error() {
+        let pool = make_pool(5);
+        assert!(matches!(pool.get_best(), Err(GivpError::EmptyPool(_))));
+    }
+
+    #[test]
+    fn test_get_best_returns_lowest_cost() {
+        let mut pool = make_pool(5);
+        pool.add(vec![1.0, 0.0], 5.0);
+        pool.add(vec![-3.0, 2.0], 1.0);
+        let (_, cost) = pool.get_best().unwrap();
+        assert!((cost - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_clear_empties_pool() {
+        let mut pool = make_pool(5);
+        pool.add(vec![1.0, 0.0], 5.0);
+        assert_eq!(pool.len(), 1);
+        pool.clear();
+        assert_eq!(pool.len(), 0);
+    }
+
+    #[test]
+    fn test_add_rejects_when_full_and_not_better() {
+        let mut pool = make_pool(2);
+        pool.add(vec![1.0, 0.0], 1.0); // cost 1
+        pool.add(vec![-4.0, 3.0], 2.0); // cost 2 (diverse enough)
+        // Pool is full; add something with worse cost (3.0) → rejected
+        let added = pool.add(vec![4.0, -4.0], 3.0);
+        assert!(!added);
+        assert_eq!(pool.len(), 2);
+    }
+
+    #[test]
+    fn test_add_replaces_worst_when_better() {
+        let mut pool = make_pool(2);
+        pool.add(vec![1.0, 0.0], 2.0);
+        pool.add(vec![-4.0, 3.0], 3.0);
+        // Add something better (cost 0.5) that is diverse enough
+        let added = pool.add(vec![0.0, 0.0], 0.5);
+        assert!(added);
+        let (_, cost) = pool.get_best().unwrap();
+        assert!((cost - 0.5).abs() < 1e-10);
     }
 }

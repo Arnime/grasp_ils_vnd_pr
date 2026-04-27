@@ -10,37 +10,6 @@ use std::time::Instant;
 
 const MAX_PR_VARS: usize = 25;
 
-/// Forward path relinking: move source → target one variable at a time.
-fn path_relinking_forward<F>(
-    func: &F,
-    source: &[f64],
-    target: &[f64],
-    diff_indices: &[usize],
-    cache: &mut Option<EvaluationCache>,
-    half: usize,
-    deadline: Option<Instant>,
-) -> (Vec<f64>, f64)
-where
-    F: Fn(&[f64]) -> f64,
-{
-    let mut current = source.to_vec();
-    let mut best = current.clone();
-    let mut best_cost = evaluate_with_cache(&current, func, cache, half);
-
-    for &idx in diff_indices {
-        if expired(deadline) {
-            break;
-        }
-        current[idx] = target[idx];
-        let cost = evaluate_with_cache(&current, func, cache, half);
-        if cost < best_cost {
-            best_cost = cost;
-            best = current.clone();
-        }
-    }
-    (best, best_cost)
-}
-
 /// Best (greedy) path relinking: at each step pick the variable move with best cost.
 fn path_relinking_best<F>(
     func: &F,
