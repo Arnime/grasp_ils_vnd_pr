@@ -15,6 +15,8 @@ htmlcov/
 .hypothesis/
 .idea/
 .vscode/
+.benchmarks/
+python/benchmarks/.results/
 site/
 
 # Julia coverage files

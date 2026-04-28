@@ -16,6 +16,7 @@ jobs:
         runs-on: ubuntu-latest
         permissions:
             contents: write
+            pull-requests: write
         steps:
             - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
               with:
@@ -77,14 +78,14 @@ jobs:
                   readme.write_text(content)
                   PY
 
-            - name: Commit if changed
-              run: |
-                  git config user.name "github-actions[bot]"
-                  git config user.email "github-actions[bot]@users.noreply.github.com"
-                  git diff --quiet README.md || (
-                    git add README.md &&
-                    git commit -m "chore(docs): update version badges from config files [skip ci]"
-                  )
-
-            - name: Push
-              run: git push
+            - name: Open PR if badge changed
+              uses: peter-evans/create-pull-request@271a8d0340265c6137d7b649a9e0da9b01a6c3a9 # v7.0.8
+              with:
+                  commit-message: "chore(docs): update version badges from config files"
+                  branch: chore/update-version-badges
+                  delete-branch: true
+                  title: "chore(docs): update version badges"
+                  body: |
+                      Automated update of Python / Julia / Rust version badges in README.md
+                      triggered by a change to a version config file.
+                  labels: "documentation,automated"
