@@ -8,11 +8,8 @@ on:
             - "pyproject.toml"
             - ".github/workflows/audit.yml"
     pull_request:
-        paths:
-            - "python/requirements/**"
-            - "pyproject.toml"
-            - ".github/workflows/audit.yml"
     schedule:
+        - cron: "13 5 * * 1"
 
 env:
     FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
