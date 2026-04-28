@@ -2,7 +2,7 @@
 
 **Python** &nbsp;
 [![PyPI version](https://img.shields.io/pypi/v/givp?cacheSeconds=300)](https://pypi.org/project/givp/)
-[![Python versions](https://img.shields.io/badge/python-3.10--3.15-blue?logo=python&logoColor=white)](https://pypi.org/project/givp/)
+[![Python versions](https://img.shields.io/badge/python-3.10%E2%80%933.15-blue?logo=python&logoColor=white)](https://pypi.org/project/givp/)
 [![CI Python](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-python.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-python.yml)
 [![codecov (python)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=python)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/python)
 [![Ruff](https://img.shields.io/badge/linter-ruff-red)](https://github.com/astral-sh/ruff)
@@ -17,9 +17,9 @@
 **Rust** &nbsp;
 [![Crates.io](https://img.shields.io/crates/v/givp?cacheSeconds=300)](https://crates.io/crates/givp)
 [![Rust](https://img.shields.io/badge/Rust-1.85%2B-000000?logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![docs.rs](https://img.shields.io/docsrs/givp?cacheSeconds=300)](https://docs.rs/givp)
 [![CI Rust](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml)
 [![codecov (rust)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=rust)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/rust)
+[![docs.rs](https://img.shields.io/docsrs/givp?cacheSeconds=300)](https://docs.rs/givp)
 
 **Project** &nbsp;
 [![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/Arnime/grasp_ils_vnd_pr?cacheSeconds=300)](https://securityscorecards.dev/viewer/?uri=github.com/Arnime/grasp_ils_vnd_pr)
@@ -49,9 +49,9 @@ optional configuration, get back an `OptimizeResult` with `x`, `fun`, `nit`,
 - [givp — GRASP-ILS-VND with Path Relinking](#givp--grasp-ils-vnd-with-path-relinking)
   - [Table of contents](#table-of-contents)
   - [Install](#install)
-    - [Python](#python)
+    - [Python installation](#python-installation)
     - [Julia installation](#julia-installation)
-    - [Rust Installation](#rust-installation)
+    - [Rust installation](#rust-installation)
   - [Quick start](#quick-start)
   - [Julia](#julia)
   - [Rust](#rust)
@@ -77,7 +77,7 @@ optional configuration, get back an `OptimizeResult` with `x`, `fun`, `nit`,
 
 ## Install
 
-### Python
+### Python installation
 
 From PyPI (once published):
 
@@ -107,7 +107,7 @@ julia --project=. -e 'using Pkg; Pkg.instantiate()'
 
 Requires Julia 1.9+.
 
-### Rust Installation
+### Rust installation
 
 Add to your `Cargo.toml` (once published to crates.io):
 
