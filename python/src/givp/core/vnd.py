@@ -35,7 +35,7 @@ from givp.core.helpers import (
 # ---------------------------------------------------------------------------
 # Re-export atomic-move symbols for full backward compatibility
 # ---------------------------------------------------------------------------
-from givp.core.vnd_moves import (  # noqa: F401
+from givp.core.vnd_moves import (
     _modify_indices_for_multiflip,
     _perturb_index,
     _try_continuous_move_module,
@@ -43,9 +43,7 @@ from givp.core.vnd_moves import (  # noqa: F401
 )
 
 # Re-export group/block neighbourhood symbols
-from givp.core.vnd_neighborhoods import (  # noqa: F401
-    _apply_block_perturbation,
-    _apply_group_perturbation,
+from givp.core.vnd_neighborhoods import (
     _group_layout,
     _neighborhood_block,
     _neighborhood_group,
@@ -53,7 +51,6 @@ from givp.core.vnd_neighborhoods import (  # noqa: F401
     _neighborhood_swap,
     _sign_from_delta,
 )
-
 
 # ---------------------------------------------------------------------------
 # Cached cost-function wrapper
@@ -179,15 +176,28 @@ def _neighborhood_flip(
     best_benefit = current_benefit
 
     int_best_sol, int_best_ben = _search_integer_flip_module(
-        solution, best_benefit, int_indices, cost_fn, lower_arr, upper_arr,
-        first_improvement, deadline=deadline,
+        solution,
+        best_benefit,
+        int_indices,
+        cost_fn,
+        lower_arr,
+        upper_arr,
+        first_improvement,
+        deadline=deadline,
     )
     if int_best_ben < best_benefit:
         best_solution, best_benefit = int_best_sol, int_best_ben
 
     cont_best_sol, cont_best_ben = _search_continuous_flip_module(
-        solution, best_benefit, cont_indices, cost_fn, rng, lower_arr, upper_arr,
-        first_improvement, deadline=deadline,
+        solution,
+        best_benefit,
+        cont_indices,
+        cost_fn,
+        rng,
+        lower_arr,
+        upper_arr,
+        first_improvement,
+        deadline=deadline,
     )
     if cont_best_ben < best_benefit:
         best_solution, best_benefit = cont_best_sol, cont_best_ben
@@ -216,28 +226,60 @@ def _execute_neighborhood(
     """Dispatch to a specific neighbourhood by index (0=flip, 1=pair, 2=group, 3=block, 4=multiflip)."""
     if idx == 0:
         return _neighborhood_flip(
-            cost_fn, solution, current_benefit, num_vars, first_improvement,
-            seed=None, lower_arr=lower_arr, upper_arr=upper_arr,
-            sensitivity=sensitivity, deadline=deadline,
+            cost_fn,
+            solution,
+            current_benefit,
+            num_vars,
+            first_improvement,
+            seed=None,
+            lower_arr=lower_arr,
+            upper_arr=upper_arr,
+            sensitivity=sensitivity,
+            deadline=deadline,
         )
     if idx == 1:
         return _neighborhood_swap(
-            cost_fn, solution, current_benefit, num_vars, first_improvement,
-            lower_arr=lower_arr, upper_arr=upper_arr, deadline=deadline,
+            cost_fn,
+            solution,
+            current_benefit,
+            num_vars,
+            first_improvement,
+            lower_arr=lower_arr,
+            upper_arr=upper_arr,
+            deadline=deadline,
         )
     if idx == 2:
         return _neighborhood_group(
-            cost_fn, solution, current_benefit, num_vars, first_improvement,
-            lower_arr=lower_arr, upper_arr=upper_arr, deadline=deadline,
+            cost_fn,
+            solution,
+            current_benefit,
+            num_vars,
+            first_improvement,
+            lower_arr=lower_arr,
+            upper_arr=upper_arr,
+            deadline=deadline,
         )
     if idx == 3:
         return _neighborhood_block(
-            cost_fn, solution, current_benefit, num_vars, first_improvement,
-            lower_arr=lower_arr, upper_arr=upper_arr, deadline=deadline,
+            cost_fn,
+            solution,
+            current_benefit,
+            num_vars,
+            first_improvement,
+            lower_arr=lower_arr,
+            upper_arr=upper_arr,
+            deadline=deadline,
         )
     return _neighborhood_multiflip(
-        cost_fn, solution, current_benefit, num_vars, k=3, seed=None,
-        lower_arr=lower_arr, upper_arr=upper_arr, deadline=deadline,
+        cost_fn,
+        solution,
+        current_benefit,
+        num_vars,
+        k=3,
+        seed=None,
+        lower_arr=lower_arr,
+        upper_arr=upper_arr,
+        deadline=deadline,
     )
 
 
