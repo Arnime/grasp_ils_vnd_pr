@@ -211,3 +211,78 @@ TEST_CASE("integer bounds narrower than 1 integer triggers fallback", "[advanced
 
     REQUIRE_NOTHROW(givp::givp(sphere, bounds, cfg));
 }
+
+// ── config.hpp: alpha_min / alpha_max individual range checks ─────────────────
+
+TEST_CASE("alpha_min out of range throws", "[config]") {
+    GivpConfig cfg;
+    cfg.alpha_min = -0.1;
+    REQUIRE_THROWS_AS(cfg.validate(), InvalidConfig);
+    cfg.alpha_min = 1.1;
+    REQUIRE_THROWS_AS(cfg.validate(), InvalidConfig);
+}
+
+TEST_CASE("alpha_max out of range throws", "[config]") {
+    GivpConfig cfg;
+    cfg.alpha_max = -0.1;
+    REQUIRE_THROWS_AS(cfg.validate(), InvalidConfig);
+    cfg.alpha_max = 1.1;
+    REQUIRE_THROWS_AS(cfg.validate(), InvalidConfig);
+}
+
+// ── pr.hpp: backward path is chosen when cost_bwd < cost_fwd ─────────────────
+
+TEST_CASE("path relinking backward direction selected", "[advanced]") {
+    // Use a non-symmetric objective so that going sol2→sol1 yields a better
+    // result than sol1→sol2, exercising the `return {best_bwd, cost_bwd}` branch.
+    // Rastrigin on 10D with path_relink_frequency=1 forces PR every iteration;
+    // bidirectional PR will eventually pick the backward direction.
+    std::vector<std::pair<double, double>> bounds(10, {-5.12, 5.12});
+    GivpConfig cfg;
+    cfg.seed                  = 123;
+    cfg.max_iterations        = 30;
+    cfg.integer_split         = 10;
+    cfg.path_relink_frequency = 1;  // PR on every iteration
+    cfg.use_elite_pool        = true;
+    cfg.elite_size            = 5;
+    cfg.use_convergence_monitor = false;
+
+    REQUIRE_NOTHROW(givp::givp(rastrigin, bounds, cfg));
+}
+
+// ── impl_core.hpp: elite_pool has fewer than 2 solutions (PR guard) ───────────
+
+TEST_CASE("path relinking skipped when elite pool has < 2 solutions", "[advanced]") {
+    // With elite_size=1 the pool can never hold 2 solutions, so the guard
+    // `elite_pool.len() >= 2` is always false and do_path_relinking is never
+    // called — exercises the `false` branch of that condition.
+    std::vector<std::pair<double, double>> bounds(5, {-5.0, 5.0});
+    GivpConfig cfg;
+    cfg.seed                  = 7;
+    cfg.max_iterations        = 15;
+    cfg.integer_split         = 5;
+    cfg.use_elite_pool        = true;
+    cfg.elite_size            = 1;   // pool holds at most 1 solution
+    cfg.path_relink_frequency = 2;
+    cfg.use_convergence_monitor = false;
+
+    REQUIRE_NOTHROW(givp::givp(sphere, bounds, cfg));
+}
+
+// ── vnd.hpp: multiflip triggered (no_improve_flip_count >= no_improve_limit=5) ─
+
+TEST_CASE("vnd multiflip neighborhood triggered after 5 consecutive flip failures", "[advanced]") {
+    // Flat objective → neighborhood_flip never improves → no_improve_flip_count
+    // reaches 5 within the first 6 VND iterations, triggering neighborhood_multiflip.
+    auto flat = [](const std::vector<double>&) -> double { return 1.0; };
+    std::vector<std::pair<double, double>> bounds(4, {-5.0, 5.0});
+    GivpConfig cfg;
+    cfg.seed                    = 42;
+    cfg.max_iterations          = 5;
+    cfg.integer_split           = 4;
+    cfg.vnd_iterations          = 10;  // enough iterations for count to reach 5
+    cfg.use_convergence_monitor = false;
+    cfg.early_stop_threshold    = 1000;
+
+    REQUIRE_NOTHROW(givp::givp(flat, bounds, cfg));
+}
