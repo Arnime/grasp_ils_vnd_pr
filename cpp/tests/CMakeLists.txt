@@ -14,6 +14,7 @@ add_executable(givp_tests
     test_basic.cpp
     test_config.cpp
     test_convergence.cpp
+    test_advanced.cpp
 )
 
 target_link_libraries(givp_tests PRIVATE givp::givp Catch2::Catch2WithMain)

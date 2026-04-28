@@ -110,6 +110,8 @@ TEST_CASE("termination_from_message parses known strings", "[config]") {
             TerminationReason::EarlyStop);
     REQUIRE(termination_from_message("converged") ==
             TerminationReason::Converged);
+    REQUIRE(termination_from_message("no feasible solution found") ==
+            TerminationReason::NoFeasible);
     REQUIRE(termination_from_message("") ==
             TerminationReason::Unknown);
 }
