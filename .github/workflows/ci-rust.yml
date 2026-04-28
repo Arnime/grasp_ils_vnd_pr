@@ -5,11 +5,15 @@ on:
     branches: [ main ]
     paths:
       - "rust/**"
+      - "!rust/**/*.md"
+      - "!rust/LICENSE"
       - ".github/workflows/ci-rust.yml"
       - "codecov.yml"
   pull_request:
     paths:
       - "rust/**"
+      - "!rust/**/*.md"
+      - "!rust/LICENSE"
       - ".github/workflows/ci-rust.yml"
       - "codecov.yml"
   workflow_dispatch:
