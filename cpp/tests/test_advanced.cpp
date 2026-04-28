@@ -136,3 +136,28 @@ TEST_CASE("path relinking 30D problem exercises diff-variable cap", "[advanced]"
 
     REQUIRE_NOTHROW(givp::givp(rastrigin, bounds, cfg));
 }
+
+// ── bidirectional_path_relinking with identical solutions (empty diff) ─────────
+
+TEST_CASE("path relinking with identical elite solutions is a no-op", "[advanced]") {
+    // Force identical solutions into the elite pool, then trigger PR.
+    // When all diff_indices are empty, bidirectional_path_relinking returns the
+    // current cost immediately without iterating — exercises the empty-diff branch.
+    //
+    // Strategy: use a 1D all-flat objective so every candidate gets the same
+    // cost and the pool accumulates near-identical solutions.
+    auto flat1d = [](const std::vector<double>&) -> double { return 0.0; };
+
+    std::vector<std::pair<double, double>> bounds(1, {0.0, 1.0});
+    GivpConfig cfg;
+    cfg.seed                  = 1;
+    cfg.max_iterations        = 12;
+    cfg.integer_split         = 1;
+    cfg.path_relink_frequency = 2;
+    cfg.use_elite_pool        = true;
+    cfg.elite_size            = 3;
+    cfg.use_convergence_monitor = false;
+    cfg.early_stop_threshold  = 1000;
+
+    REQUIRE_NOTHROW(givp::givp(flat1d, bounds, cfg));
+}

@@ -36,11 +36,17 @@ static double rastrigin(const std::vector<double>& x) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// Deliberately lean config for CI smoke benchmarks.
+// These values prioritise speed, not solution quality.
 static givp::GivpConfig fast_config(std::uint64_t seed = 42) {
     givp::GivpConfig cfg;
-    cfg.seed           = seed;
-    cfg.max_iterations = 20;
-    cfg.integer_split  = std::nullopt; // will be set per call
+    cfg.seed                    = seed;
+    cfg.max_iterations          = 8;
+    cfg.vnd_iterations          = 15;
+    cfg.ils_iterations          = 2;
+    cfg.use_convergence_monitor = false;  // skip overhead
+    cfg.path_relink_frequency   = 4;
+    cfg.integer_split           = std::nullopt; // set per call
     return cfg;
 }
 
@@ -48,9 +54,13 @@ static givp::GivpConfig fast_config(std::uint64_t seed = 42) {
 
 int main() {
     ankerl::nanobench::Bench bench;
+    // CI smoke run: 1 warm-up + at most 3 measured iterations per benchmark.
+    // Each optimizer call finishes in ~50-150 ms with the lean config above,
+    // so the entire benchmark binary completes in well under 30 seconds.
     bench.timeUnit(std::chrono::milliseconds{1}, "ms")
-         .warmup(3)
-         .minEpochIterations(5);
+         .warmup(1)
+         .minEpochIterations(3)
+         .maxEpochTime(std::chrono::milliseconds{5'000});
 
     // sphere 5D
     {
@@ -89,9 +99,8 @@ int main() {
     {
         std::vector<std::pair<double, double>> bounds(30, {-5.12, 5.12});
         bench.run("rastrigin_30d", [&] {
-            auto cfg         = fast_config(42);
+            auto cfg          = fast_config(42);
             cfg.integer_split = 30;
-            cfg.max_iterations = 80;
             auto r = givp::givp(rastrigin, bounds, cfg);
             ankerl::nanobench::doNotOptimizeAway(r.fun);
         });
