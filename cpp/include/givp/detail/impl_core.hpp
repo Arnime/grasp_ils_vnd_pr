@@ -136,7 +136,8 @@ OptimizeResult run(F&& func,
     Deadline deadline;
     if (config.time_limit > 0.0)
         deadline = std::chrono::steady_clock::now() +
-                   std::chrono::duration<double>(config.time_limit);
+                   std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                       std::chrono::duration<double>(config.time_limit));
 
     // ── Initialise best solution ─────────────────────────────────────────────
     std::vector<double> best_solution;

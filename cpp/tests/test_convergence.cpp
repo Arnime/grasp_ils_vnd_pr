@@ -42,11 +42,11 @@ TEST_CASE("cache hit rate is tracked", "[cache]") {
     EvaluationCache c{10};
     std::vector<double> sol{3.0, 4.0};
     c.put(sol, 2, 5.0);
-    c.get(sol, 2); // hit
-    c.get({9.0, 9.0}, 2); // miss
+    c.get(sol, 2);          // hit
+    c.get({9.0, 9.0}, 2);  // miss
     auto s = c.stats();
     REQUIRE(s.hits   == 1);
-    REQUIRE(s.misses == 2); // one from put+get above, one explicit miss
+    REQUIRE(s.misses == 1); // only the explicit miss; put() does not call get()
 }
 
 TEST_CASE("cache evicts oldest entry when full", "[cache]") {
