@@ -1,0 +1,95 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
+
+name: CI C++
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "cpp/**"
+      - "!cpp/**/*.md"
+      - ".github/workflows/ci-cpp.yml"
+  pull_request:
+    paths:
+      - "cpp/**"
+      - "!cpp/**/*.md"
+      - ".github/workflows/ci-cpp.yml"
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  CMAKE_BUILD_PARALLEL_LEVEL: "4"
+
+permissions: read-all
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      toolchains: ${{ steps.pick.outputs.toolchains }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - id: pick
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            if git diff --name-only "$PR_BASE" HEAD -- cpp/include cpp/tests cpp/benchmarks | grep -q .; then
+              echo 'toolchains=[{"os":"ubuntu-latest","compiler":"gcc","cc":"gcc","cxx":"g++"},{"os":"ubuntu-latest","compiler":"clang","cc":"clang","cxx":"clang++"},{"os":"windows-latest","compiler":"msvc","cc":"cl","cxx":"cl"},{"os":"macos-latest","compiler":"clang","cc":"clang","cxx":"clang++"}]' >> "$GITHUB_OUTPUT"
+            else
+              echo 'toolchains=[{"os":"ubuntu-latest","compiler":"gcc","cc":"gcc","cxx":"g++"}]' >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo 'toolchains=[{"os":"ubuntu-latest","compiler":"gcc","cc":"gcc","cxx":"g++"},{"os":"ubuntu-latest","compiler":"clang","cc":"clang","cxx":"clang++"},{"os":"windows-latest","compiler":"msvc","cc":"cl","cxx":"cl"},{"os":"macos-latest","compiler":"clang","cc":"clang","cxx":"clang++"}]' >> "$GITHUB_OUTPUT"
+          fi
+
+  test:
+    needs: setup
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.setup.outputs.toolchains) }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set compiler (non-Windows)
+        if: matrix.compiler != 'msvc'
+        run: |
+          echo "CC=${{ matrix.cc }}"   >> "$GITHUB_ENV"
+          echo "CXX=${{ matrix.cxx }}" >> "$GITHUB_ENV"
+
+      - name: Configure
+        run: >
+          cmake -S cpp -B build
+          -DCMAKE_BUILD_TYPE=Release
+          -DGIVP_BUILD_TESTS=ON
+          -DGIVP_BUILD_BENCHMARKS=OFF
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Test
+        run: ctest --test-dir build --config Release --output-on-failure
+
+  benchmarks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Configure
+        run: >
+          cmake -S cpp -B build_bench
+          -DCMAKE_BUILD_TYPE=Release
+          -DGIVP_BUILD_TESTS=OFF
+          -DGIVP_BUILD_BENCHMARKS=ON
+
+      - name: Build
+        run: cmake --build build_bench --config Release
+
+      - name: Run benchmarks (smoke)
+        run: ./build_bench/benchmarks/givp_benchmarks
