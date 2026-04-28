@@ -38,6 +38,18 @@ TEST_CASE("cache put and get round-trip", "[cache]") {
     REQUIRE(*v == Catch::Approx(42.0));
 }
 
+TEST_CASE("cache duplicate put is a no-op", "[cache]") {
+    // Exercises the `if (cache_.count(key)) return;` early-return in put().
+    // The value stored by the first put must be preserved.
+    EvaluationCache c{10};
+    std::vector<double> sol{3.0, 4.0};
+    c.put(sol, 2, 42.0);
+    c.put(sol, 2, 99.0);  // duplicate — should be ignored
+    auto v = c.get(sol, 2);
+    REQUIRE(v.has_value());
+    REQUIRE(*v == Catch::Approx(42.0));
+}
+
 TEST_CASE("cache hit rate is tracked", "[cache]") {
     EvaluationCache c{10};
     std::vector<double> sol{3.0, 4.0};

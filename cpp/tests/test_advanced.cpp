@@ -161,3 +161,53 @@ TEST_CASE("path relinking with identical elite solutions is a no-op", "[advanced
 
     REQUIRE_NOTHROW(givp::givp(flat1d, bounds, cfg));
 }
+
+// ── Rng::from_seed(nullopt) — random_device branch ───────────────────────────
+
+TEST_CASE("no seed uses random_device branch", "[advanced]") {
+    // cfg.seed is left at its default (nullopt) → Rng::from_seed(nullopt)
+    // takes the std::random_device path instead of the seeded path.
+    std::vector<std::pair<double, double>> bounds(3, {-5.0, 5.0});
+    GivpConfig cfg;
+    // cfg.seed intentionally not set
+    cfg.max_iterations = 5;
+    cfg.integer_split  = 3;
+
+    REQUIRE_NOTHROW(givp::givp(sphere, bounds, cfg));
+}
+
+// ── adaptive_alpha=false → get_current_alpha returns fixed alpha ──────────────
+
+TEST_CASE("non-adaptive alpha uses fixed alpha throughout", "[advanced]") {
+    // With adaptive_alpha=false get_current_alpha immediately returns cfg.alpha
+    // instead of interpolating — exercises the `if (!adaptive) return alpha;` branch.
+    std::vector<std::pair<double, double>> bounds(5, {-5.0, 5.0});
+    GivpConfig cfg;
+    cfg.seed           = 42;
+    cfg.max_iterations = 10;
+    cfg.integer_split  = 5;
+    cfg.adaptive_alpha = false;
+    cfg.alpha          = 0.15;
+
+    auto result = givp::givp(sphere, bounds, cfg);
+    REQUIRE(result.success);
+}
+
+// ── sample_integer_from_bounds: lo_i > hi_i fallback ─────────────────────────
+
+TEST_CASE("integer bounds narrower than 1 integer triggers fallback", "[advanced]") {
+    // bounds (0.1, 0.9): ceil(0.1)=1, floor(0.9)=0 → lo_i > hi_i
+    // → sample_integer_from_bounds returns round((0.1+0.9)/2) = round(0.5) = 1
+    // This exercises the `if (lo_i > hi_i) return std::round(...)` branch.
+    std::vector<std::pair<double, double>> bounds = {
+        {0.1, 0.9},   // integer: lo_i=1 > hi_i=0 → fallback
+        {-5.0, 5.0},  // integer: normal
+        {-5.0, 5.0},  // integer: normal
+    };
+    GivpConfig cfg;
+    cfg.seed           = 1;
+    cfg.max_iterations = 10;
+    cfg.integer_split  = 0;  // all-integer
+
+    REQUIRE_NOTHROW(givp::givp(sphere, bounds, cfg));
+}
