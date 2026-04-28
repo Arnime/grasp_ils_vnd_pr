@@ -1,8 +1,8 @@
 # givp — GRASP-ILS-VND with Path Relinking
 
 **Python** &nbsp;
-[![Python versions](https://img.shields.io/badge/python-3.10--3.15-blue?logo=python&logoColor=white)](https://pypi.org/project/givp/)
 [![PyPI version](https://img.shields.io/pypi/v/givp?cacheSeconds=300)](https://pypi.org/project/givp/)
+[![Python versions](https://img.shields.io/badge/python-3.10--3.15-blue?logo=python&logoColor=white)](https://pypi.org/project/givp/)
 [![CI Python](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-python.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-python.yml)
 [![codecov (python)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=python)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/python)
 [![Ruff](https://img.shields.io/badge/linter-ruff-red)](https://github.com/astral-sh/ruff)
@@ -15,8 +15,8 @@
 [![codecov (julia)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=julia)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/julia)
 
 **Rust** &nbsp;
-[![Rust](https://img.shields.io/badge/Rust-1.85%2B-000000?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![Crates.io](https://img.shields.io/crates/v/givp?cacheSeconds=300)](https://crates.io/crates/givp)
+[![Rust](https://img.shields.io/badge/Rust-1.85%2B-000000?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![docs.rs](https://img.shields.io/docsrs/givp?cacheSeconds=300)](https://docs.rs/givp)
 [![CI Rust](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml)
 [![codecov (rust)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=rust)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/rust)
