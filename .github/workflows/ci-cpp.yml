@@ -79,7 +79,7 @@ jobs:
             - name: Test
               run: >
                   ctest --test-dir build --output-on-failure ${{ matrix.compiler
-                  == 'msvc' && '--config Release' || '' }}
+                  == 'msvc' && '-C Release' || '' }}
 
     coverage:
         runs-on: ubuntu-latest
@@ -107,11 +107,14 @@ jobs:
                   lcov --capture \
                        --directory build_cov \
                        --output-file coverage_raw.info \
-                       --gcov-tool gcov
+                       --gcov-tool gcov \
+                       --ignore-errors source,gcov \
+                       --rc geninfo_unexecuted_blocks=1
                   lcov --remove coverage_raw.info \
                        '*/build_cov/_deps/*' \
                        '/usr/*' \
-                       --output-file coverage.info
+                       --output-file coverage.info \
+                       --ignore-errors source
                   lcov --list coverage.info
 
             - name: Upload to Codecov
@@ -125,6 +128,7 @@ jobs:
 
     benchmarks:
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
             - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 

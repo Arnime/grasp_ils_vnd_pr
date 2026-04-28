@@ -461,7 +461,10 @@ see the SOG2 adapter in the upstream project repository
 
 ## Julia
 
-The Julia port exposes the same algorithm with an idiomatic Julia API:
+The Julia port exposes the same algorithm with an idiomatic Julia API.
+Install via the [Julia installation](#julia-installation) instructions above.
+
+### Julia quick start
 
 ```julia
 using GIVPOptimizer
@@ -482,24 +485,73 @@ Maximization:
 result = givp(my_score, bounds; direction=maximize)
 ```
 
-Configuration:
+### Julia bounds and integer variables
+
+`bounds` is a vector of `(lower, upper)` tuples, one per variable.
+Use `integer_split` to declare mixed continuous/integer problems:
 
 ```julia
-cfg = GIVPConfig(; max_iterations=50, vnd_iterations=100, time_limit=30.0)
-result = givp(sphere, bounds; config=cfg, seed=42, verbose=true)
+n_cont, n_int = 8, 4
+bounds = vcat(fill((-5.0, 5.0), n_cont), fill((0.0, 3.0), n_int))
+cfg = GIVPConfig(; integer_split=n_cont)          # indices >= n_cont are integer
+result = givp(my_obj, bounds; config=cfg)
 ```
 
-Running tests:
+### Julia configuration cookbook
+
+```julia
+# 1) Fast triage
+cfg_fast = GIVPConfig(;
+    max_iterations=20, vnd_iterations=50, ils_iterations=5,
+    use_elite_pool=false, use_convergence_monitor=false,
+)
+
+# 2) Production-quality with wall-clock budget
+cfg_quality = GIVPConfig(;
+    max_iterations=200, vnd_iterations=300, ils_iterations=15,
+    elite_size=10, path_relink_frequency=5,
+    adaptive_alpha=true, alpha_min=0.05, alpha_max=0.20,
+    time_limit=600.0,
+)
+
+# 3) Maximization
+cfg_max = GIVPConfig(; direction=maximize, max_iterations=100)
+
+result = givp(sphere, bounds; config=cfg_quality, seed=42, verbose=true)
+```
+
+### Julia result fields
+
+| Field       | Type               | Meaning                                          |
+|-------------|--------------------|--------------------------------------------------|
+| `x`         | `Vector{Float64}`  | Best solution vector.                            |
+| `fun`       | `Float64`          | Objective value at `x`, in the original sign.    |
+| `nit`       | `Int`              | Outer GRASP iterations executed.                 |
+| `nfev`      | `Int`              | Total objective-function evaluations.            |
+| `success`   | `Bool`             | True when `fun` is finite.                       |
+| `message`   | `String`           | Human-readable termination reason.               |
+| `direction` | `Direction`        | `minimize` or `maximize` (enum).                 |
+| `meta`      | `Dict{String,Any}` | Algorithm-specific extras (cache stats, etc.).   |
+
+Tuple unpacking works: `x, fun = result`.
+
+### Julia progress monitoring
+
+```julia
+costs = Float64[]
+
+function log_iter(i, cost, sol)
+    push!(costs, cost)
+end
+
+result = givp(sphere, bounds; iteration_callback=log_iter, verbose=true)
+```
+
+### Running Julia tests and benchmarks
 
 ```bash
 cd julia
 julia --project=. -e 'using Pkg; Pkg.test()'
-```
-
-Running benchmarks:
-
-```bash
-cd julia
 julia --project=. benchmarks/benchmarks.jl
 ```
 
@@ -507,7 +559,11 @@ julia --project=. benchmarks/benchmarks.jl
 
 ## Rust
 
-The Rust port provides a zero-dependency-on-NumPy, native-performance implementation:
+The Rust port is a zero-dependency (no NumPy), native-performance implementation
+suitable for embedding in systems code or for maximum throughput.
+Install via the [Rust installation](#rust-installation) instructions above.
+
+### Rust quick start
 
 ```rust
 use givp::{givp, GivpConfig};
@@ -515,39 +571,80 @@ use givp::{givp, GivpConfig};
 let sphere = |x: &[f64]| -> f64 { x.iter().map(|v| v * v).sum() };
 let bounds: Vec<(f64, f64)> = vec![(-5.12, 5.12); 5];
 
-let config = GivpConfig {
-    max_iterations: 50,
-    seed: Some(42),
-    integer_split: Some(5), // all continuous
-    ..Default::default()
-};
-
-let result = givp(sphere, &bounds, config).unwrap();
-println!("Best: {:.6} at {:?}", result.fun, result.x);
+let result = givp(sphere, &bounds, GivpConfig::default()).unwrap();
+println!("best: {:.6}", result.fun);
+println!("x:    {:?}", result.x);
+println!("nfev: {}", result.nfev);
 ```
 
-Maximization:
+### Rust bounds and integer variables
+
+Bounds are a `&[(f64, f64)]` slice. Use `integer_split` for mixed problems:
+
+```rust
+use givp::{givp, GivpConfig};
+
+let n_cont = 8usize;
+let mut bounds: Vec<(f64, f64)> = vec![(-5.0, 5.0); n_cont];
+bounds.extend(vec![(0.0, 3.0); 4]);  // 4 integer variables
+
+let config = GivpConfig {
+    integer_split: Some(n_cont),  // indices >= n_cont are rounded to int
+    ..Default::default()
+};
+let result = givp(my_obj, &bounds, config).unwrap();
+```
+
+### Rust configuration cookbook
 
 ```rust
 use givp::{givp, GivpConfig, Direction};
 
-let config = GivpConfig {
+// Maximization
+let cfg_max = GivpConfig {
     direction: Direction::Maximize,
+    seed: Some(42),
     ..Default::default()
 };
+
+// Production-quality run with wall-clock budget
+let cfg_quality = GivpConfig {
+    max_iterations: 200,
+    vnd_iterations: 300,
+    ils_iterations: 15,
+    elite_size: 7,
+    path_relink_frequency: 5,
+    adaptive_alpha: true,
+    alpha_min: 0.05,
+    alpha_max: 0.20,
+    time_limit: 600.0,
+    seed: Some(0),
+    ..Default::default()
+};
+
+let result = givp(sphere, &bounds, cfg_quality).unwrap();
 ```
 
-Running tests:
+### Rust result fields
+
+| Field       | Type         | Meaning                                         |
+|-------------|--------------|-------------------------------------------------|
+| `x`         | `Vec<f64>`   | Best solution vector.                           |
+| `fun`       | `f64`        | Objective value at `x`, in the original sign.   |
+| `nit`       | `usize`      | Outer GRASP iterations executed.                |
+| `nfev`      | `usize`      | Total objective-function evaluations.           |
+| `success`   | `bool`       | True when `fun` is finite.                      |
+| `message`   | `String`     | Human-readable termination reason.              |
+| `termination` | `TerminationReason` | Typed termination enum.               |
+
+The function returns `Result<OptimizeResult, GivpError>` — use `.unwrap()` for
+quick scripts or pattern-match for production code.
+
+### Running Rust tests and benchmarks
 
 ```bash
 cd rust
 cargo test
-```
-
-Running benchmarks:
-
-```bash
-cd rust
 cargo bench
 ```
 
