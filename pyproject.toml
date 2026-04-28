@@ -21,7 +21,7 @@ keywords = [
     "julia",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
@@ -176,3 +176,4 @@ packages = [{ include = "givp", from = "python/src" }]
 
 [tool.poetry.group.dev.dependencies]
 nox = "^2026.4.10"
+notebook = "^7.5.5"
