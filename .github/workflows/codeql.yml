@@ -9,6 +9,10 @@ on:
             - ".github/workflows/codeql.yml"
     pull_request:
         branches: [ main ]
+        paths:
+            - "python/**"
+            - "pyproject.toml"
+            - ".github/workflows/codeql.yml"
     schedule:
         - cron: "27 4 * * 1"
 

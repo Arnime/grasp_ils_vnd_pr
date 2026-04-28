@@ -8,8 +8,11 @@ on:
             - "pyproject.toml"
             - ".github/workflows/security.yml"
     pull_request:
+        paths:
+            - "python/**"
+            - "pyproject.toml"
+            - ".github/workflows/security.yml"
     schedule:
-        - cron: "0 3 * * *"
 
 permissions: read-all
 

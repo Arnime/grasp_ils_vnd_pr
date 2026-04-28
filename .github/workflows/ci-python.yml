@@ -9,6 +9,11 @@ on:
       - ".github/workflows/ci-python.yml"
       - "codecov.yml"
   pull_request:
+    paths:
+      - "python/**"
+      - "pyproject.toml"
+      - ".github/workflows/ci-python.yml"
+      - "codecov.yml"
   workflow_dispatch:
 
 env:
