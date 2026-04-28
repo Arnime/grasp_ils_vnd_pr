@@ -17,9 +17,9 @@
 **Rust** &nbsp;
 [![Crates.io](https://img.shields.io/crates/v/givp?cacheSeconds=300)](https://crates.io/crates/givp)
 [![Rust](https://img.shields.io/badge/Rust-1.85%2B-000000?logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![docs.rs](https://img.shields.io/docsrs/givp?cacheSeconds=300)](https://docs.rs/givp)
 [![CI Rust](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml)
 [![codecov (rust)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=rust)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/rust)
+[![docs.rs](https://img.shields.io/docsrs/givp?cacheSeconds=300)](https://docs.rs/givp)
 
 **Project** &nbsp;
 [![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/Arnime/grasp_ils_vnd_pr?cacheSeconds=300)](https://securityscorecards.dev/viewer/?uri=github.com/Arnime/grasp_ils_vnd_pr)
