@@ -87,6 +87,10 @@ testpaths = ["python/tests"]
 addopts = "-q --cov=givp --cov-report=term-missing --cov-fail-under=95 --strict-markers"
 markers = ["slow: tests that are not run by default; use -m slow to enable"]
 
+[tool.pytest.benchmark]
+storage = "python/benchmarks/.results"
+disable_gc = false
+
 [tool.coverage.run]
 branch = true
 source = ["givp"]
