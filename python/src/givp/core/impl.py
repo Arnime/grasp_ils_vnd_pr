@@ -41,31 +41,33 @@ from givp.exceptions import InvalidBoundsError
 
 
 @dataclass
-class GIVPConfig:
-    """
-    Configuração para o algoritmo GRASP-ILS com VND e Path Relinking.
+class _AlgorithmConfig:
+    """Internal algorithm configuration used by core modules.
 
-    Define parâmetros de controle para iterações, randomização, busca local, perturbação,
-    uso de pool elite e adaptação do parâmetro alpha.
+    This is a lightweight dataclass used exclusively inside ``givp.core``.
+    The public-facing configuration class is :class:`givp.config.GIVPConfig`.
 
-    Atributos:
-        max_iterations (int): Número máximo de iterações do GRASP.
-        alpha (float): Parâmetro de randomização inicial para construção gulosa.
-        vnd_iterations (int): Máximo de iterações da busca local VND.
-        ils_iterations (int): Máximo de iterações do ILS.
-        perturbation_strength (int): Intensidade da perturbação no ILS.
-        use_elite_pool (bool): Se True, utiliza pool de soluções elite.
-        elite_size (int): Tamanho do pool de soluções elite.
-        path_relink_frequency (int): Frequência de execução do Path Relinking.
-        adaptive_alpha (bool): Se True, adapta alpha ao longo das iterações.
-        alpha_min (float): Valor mínimo de alpha.
-        alpha_max (float): Valor máximo de alpha.
-        num_candidates_per_step (int): Número de candidatos a avaliar por passo na construção.
-        use_cache (bool): Se True, usa cache de avaliações.
-        cache_size (int): Tamanho máximo do cache.
-        early_stop_threshold (int): Iterações sem melhoria para early stopping.
-        use_convergence_monitor (bool): Se True, monitora convergência e faz restart.
-        time_limit (float): Limite de tempo em segundos (0 = sem limite).
+    Attributes:
+        max_iterations: Maximum number of GRASP outer iterations.
+        alpha: Initial randomisation parameter for the greedy construction (RCL).
+        vnd_iterations: Maximum iterations of the VND local search.
+        ils_iterations: Maximum iterations of the ILS loop.
+        perturbation_strength: Magnitude of the ILS perturbation.
+        use_elite_pool: Whether to maintain an elite pool for path relinking.
+        elite_size: Maximum size of the elite pool.
+        path_relink_frequency: GRASP iteration period at which to run PR.
+        adaptive_alpha: If True, alpha varies between alpha_min and alpha_max.
+        alpha_min: Lower bound used by adaptive alpha.
+        alpha_max: Upper bound used by adaptive alpha.
+        num_candidates_per_step: Candidates evaluated per construction step.
+        use_cache: If True, evaluations are memoised via an LRU cache.
+        cache_size: Maximum entries kept by the LRU cache.
+        early_stop_threshold: Iterations without improvement to trigger early-stop.
+        use_convergence_monitor: Enable diversification/restart heuristics.
+        n_workers: Threads used to evaluate candidates in parallel.
+        time_limit: Wall-clock budget in seconds (0 = unlimited).
+        integer_split: Index where integer variables begin.
+        group_size: Steps per group for the group/block neighbourhoods.
     """
 
     max_iterations: int = 100
@@ -84,8 +86,8 @@ class GIVPConfig:
     cache_size: int = 10000
     early_stop_threshold: int = 80
     use_convergence_monitor: bool = True
-    n_workers: int = 1  # P11: nº de threads para avaliação paralela na construção
-    time_limit: float = 0.0  # Limite de tempo em segundos (0 = sem limite)
+    n_workers: int = 1  # P11: number of threads for parallel candidate evaluation
+    time_limit: float = 0.0  # Wall-clock budget in seconds (0 = unlimited)
     # Index where integer variables begin. ``None`` preserves the legacy
     # SOG2 behavior of splitting the vector in half; set it to ``num_vars``
     # for fully continuous problems or to ``0`` for fully integer problems.
@@ -125,7 +127,7 @@ def _handle_convergence_monitor(
     elite_pool: "ElitePool | None",
     verbose: bool,
 ) -> int:
-    """Processa monitor de convergência e retorna nova estagnação."""
+    """Process the convergence monitor and return updated stagnation count."""
     if conv_monitor is None:
         return 0
 
@@ -145,7 +147,7 @@ def _handle_convergence_monitor(
 def _evaluate_solution_with_cache(
     sol: np.ndarray, cost_fn: Callable, cache: "EvaluationCache | None"
 ) -> float:
-    """Avalia solução usando cache se disponível."""
+    """Evaluate a solution using the cache when available."""
     if cache is not None:
         cached = cache.get(sol)
         if cached is not None:
@@ -169,11 +171,11 @@ def _print_iteration_status(
     elite_size: int = 0,
     start_time: float | None = None,
 ) -> None:
-    """Loga status da iteração (nível INFO quando verbose).
+    """Log the current iteration status at INFO level when verbose.
 
-    Mostra: iter, marcador de melhora, custo da construção, melhor custo
-    global, alpha corrente, estagnação, tamanho do pool elite e tempo
-    decorrido. Linhas com novo melhor são prefixadas com ``*``.
+    Each line shows: iter, improvement marker, construction cost, global best
+    cost, current alpha, stagnation counter, elite-pool size, and elapsed time.
+    Lines that set a new best are prefixed with ``*``.
     """
     if not verbose:
         return
@@ -204,7 +206,7 @@ def _run_iteration_step(
     lower_arr: np.ndarray,
     upper_arr: np.ndarray,
     initial_guess: np.ndarray | None,
-    config: GIVPConfig,
+    config: _AlgorithmConfig,
     callbacks: tuple[
         Callable | None,
         ElitePool | None,
@@ -216,9 +218,9 @@ def _run_iteration_step(
     deadline: float = 0.0,
     start_time: float | None = None,
 ) -> tuple[float, np.ndarray, int]:
-    """Executa uma iteração do GRASP (construção, busca local, path relinking).
+    """Execute one GRASP iteration: construction, local search, path relinking.
 
-    Retorna os valores atualizados (best_benefit, best_solution, stagnation).
+    Returns the updated (best_cost, best_solution, stagnation) triple.
     """
     iteration_callback, elite_pool, cache, conv_monitor = callbacks
     best_cost, best_solution, stagnation = state
@@ -359,11 +361,11 @@ def _apply_path_relinking_to_pair(
     target: np.ndarray,
     cached_fn: Callable,
     num_vars: int,
-    config: "GIVPConfig",
+    config: "_AlgorithmConfig",
     cache: "EvaluationCache | None",
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float]:
-    """Aplica path relinking e busca local a um par de soluções."""
+    """Apply path relinking and VND local search to a pair of elite solutions."""
     pr_solution, _ = bidirectional_path_relinking(
         cached_fn, source, target, deadline=deadline
     )
@@ -391,7 +393,7 @@ def _process_path_relinking_pairs(
     cache,
     deadline=0.0,
 ):
-    """Processa pares de soluções elite com path relinking."""
+    """Run path relinking across pairs of elite solutions."""
     cached_fn = _create_cached_cost_fn(cost_fn, cache)
 
     for i in range(min(3, len(elite_solutions))):
@@ -426,28 +428,27 @@ def do_path_relinking(
     best_cost: float,
     best_solution: np.ndarray,
     stagnation: int,
-    config: "GIVPConfig",
+    config: "_AlgorithmConfig",
     elite_pool: "ElitePool | None",
     cost_fn: Callable,
     num_vars: int,
     cache: "EvaluationCache | None" = None,
     deadline: float = 0.0,
 ) -> tuple[float, np.ndarray, int]:
-    """
-    Executa Path Relinking entre pares de soluções elite, se condições forem atendidas.
+    """Run Path Relinking between elite-pool pairs when conditions are met.
 
     Args:
-        iteration (int): Iteração atual do GRASP.
-        best_benefit (float): Melhor benefício atual.
-        best_solution (np.ndarray): Melhor solução atual.
-        stagnation (int): Contador de estagnação.
-        config (GIVPConfig): Configuração do algoritmo.
-        elite_pool (ElitePool | None): Pool de soluções elite.
-        cost_fn (Callable): Função de custo.
-        num_vars (int): Número de variáveis.
+        iteration: Current GRASP iteration index.
+        best_cost: Current best objective cost.
+        best_solution: Current best solution vector.
+        stagnation: Number of iterations without improvement.
+        config: Algorithm configuration.
+        elite_pool: Elite solution pool (or ``None`` if disabled).
+        cost_fn: Objective function.
+        num_vars: Number of decision variables.
 
     Returns:
-        tuple: (melhor benefício, melhor solução, estagnação)
+        Updated (best_cost, best_solution, stagnation) triple.
     """
     if (
         config.use_elite_pool
@@ -473,11 +474,11 @@ def do_path_relinking(
 
 
 def _initialize_optimization_components(
-    config: "GIVPConfig",
+    config: "_AlgorithmConfig",
     lower_arr: np.ndarray | None = None,
     upper_arr: np.ndarray | None = None,
 ) -> tuple["ElitePool | None", "EvaluationCache | None", "ConvergenceMonitor | None"]:
-    """Inicializa componentes de otimização (pool elite, cache, monitor)."""
+    """Initialise optimisation components: elite pool, LRU cache, and convergence monitor."""
     elite_pool = (
         ElitePool(max_size=config.elite_size, lower=lower_arr, upper=upper_arr)
         if config.use_elite_pool
@@ -494,10 +495,10 @@ def _initialize_optimization_components(
 
 def _check_early_stopping(
     conv_monitor: "ConvergenceMonitor | None",
-    config: "GIVPConfig",
+    config: "_AlgorithmConfig",
     verbose: bool,
 ) -> bool:
-    """Verifica se deve fazer early stopping."""
+    """Return True if early stopping should be triggered."""
     if conv_monitor is None:
         return False
 
@@ -511,7 +512,7 @@ def _check_early_stopping(
 
 
 def _print_cache_stats(cache: "EvaluationCache | None", verbose: bool) -> None:
-    """Loga estatísticas do cache."""
+    """Log LRU cache statistics at INFO level when verbose."""
     if verbose and cache is not None:
         stats = cache.stats()
         logger.info(
@@ -585,7 +586,7 @@ def _maybe_apply_warm_start(
     return best_cost, best_solution
 
 
-def _print_run_header(verbose: bool, num_vars: int, config: "GIVPConfig") -> None:
+def _print_run_header(verbose: bool, num_vars: int, config: "_AlgorithmConfig") -> None:
     """Log a single header line summarising the run configuration."""
     if not verbose:
         return
@@ -620,7 +621,7 @@ def _print_run_footer(
 def _run_grasp_loop(
     cost_fn: Callable,
     num_vars: int,
-    config: "GIVPConfig",
+    config: "_AlgorithmConfig",
     lower_arr: np.ndarray,
     upper_arr: np.ndarray,
     initial_arr: np.ndarray,
@@ -677,30 +678,30 @@ def _run_grasp_loop(
 def grasp_ils_vnd(
     cost_fn: Callable,
     num_vars: int,
-    config: GIVPConfig | None = None,
+    config: _AlgorithmConfig | None = None,
     verbose: bool = False,
     iteration_callback: Callable | None = None,
     lower: list[float] | None = None,
     upper: list[float] | None = None,
     initial_guess: list[float] | None = None,
 ) -> tuple[list[int], float]:
-    """
-    Executa o algoritmo GRASP-ILS com VND e Path Relinking, retornando a melhor solução encontrada.
+    """Run the GRASP-ILS-VND-PR algorithm and return the best solution found.
 
     Args:
-        cost_fn (Callable): Função de custo a maximizar.
-        num_vars (int): Número de variáveis/pacotes.
-        c (list[int]): Benefícios dos pacotes.
-        a (list[int]): Custos das dependências.
-        deps (list[list[int]]): Lista de dependências por pacote.
-        b (int): Limite de orçamento.
-        config (GIVPConfig, optional): Configuração do algoritmo.
+        cost_fn: Objective function to minimise.
+        num_vars: Number of decision variables.
+        config: Algorithm configuration.  Uses default ``_AlgorithmConfig`` when ``None``.
+        verbose: If True, emit INFO-level progress messages.
+        iteration_callback: Optional callable ``(iter, cost, solution)`` invoked after each iteration.
+        lower: Lower bounds for each variable.
+        upper: Upper bounds for each variable.
+        initial_guess: Optional warm-start solution vector.
 
     Returns:
-        tuple: (melhor solução como lista binária, benefício da solução)
+        Tuple (solution_list, best_cost).
     """
     if config is None:
-        config = GIVPConfig()
+        config = _AlgorithmConfig()
 
     lower_arr, upper_arr = _prepare_bounds(lower, upper)
 

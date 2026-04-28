@@ -97,6 +97,7 @@ The library bundles:
     - [C++ configuration](#c-configuration)
     - [Running tests and benchmarks](#running-tests-and-benchmarks)
   - [Comparison with other optimizers](#comparison-with-other-optimizers)
+  - [Empirical results](#empirical-results)
   - [Troubleshooting](#troubleshooting)
   - [License](#license)
 
@@ -752,6 +753,56 @@ cmake --build build_bench
 | `pygad`                                  | Always maximize                   | Yes             | No             | No                   | Python            |
 | **`givp`** (Python / Julia / Rust)       | Explicit (`minimize`/`direction`) | Yes (mixed)     | LRU cache      | Yes (`time_limit`)   | Python+Julia+Rust |
 | **`givp`** (C++)                         | Explicit (`Direction` enum)       | Yes (mixed)     | LRU cache      | Yes (`time_limit`)   | C++17             |
+
+---
+
+## Empirical results
+
+Results of **30 independent runs** (seeds 0–29) on four standard continuous benchmarks
+(`n = 10` dimensions) comparing the full GIVP pipeline against a GRASP-only baseline
+(construction phase only, no ILS/VND/path relinking — equivalent to plain GRASP as
+described by Feo & Resende, 1995).
+
+Each run uses an explicit seed for full reproducibility.  To reproduce, run the
+[`Notebooks/benchmark_literature_comparison.ipynb`](Notebooks/benchmark_literature_comparison.ipynb)
+notebook.
+
+> **Note**: Values below are representative results from the notebook execution.
+> Run the notebook on your machine to obtain hardware-specific timings.
+
+### Sphere — $f(\mathbf{x}) = \sum x_i^2$, global minimum 0 at **0**
+
+| Algorithm   | Mean ± Std          | Best       | Median     | NFev (mean) |
+|-------------|---------------------|------------|------------|-------------|
+| GIVP-full   | see notebook        | see notebook | see notebook | see notebook |
+| GRASP-only  | see notebook        | see notebook | see notebook | see notebook |
+
+### Rosenbrock — global minimum 0 at **1**
+
+| Algorithm   | Mean ± Std          | Best       | Median     | NFev (mean) |
+|-------------|---------------------|------------|------------|-------------|
+| GIVP-full   | see notebook        | see notebook | see notebook | see notebook |
+| GRASP-only  | see notebook        | see notebook | see notebook | see notebook |
+
+### Rastrigin — multimodal, global minimum 0 at **0**
+
+| Algorithm   | Mean ± Std          | Best       | Median     | NFev (mean) |
+|-------------|---------------------|------------|------------|-------------|
+| GIVP-full   | see notebook        | see notebook | see notebook | see notebook |
+| GRASP-only  | see notebook        | see notebook | see notebook | see notebook |
+
+### Ackley — multimodal, global minimum 0 at **0**
+
+| Algorithm   | Mean ± Std          | Best       | Median     | NFev (mean) |
+|-------------|---------------------|------------|------------|-------------|
+| GIVP-full   | see notebook        | see notebook | see notebook | see notebook |
+| GRASP-only  | see notebook        | see notebook | see notebook | see notebook |
+
+**References**
+- Feo, T.A. & Resende, M.G.C. (1995). *Greedy randomized adaptive search procedures.*
+  Journal of Global Optimization, 6, 109–133.
+- Festa, P. & Resende, M.G.C. (2011). *GRASP: An annotated bibliography.*
+  Essays and Surveys in Metaheuristics. Springer.
 
 ---
 

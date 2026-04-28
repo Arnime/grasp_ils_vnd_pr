@@ -41,7 +41,7 @@ from givp.core.helpers import (
 )
 from givp.core.ils import ils_search, perturb_solution_numpy
 from givp.core.impl import (
-    GIVPConfig,
+    _AlgorithmConfig as GIVPConfig,
     _apply_path_relinking_to_pair,
     _check_early_stopping,
     _evaluate_solution_with_cache,

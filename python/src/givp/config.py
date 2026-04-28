@@ -78,6 +78,11 @@ class GIVPConfig:
     integer_split: int | None = (
         None  # index where integer vars begin; None -> n // 2 (legacy)
     )
+    # Number of steps per group for the group/block neighbourhoods.
+    # Set this when your problem has structured groups of variables, e.g.
+    # group_size=24 for 3 groups of 24 time-steps each (72 continuous vars).
+    # None disables the group and block neighbourhoods.
+    group_size: int | None = None
 
     def __post_init__(self) -> None:
         # ``minimize`` is the canonical boolean flag. When the user sets it,
@@ -175,4 +180,5 @@ class GIVPConfig:
             n_workers=self.n_workers,
             time_limit=self.time_limit,
             integer_split=self.integer_split,
+            group_size=self.group_size,
         )

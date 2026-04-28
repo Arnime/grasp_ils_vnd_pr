@@ -31,7 +31,7 @@ from givp.core.helpers import (
 def _create_cached_cost_fn(
     cost_fn: Callable, cache: EvaluationCache | None
 ) -> Callable:
-    """Cria wrapper de função de custo com cache."""
+    """Create a cost-function wrapper with evaluation caching."""
 
     def cached_cost_fn(sol):
         if cache is not None:
@@ -244,22 +244,22 @@ def _neighborhood_flip(
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float]:
     """
-    Vizinhança 1-opt: Tenta inverter cada bit individualmente na solução.
+    1-opt neighbourhood: try modifying each variable individually.
 
-    P9: Se sensitivity array fornecido, prioriza variáveis com maior sensibilidade
-    (maior impacto histórico no custo), reduzindo avaliações desperdiçadas.
+    P9: When a ``sensitivity`` array is provided, variables with a higher
+    historical impact on the cost are explored first, reducing wasted evaluations.
 
     Args:
-        cost_fn (Callable): Função de custo.
-        solution (np.ndarray): Solução atual.
-        current_benefit (float): Benefício atual.
-        num_vars (int): Número de variáveis.
-        first_improvement (bool): Se True, retorna na primeira melhoria.
-        seed (int, optional): Semente aleatória.
-        sensitivity (np.ndarray, optional): P9 — scores de sensibilidade por variável.
+        cost_fn: Objective function.
+        solution: Current solution.
+        current_benefit: Current objective value.
+        num_vars: Number of variables.
+        first_improvement: If True, return on the first improvement found.
+        seed: Random seed.
+        sensitivity: P9 — per-variable sensitivity scores.
 
     Returns:
-        tuple: (melhor_solução, melhor_benefício)
+        Tuple (best_solution, best_value).
     """
     rng = _new_rng(seed)
     half = _get_half(num_vars)
@@ -319,23 +319,23 @@ def _neighborhood_swap(
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float]:
     """
-    Vizinhança de par: perturba uma variável contínua e sua correspondente inteira simultaneamente.
+    Pair neighbourhood: simultaneously perturb a continuous variable and its paired integer.
 
-    Modifica conjuntamente a variável contínua e a inteira de mesmo índice,
-    capturando correlações entre as duas metades que a busca 1-opt ignora.
+    Jointly modifies the continuous variable and the integer at the same index,
+    capturing correlations between the two halves that 1-opt misses.
 
     Args:
-        cost_fn (Callable): Função de custo.
-        solution (np.ndarray): Solução atual.
-        current_benefit (float): Benefício atual.
-        num_vars (int): Número de variáveis.
-        first_improvement (bool): Se True, retorna na primeira melhoria.
-        max_attempts (int): Número máximo de tentativas.
-        lower_arr (np.ndarray | None): Limites inferiores.
-        upper_arr (np.ndarray | None): Limites superiores.
+        cost_fn: Objective function.
+        solution: Current solution.
+        current_benefit: Current objective value.
+        num_vars: Number of variables.
+        first_improvement: If True, return on the first improvement found.
+        max_attempts: Maximum number of perturbation attempts.
+        lower_arr: Lower bounds.
+        upper_arr: Upper bounds.
 
     Returns:
-        tuple: (melhor_solução, melhor_benefício)
+        Tuple (best_solution, best_value).
     """
     best_solution = solution.copy()
     best_benefit = current_benefit
@@ -396,19 +396,19 @@ def _neighborhood_multiflip(
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float]:
     """
-    Vizinhança k-opt: Inverte k bits simultaneamente na solução.
+    k-opt neighbourhood: simultaneously modify k variables.
 
     Args:
-        cost_fn (Callable): Função de custo.
-        solution (np.ndarray): Solução atual.
-        current_benefit (float): Benefício atual.
-        num_vars (int): Número de variáveis.
-        k (int): Número de bits a inverter.
-        max_attempts (int): Número máximo de tentativas.
-        seed (int, optional): Semente aleatória.
+        cost_fn: Objective function.
+        solution: Current solution.
+        current_benefit: Current objective value.
+        num_vars: Number of variables.
+        k: Number of variables to modify simultaneously.
+        max_attempts: Maximum number of perturbation attempts.
+        seed: Random seed.
 
     Returns:
-        tuple: (melhor_solução, melhor_benefício)
+        Tuple (best_solution, best_value).
     """
     best_solution = solution.copy()
     best_benefit = current_benefit
@@ -534,12 +534,12 @@ def _neighborhood_group(
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float]:
     """
-    Vizinhança de grupo: perturba todos os passos de um mesmo grupo simultaneamente.
+    Group neighbourhood: perturb all steps of one group simultaneously.
 
-    Requer que a metade contínua esteja organizada como
-    [group0_step0, group0_step1, ..., group1_step0, ...] com grupos de
-    tamanho ``config.group_size``.  Desativada automaticamente se
-    ``group_size`` não estiver configurado.
+    Requires the continuous half to be laid out as
+    ``[group0_step0, group0_step1, ..., group1_step0, ...]`` with groups of
+    size ``config.group_size``.  Automatically disabled when ``group_size``
+    is not configured.
     """
     best_solution = solution.copy()
     best_benefit = current_benefit
@@ -598,11 +598,11 @@ def _neighborhood_block(
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float]:
     """
-    Vizinhança de bloco: perturba um bloco contíguo de passos em todos os grupos.
+    Block neighbourhood: perturb a contiguous step-block across all groups.
 
-    Seleciona aleatoriamente um subintervalo de 3–6 passos e aplica uma
-    perturbação coordenada em todos os grupos simultaneamente.  Desativada
-    automaticamente se ``group_size`` não estiver configurado.
+    Selects a random subinterval of 3–6 steps and applies a coordinated
+    perturbation to all groups simultaneously.  Automatically disabled when
+    ``group_size`` is not configured.
     """
     best_solution = solution.copy()
     best_benefit = current_benefit
@@ -667,9 +667,9 @@ def _try_neighborhoods(
     sensitivity: np.ndarray | None = None,
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float, bool]:
-    """Tenta vizinhanças 1-opt, pair, group, block e multiflip.
+    """Try neighbourhoods: 1-opt, pair, group, block, and multiflip.
 
-    Retorna (solution, benefit, improved).
+    Returns (solution, benefit, improved).
     """
     if _expired(deadline):
         return solution, current_benefit, False
@@ -769,21 +769,21 @@ def _execute_neighborhood(
     sensitivity: np.ndarray | None,
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float]:
-    """Executa uma vizinhança específica pelo índice.
+    """Execute a specific neighbourhood by index.
 
     Args:
-        idx: Índice da vizinhança (0=flip, 1=pair, 2=group, 3=block, 4=multiflip).
-        cost_fn: Função de custo.
-        solution: Solução atual.
-        current_benefit: Custo atual.
-        num_vars: Número de variáveis.
-        first_improvement: Se True, aceita primeira melhoria.
-        lower_arr: Limites inferiores.
-        upper_arr: Limites superiores.
-        sensitivity: Scores de sensibilidade por variável (P9).
+        idx: Neighbourhood index (0=flip, 1=pair, 2=group, 3=block, 4=multiflip).
+        cost_fn: Objective function.
+        solution: Current solution.
+        current_benefit: Current objective cost.
+        num_vars: Number of variables.
+        first_improvement: If True, accept the first improvement found.
+        lower_arr: Lower bounds.
+        upper_arr: Upper bounds.
+        sensitivity: Per-variable sensitivity scores (P9).
 
     Returns:
-        tuple: (melhor_solução, melhor_benefício).
+        Tuple (best_solution, best_value).
     """
     if idx == 0:
         return _neighborhood_flip(
@@ -858,21 +858,23 @@ def local_search_vnd(
     deadline: float = 0.0,
 ) -> np.ndarray:
     """
-    Executa busca local usando Variable Neighborhood Descent (VND),
-    alternando entre vizinhanças 1-opt, 2-opt e multi-flip com cache.
+    Run Variable Neighborhood Descent (VND) local search.
+
+    Alternates between 1-opt, pair, group, block, and multiflip neighbourhoods
+    with an optional LRU evaluation cache.
 
     Args:
-        cost_fn (Callable): Função de custo a maximizar.
-        solution (np.ndarray): Solução inicial.
-        num_vars (int): Número de variáveis.
-        max_iter (int): Máximo de iterações.
-        use_first_improvement (bool): Se True, aceita primeira melhoria encontrada.
-        no_improve_limit (int): Limite de iterações sem melhoria.
-        no_improve_flip_limit (int): Frequência para multi-flip.
-        cache: Cache de avaliações (opcional).
+        cost_fn: Objective function (minimisation).
+        solution: Starting solution.
+        num_vars: Number of variables.
+        max_iter: Maximum number of VND iterations.
+        use_first_improvement: If True, accept the first improving move.
+        no_improve_limit: Maximum consecutive iterations without improvement.
+        no_improve_flip_limit: Multiflip trigger period.
+        cache: Evaluation cache (optional).
 
     Returns:
-        np.ndarray: Solução melhorada.
+        Improved solution vector.
     """
     solution = np.array(solution, dtype=float)
     cached_cost_fn = _create_cached_cost_fn(cost_fn, cache)
@@ -933,29 +935,29 @@ def local_search_vnd_adaptive(
     min_probability: float = 0.05,
 ) -> np.ndarray:
     """
-    VND com Seleção Adaptativa de Vizinhança (Adaptive Neighborhood Selection — ANS).
+    VND with Adaptive Neighbourhood Selection (ANS / roulette-wheel).
 
-    Em vez de aplicar vizinhanças em ordem fixa (flip→pair→group→block→multiflip),
-    usa roulette-wheel proporcional ao sucesso histórico de cada vizinhança.
-    Vizinhanças que geram melhorias recebem recompensa; todas sofrem decaimento
-    exponencial para permitir readaptação ao longo da busca.
+    Instead of a fixed neighbourhood order (flip→pair→group→block→multiflip),
+    uses roulette-wheel selection proportional to each neighbourhood's historical
+    success.  Neighbourhoods that yield improvements receive a reward; all scores
+    decay exponentially to allow re-adaptation throughout the search.
 
     Args:
-        cost_fn: Função de custo (minimização).
-        solution: Solução inicial.
-        num_vars: Número de variáveis.
-        max_iter: Máximo de iterações.
-        use_first_improvement: Se True, aceita primeira melhoria encontrada.
-        no_improve_limit: Limite de iterações sem melhoria para parar.
-        lower_arr: Limites inferiores das variáveis.
-        upper_arr: Limites superiores das variáveis.
-        cache: Cache de avaliações (opcional).
-        reward_factor: Fator de recompensa para vizinhança bem-sucedida.
-        decay_factor: Fator de decaimento dos scores por iteração (0 < d < 1).
-        min_probability: Probabilidade mínima de seleção por vizinhança.
+        cost_fn: Objective function (minimisation).
+        solution: Starting solution.
+        num_vars: Number of variables.
+        max_iter: Maximum number of iterations.
+        use_first_improvement: If True, accept the first improving move.
+        no_improve_limit: Maximum consecutive iterations without improvement.
+        lower_arr: Lower bounds for each variable.
+        upper_arr: Upper bounds for each variable.
+        cache: Evaluation cache (optional).
+        reward_factor: Reward multiplier for a successful neighbourhood.
+        decay_factor: Per-iteration score decay (0 < decay_factor < 1).
+        min_probability: Minimum selection probability per neighbourhood.
 
     Returns:
-        np.ndarray: Solução melhorada.
+        Improved solution vector.
     """
     solution = np.array(solution, dtype=float)
     cached_cost_fn = _create_cached_cost_fn(cost_fn, cache)

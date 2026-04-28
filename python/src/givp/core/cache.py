@@ -8,20 +8,29 @@ import numpy as np
 
 from givp.core.helpers import _get_half
 
+try:
+    import xxhash as _xxhash
+
+    _FAST_HASH = True
+except ImportError:  # pragma: no cover
+    import hashlib as _hashlib  # type: ignore[no-redef]
+
+    _FAST_HASH = False
+
 
 class EvaluationCache:
-    """Cache LRU para armazenar avaliações de soluções.
+    """LRU cache for objective function evaluations.
 
-    Reduz drasticamente o número de avaliações da função objetivo,
-    especialmente em buscas locais que revisitam soluções similares.
+    Dramatically reduces the number of objective evaluations, especially during
+    local search that revisits similar solutions.
 
     Args:
-            maxsize (int): Tamanho máximo do cache.
+        maxsize: Maximum number of entries to keep in the cache.
 
     Attributes:
-            cache (dict): Dicionário de cache ``{hash: custo}``.
-            hits (int): Contador de acertos no cache.
-            misses (int): Contador de falhas no cache.
+        cache: Cache mapping ``{hash: cost}``.
+        hits: Number of cache hits.
+        misses: Number of cache misses.
     """
 
     def __init__(self, maxsize: int = 10000):
@@ -32,15 +41,26 @@ class EvaluationCache:
         self.insertion_order: deque[int] = deque()
 
     def _hash_solution(self, solution: np.ndarray) -> int:
-        """Gera hash rápido da solução arredondada."""
+        """Return a deterministic integer hash of the rounded solution.
+
+        Uses ``xxhash.xxh64`` when available (10× faster; install with
+        ``pip install givp[cache]``), otherwise falls back to
+        ``hashlib.sha1`` from the standard library.
+
+        The built-in ``hash()`` is intentionally avoided: ``PYTHONHASHSEED``
+        makes it non-deterministic across processes and sessions.
+        """
         half = _get_half(solution.size)
         rounded = np.empty_like(solution)
         rounded[:half] = np.round(solution[:half], decimals=3)
         rounded[half:] = np.round(solution[half:], decimals=0)
-        return hash(np.ascontiguousarray(rounded).tobytes())
+        data = np.ascontiguousarray(rounded).tobytes()
+        if _FAST_HASH:
+            return _xxhash.xxh64_intdigest(data)  # type: ignore[union-attr]
+        return int.from_bytes(_hashlib.sha1(data).digest()[:8], "big")  # type: ignore[name-defined]
 
     def get(self, solution: np.ndarray) -> float | None:
-        """Retorna custo cached ou ``None`` se não encontrado."""
+        """Return the cached cost or ``None`` if not found."""
         key = self._hash_solution(solution)
         if key in self.cache:
             self.hits += 1
@@ -49,7 +69,7 @@ class EvaluationCache:
         return None
 
     def put(self, solution: np.ndarray, cost: float) -> None:
-        """Armazena solução e custo no cache."""
+        """Store a solution and its cost in the cache."""
         key = self._hash_solution(solution)
         if key not in self.cache and len(self.cache) >= self.maxsize:
             oldest = self.insertion_order.popleft()
@@ -59,14 +79,14 @@ class EvaluationCache:
         self.cache[key] = cost
 
     def clear(self) -> None:
-        """Limpa o cache."""
+        """Clear the cache and reset all counters."""
         self.cache.clear()
         self.insertion_order = deque()
         self.hits = 0
         self.misses = 0
 
     def stats(self) -> dict:
-        """Retorna estatísticas do cache."""
+        """Return cache statistics as a plain dict."""
         total = self.hits + self.misses
         hit_rate = (self.hits / total * 100) if total > 0 else 0
         return {

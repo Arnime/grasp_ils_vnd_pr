@@ -44,27 +44,27 @@ def evaluate_candidates(
     b: int,
 ):
     """
-    Avalia candidatos com base em informações de dependência e custos incrementais.
+    Evaluate candidates based on dependency information and incremental costs.
 
     NOTE: This helper is retained for compatibility with legacy discrete packing
     use-cases; the main GRASP flow in this module works in continuous space via
     `construct_grasp` and an external `evaluator`.
 
     Args:
-        available (np.ndarray): Índices dos pacotes disponíveis.
-        deps_active (np.ndarray): Array booleano indicando dependências já ativas.
-        current_cost (int): Custo total atual (legacy semantics).
-        deps_matrix (np.ndarray): Matriz de dependências dos pacotes.
-        deps_len (np.ndarray): Array de quantidade de dependências por pacote.
-        c_arr (np.ndarray): Array de benefícios dos pacotes.
-        a_arr (np.ndarray): Array de custos das dependências.
-        b (int): Limite de orçamento.
+        available: Indices of available packages.
+        deps_active: Boolean array indicating already-active dependencies.
+        current_cost: Current total cost (legacy semantics).
+        deps_matrix: Dependency matrix per package.
+        deps_len: Number of dependencies per package.
+        c_arr: Benefit array per package.
+        a_arr: Dependency cost array.
+        b: Budget limit.
 
     Returns:
-        tuple: (ratios, incremental_costs, valid_mask)
-            ratios (np.ndarray): Razão benefício/custo incremental (legacy).
-            incremental_costs (np.ndarray): Custos incrementais dos candidatos.
-            valid_mask (np.ndarray): Máscara booleana de candidatos válidos.
+        Tuple (ratios, incremental_costs, valid_mask):
+            ratios: Benefit/cost ratio per candidate (legacy).
+            incremental_costs: Incremental cost per candidate.
+            valid_mask: Boolean mask of feasible candidates.
     """
     n_available = len(available)
     ratios = np.full(n_available, -np.inf, dtype=np.float32)
@@ -90,16 +90,15 @@ def select_rcl(
     valid_indices: np.ndarray, valid_ratios: np.ndarray, alpha: float
 ) -> np.ndarray:
     """
-    Seleciona a Restricted Candidate List (RCL) com base nas razões benefício/custo e
-    parâmetro alpha.
+    Build the Restricted Candidate List (RCL) using benefit/cost ratios and alpha.
 
     Args:
-        valid_indices (np.ndarray): Índices dos candidatos válidos.
-        valid_ratios (np.ndarray): Razões benefício/custo dos candidatos válidos.
-        alpha (float): Parâmetro de randomização (0 = guloso, 1 = aleatório).
+        valid_indices: Indices of feasible candidates.
+        valid_ratios: Benefit/cost ratios for the feasible candidates.
+        alpha: Randomisation parameter (0 = greedy, 1 = random).
 
     Returns:
-        np.ndarray: Índices dos candidatos na RCL.
+        Indices of candidates in the RCL.
     """
     max_ratio = valid_ratios.max()
     min_ratio = valid_ratios.min()
