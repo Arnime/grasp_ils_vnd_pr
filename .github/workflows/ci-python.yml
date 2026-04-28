@@ -17,13 +17,41 @@ env:
 permissions: read-all
 
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.pick.outputs.versions }}
+      source_changed: ${{ steps.pick.outputs.source_changed }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - id: pick
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            if git diff --name-only "$PR_BASE" HEAD -- python/src python/tests | grep -q .; then
+              echo 'versions=["3.10","3.11","3.12","3.13","3.14"]' >> "$GITHUB_OUTPUT"
+              echo 'source_changed=true' >> "$GITHUB_OUTPUT"
+            else
+              echo 'versions=["3.13"]' >> "$GITHUB_OUTPUT"
+              echo 'source_changed=false' >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo 'versions=["3.10","3.11","3.12","3.13","3.14"]' >> "$GITHUB_OUTPUT"
+            echo 'source_changed=true' >> "$GITHUB_OUTPUT"
+          fi
+
   test:
+    needs: setup
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, windows-latest, macos-latest ]
-        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
+        python-version: ${{ fromJson(needs.setup.outputs.versions) }}
         include:
           - python-version: "3.10"
             lockfile: python/requirements/ci-py310.txt
@@ -41,9 +69,22 @@ jobs:
       - name: Type-check
         run: mypy
       - name: Test
+        run: pytest
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+      - name: Install
+        run: |
+          pip install --require-hashes -r python/requirements/ci.txt
+          sh .github/scripts/install-package.sh
+      - name: Test with coverage
         run: pytest --cov=givp --cov-report=xml
       - name: Upload coverage to Codecov
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6
         with:
           files: coverage.xml
@@ -53,6 +94,8 @@ jobs:
           fail_ci_if_error: false
 
   test-pre-release:
+    needs: setup
+    if: needs.setup.outputs.source_changed == 'true'
     runs-on: ${{ matrix.os }}
     continue-on-error: true
     strategy:
@@ -74,7 +117,7 @@ jobs:
       - name: Type-check
         run: mypy
       - name: Test
-        run: pytest --cov=givp --cov-report=xml
+        run: pytest
 
   docs:
     runs-on: ubuntu-latest
