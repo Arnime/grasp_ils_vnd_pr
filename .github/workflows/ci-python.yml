@@ -21,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       versions: ${{ steps.pick.outputs.versions }}
+      source_changed: ${{ steps.pick.outputs.source_changed }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -33,11 +34,14 @@ jobs:
           if [ "$EVENT_NAME" = "pull_request" ]; then
             if git diff --name-only "$PR_BASE" HEAD -- python/src python/tests | grep -q .; then
               echo 'versions=["3.10","3.11","3.12","3.13","3.14"]' >> "$GITHUB_OUTPUT"
+              echo 'source_changed=true' >> "$GITHUB_OUTPUT"
             else
               echo 'versions=["3.13"]' >> "$GITHUB_OUTPUT"
+              echo 'source_changed=false' >> "$GITHUB_OUTPUT"
             fi
           else
             echo 'versions=["3.10","3.11","3.12","3.13","3.14"]' >> "$GITHUB_OUTPUT"
+            echo 'source_changed=true' >> "$GITHUB_OUTPUT"
           fi
 
   test:
@@ -90,6 +94,8 @@ jobs:
           fail_ci_if_error: false
 
   test-pre-release:
+    needs: setup
+    if: needs.setup.outputs.source_changed == 'true'
     runs-on: ${{ matrix.os }}
     continue-on-error: true
     strategy:
