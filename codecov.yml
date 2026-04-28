@@ -18,6 +18,10 @@ flags:
     paths:
       - rust/src/
     carryforward: true
+  cpp:
+    paths:
+      - cpp/include/
+    carryforward: true
 
 comment:
   layout: "reach,diff,flags,files"
