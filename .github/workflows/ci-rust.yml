@@ -25,17 +25,43 @@ env:
 permissions: read-all
 
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      toolchains: ${{ steps.pick.outputs.toolchains }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - id: pick
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            if git diff --name-only "$PR_BASE" HEAD -- rust/src rust/tests rust/benches | grep -q .; then
+              echo 'toolchains=["stable","1.85","beta"]' >> "$GITHUB_OUTPUT"
+            else
+              echo 'toolchains=["stable"]' >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo 'toolchains=["stable","1.85","beta"]' >> "$GITHUB_OUTPUT"
+          fi
+
   test:
+    needs: setup
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.rust == 'beta' }}
     strategy:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, windows-latest, macos-latest ]
-        rust: [ stable, "1.85" ]
-        include:
+        rust: ${{ fromJson(needs.setup.outputs.toolchains) }}
+        exclude:
           - rust: beta
-            os: ubuntu-latest
-    continue-on-error: ${{ matrix.rust == 'beta' }}
+            os: windows-latest
+          - rust: beta
+            os: macos-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 

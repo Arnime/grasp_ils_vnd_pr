@@ -24,7 +24,33 @@ env:
 permissions: read-all
 
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      versions: ${{ steps.pick.outputs.versions }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - id: pick
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            if git diff --name-only "$PR_BASE" HEAD -- julia/src julia/test | grep -q .; then
+              echo 'versions=["1.9","1.10","1.11","1.12"]' >> "$GITHUB_OUTPUT"
+            else
+              echo 'versions=["1"]' >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo 'versions=["1.9","1.10","1.11","1.12"]' >> "$GITHUB_OUTPUT"
+          fi
+
   test:
+    needs: setup
     runs-on: ${{ matrix.os }}
     permissions:
       actions: write # required by julia-actions/cache delete-old-caches
@@ -41,7 +67,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, windows-latest, macos-latest ]
-        julia-version: [ "1.9", "1.10", "1.11", "1.12" ]
+        julia-version: ${{ fromJson(needs.setup.outputs.versions) }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -63,12 +89,41 @@ jobs:
       - name: Run tests
         run: julia --project=julia -e 'using Pkg; Pkg.test()'
 
+  coverage:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write # required by julia-actions/cache delete-old-caches
+      checks: read
+      contents: read
+      deployments: read
+      issues: read
+      packages: read
+      pull-requests: read
+      repository-projects: read
+      security-events: read
+      statuses: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: julia-actions/setup-julia@f6f565d9f7cf12f53dc8045742460d6260ad3b39 # v3.0.1
+        with:
+          version: "1"
+
+      - uses: julia-actions/cache@9a93c5fb3e9c1c20b60fc80a478cae53e38618a4 # v3.0.2
+
+      - name: Install dependencies
+        run: |
+          julia --project=julia -e '
+            using Pkg
+            Pkg.Registry.update()
+            rm(joinpath("julia", "Manifest.toml"); force=true)
+            Pkg.instantiate()
+          '
+
       - name: Run tests with coverage
-        if: matrix.os == 'ubuntu-latest' && matrix.julia-version == '1.12'
         run: julia --project=julia -e 'using Pkg; Pkg.test(; coverage=true)'
 
       - name: Process coverage
-        if: matrix.os == 'ubuntu-latest' && matrix.julia-version == '1.12'
         run: |
           julia -e '
             using Pkg
@@ -79,7 +134,6 @@ jobs:
           '
 
       - name: Upload coverage to Codecov
-        if: matrix.os == 'ubuntu-latest' && matrix.julia-version == '1.12'
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6
         with:
           files: julia-lcov.info
