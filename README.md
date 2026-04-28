@@ -21,15 +21,29 @@
 [![codecov (rust)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=rust)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/rust)
 [![docs.rs](https://img.shields.io/docsrs/givp?cacheSeconds=300)](https://docs.rs/givp)
 
+**C++** &nbsp;
+[![header-only](https://img.shields.io/badge/header--only-yes-brightgreen)](cpp/include/givp/)
+[![C++17](https://img.shields.io/badge/C%2B%2B-17-blue?logo=cplusplus&logoColor=white)](https://en.cppreference.com/w/cpp/17)
+[![CI C++](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-cpp.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-cpp.yml)
+[![codecov (cpp)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=cpp)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/cpp)
+
 **Project** &nbsp;
 [![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/Arnime/grasp_ils_vnd_pr?cacheSeconds=300)](https://securityscorecards.dev/viewer/?uri=github.com/Arnime/grasp_ils_vnd_pr)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12627/badge)](https://www.bestpractices.dev/projects/12627)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-A direction-agnostic metaheuristic optimizer for **continuous,
-integer or mixed** black-box problems, available in **Python** (NumPy-native)
-**Julia**, and **Rust**. The library bundles:
+A direction-agnostic metaheuristic optimizer for **continuous, integer or
+mixed** black-box problems, available in four languages:
+
+| Language | Distribution | Requires |
+|----------|-------------|---------|
+| **Python** (NumPy-native) | [PyPI `givp`](https://pypi.org/project/givp/) | Python 3.10+, NumPy |
+| **Julia** | [JuliaHub `GIVPOptimizer`](https://juliahub.com/ui/Packages/General/GIVPOptimizer) | Julia 1.9+ |
+| **Rust** | [crates.io `givp`](https://crates.io/crates/givp) | Rust 1.85+ |
+| **C++17** | Header-only (FetchContent / copy) | C++17 compiler, CMake 3.21+ |
+
+The library bundles:
 
 - **GRASP** — Greedy Randomized Adaptive Search Procedure
 - **ILS** — Iterated Local Search
@@ -37,10 +51,6 @@ integer or mixed** black-box problems, available in **Python** (NumPy-native)
 - **Path Relinking** between elite solutions
 - LRU evaluation cache, convergence monitor, optional thread-parallel candidate
   evaluation, and a wall-clock time budget
-
-The public API mirrors `scipy.optimize`: pass an objective callable, bounds and
-optional configuration, get back an `OptimizeResult` with `x`, `fun`, `nit`,
-`nfev`, `success`, `message`, `direction`, `meta`.
 
 ---
 
@@ -52,23 +62,40 @@ optional configuration, get back an `OptimizeResult` with `x`, `fun`, `nit`,
     - [Python installation](#python-installation)
     - [Julia installation](#julia-installation)
     - [Rust installation](#rust-installation)
-  - [Quick start](#quick-start)
+    - [C++ installation](#c-installation)
+  - [Python](#python)
+    - [Quick start](#quick-start)
+    - [Choosing the optimization sense](#choosing-the-optimization-sense)
+      - [Boolean flag (recommended)](#boolean-flag-recommended)
+      - [String flag (SciPy/Optuna compatible)](#string-flag-scipyoptuna-compatible)
+    - [Bounds, integer variables and mixed problems](#bounds-integer-variables-and-mixed-problems)
+    - [Object-oriented API and multi-start](#object-oriented-api-and-multi-start)
+    - [Configuration cookbook](#configuration-cookbook)
+    - [Inspecting progress (callback and verbose)](#inspecting-progress-callback-and-verbose)
+    - [API reference](#api-reference)
+      - [`givp(...) -> OptimizeResult`](#givp---optimizeresult)
+      - [`class GIVPOptimizer`](#class-givpoptimizer)
+      - [`class GIVPConfig` (dataclass)](#class-givpconfig-dataclass)
+      - [`class OptimizeResult`](#class-optimizeresult)
+    - [Glossary of hyper-parameters](#glossary-of-hyper-parameters)
+    - [Adapting to a domain-specific model](#adapting-to-a-domain-specific-model)
   - [Julia](#julia)
+    - [Julia quick start](#julia-quick-start)
+    - [Julia bounds and integer variables](#julia-bounds-and-integer-variables)
+    - [Julia configuration cookbook](#julia-configuration-cookbook)
+    - [Julia result fields](#julia-result-fields)
+    - [Julia progress monitoring](#julia-progress-monitoring)
+    - [Running Julia tests and benchmarks](#running-julia-tests-and-benchmarks)
   - [Rust](#rust)
-  - [Choosing the optimization sense](#choosing-the-optimization-sense)
-    - [Boolean flag (recommended)](#boolean-flag-recommended)
-    - [String flag (SciPy/Optuna compatible)](#string-flag-scipyoptuna-compatible)
-  - [Bounds, integer variables and mixed problems](#bounds-integer-variables-and-mixed-problems)
-  - [Object-oriented API and multi-start](#object-oriented-api-and-multi-start)
-  - [Configuration cookbook](#configuration-cookbook)
-  - [Inspecting progress (callback and verbose)](#inspecting-progress-callback-and-verbose)
-  - [Public API reference](#public-api-reference)
-    - [`givp(...) -> OptimizeResult`](#givp---optimizeresult)
-    - [`class GIVPOptimizer`](#class-givpoptimizer)
-    - [`class GIVPConfig` (dataclass)](#class-givpconfig-dataclass)
-    - [`class OptimizeResult`](#class-optimizeresult)
-  - [Glossary of hyper-parameters](#glossary-of-hyper-parameters)
-  - [Adapting to a domain-specific model](#adapting-to-a-domain-specific-model)
+    - [Rust quick start](#rust-quick-start)
+    - [Rust bounds and integer variables](#rust-bounds-and-integer-variables)
+    - [Rust configuration cookbook](#rust-configuration-cookbook)
+    - [Rust result fields](#rust-result-fields)
+    - [Running Rust tests and benchmarks](#running-rust-tests-and-benchmarks)
+  - [C++](#c)
+    - [C++ quick start](#c-quick-start)
+    - [C++ configuration](#c-configuration)
+    - [Running tests and benchmarks](#running-tests-and-benchmarks)
   - [Comparison with other optimizers](#comparison-with-other-optimizers)
   - [Troubleshooting](#troubleshooting)
   - [License](#license)
@@ -78,8 +105,6 @@ optional configuration, get back an `OptimizeResult` with `x`, `fun`, `nit`,
 ## Install
 
 ### Python installation
-
-From PyPI (once published):
 
 ```bash
 pip install givp
@@ -97,8 +122,6 @@ Requires Python 3.10+ and NumPy.
 
 ### Julia installation
 
-From a local clone:
-
 ```bash
 git clone https://github.com/Arnime/grasp_ils_vnd_pr.git
 cd grasp_ils_vnd_pr/julia
@@ -109,7 +132,7 @@ Requires Julia 1.9+.
 
 ### Rust installation
 
-Add to your `Cargo.toml` (once published to crates.io):
+Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
@@ -127,9 +150,34 @@ cargo test
 
 Requires Rust 1.85+ (edition 2021).
 
+### C++ installation
+
+The C++ port is **header-only**. The recommended way is CMake `FetchContent`:
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(
+    givp
+    GIT_REPOSITORY https://github.com/Arnime/grasp_ils_vnd_pr.git
+    GIT_TAG        v0.5.4
+    SOURCE_SUBDIR  cpp
+)
+FetchContent_MakeAvailable(givp)
+
+target_link_libraries(my_app PRIVATE givp::givp)
+```
+
+Or copy the `cpp/include/givp/` directory into your project and add it to your
+include path. No external dependencies are required at runtime.
+
+Requires a C++17 compiler (GCC 9+, Clang 10+, MSVC 2019+) and CMake 3.21+
+(for the `FetchContent` approach).
+
 ---
 
-## Quick start
+## Python
+
+### Quick start
 
 ```python
 import numpy as np
@@ -152,106 +200,12 @@ Default behavior:
 
 ---
 
-## Julia
-
-The Julia port exposes the same algorithm with an idiomatic Julia API:
-
-```julia
-using GIVPOptimizer
-
-function sphere(x::Vector{Float64})::Float64
-    return sum(x .^ 2)
-end
-
-result = givp(sphere, [(-5.0, 5.0) for _ in 1:10])
-println(result.x)       # best vector found
-println(result.fun)     # best objective value
-println(result.nfev)    # number of evaluations
-```
-
-Maximization:
-
-```julia
-result = givp(my_score, bounds; direction=maximize)
-```
-
-Configuration:
-
-```julia
-cfg = GIVPConfig(; max_iterations=50, vnd_iterations=100, time_limit=30.0)
-result = givp(sphere, bounds; config=cfg, seed=42, verbose=true)
-```
-
-Running tests:
-
-```bash
-cd julia
-julia --project=. -e 'using Pkg; Pkg.test()'
-```
-
-Running benchmarks:
-
-```bash
-cd julia
-julia --project=. benchmarks/benchmarks.jl
-```
-
----
-
-## Rust
-
-The Rust port provides a zero-dependency-on-NumPy, native-performance implementation:
-
-```rust
-use givp::{givp, GivpConfig};
-
-let sphere = |x: &[f64]| -> f64 { x.iter().map(|v| v * v).sum() };
-let bounds: Vec<(f64, f64)> = vec![(-5.12, 5.12); 5];
-
-let config = GivpConfig {
-    max_iterations: 50,
-    seed: Some(42),
-    integer_split: Some(5), // all continuous
-    ..Default::default()
-};
-
-let result = givp(sphere, &bounds, config).unwrap();
-println!("Best: {:.6} at {:?}", result.fun, result.x);
-```
-
-Maximization:
-
-```rust
-use givp::{givp, GivpConfig, Direction};
-
-let config = GivpConfig {
-    direction: Direction::Maximize,
-    ..Default::default()
-};
-```
-
-Running tests:
-
-```bash
-cd rust
-cargo test
-```
-
-Running benchmarks:
-
-```bash
-cd rust
-cargo bench
-```
-
----
-
-## Choosing the optimization sense
+### Choosing the optimization sense
 
 The library is **agnostic** to whether you want the lowest or the highest
 value of `func`. Two equivalent ways to declare it:
 
-### Boolean flag (recommended)
+#### Boolean flag (recommended)
 
 ```python
 from givp import givp
@@ -263,7 +217,7 @@ result = givp(gain, [(-5, 5)] * 10, minimize=False)
 assert result.direction == "maximize"
 ```
 
-### String flag (SciPy/Optuna compatible)
+#### String flag (SciPy/Optuna compatible)
 
 ```python
 result = givp(gain, [(-5, 5)] * 10, direction="maximize")
@@ -280,7 +234,7 @@ agree; conflicting values raise `ValueError`.
 
 ---
 
-## Bounds, integer variables and mixed problems
+### Bounds, integer variables and mixed problems
 
 `bounds` is accepted in two equivalent forms:
 
@@ -318,7 +272,7 @@ Special cases:
 
 ---
 
-## Object-oriented API and multi-start
+### Object-oriented API and multi-start
 
 When you want to keep configuration around, run the optimizer multiple times
 and track the best result automatically, use `GIVPOptimizer`:
@@ -344,7 +298,7 @@ all `run()` calls, in the **user's original sign**.
 
 ---
 
-## Configuration cookbook
+### Configuration cookbook
 
 ```python
 from givp import GIVPConfig
@@ -392,7 +346,7 @@ cfg_hydro = GIVPConfig(
 
 ---
 
-## Inspecting progress (callback and verbose)
+### Inspecting progress (callback and verbose)
 
 Both `givp` and `GIVPOptimizer` accept:
 
@@ -418,9 +372,9 @@ result = givp(
 
 ---
 
-## Public API reference
+### API reference
 
-### `givp(...) -> OptimizeResult`
+#### `givp(...) -> OptimizeResult`
 
 ```python
 givp(
@@ -437,16 +391,16 @@ givp(
 ) -> OptimizeResult
 ```
 
-### `class GIVPOptimizer`
+#### `class GIVPOptimizer`
 
 Same constructor signature, exposes `.run() -> OptimizeResult` and tracks
 `.best_x`, `.best_fun`, `.history`.
 
-### `class GIVPConfig` (dataclass)
+#### `class GIVPConfig` (dataclass)
 
 All hyper-parameters listed in the [glossary](#glossary-of-hyper-parameters).
 
-### `class OptimizeResult`
+#### `class OptimizeResult`
 
 | Field       | Type        | Meaning                                                    |
 |-------------|-------------|------------------------------------------------------------|
@@ -463,7 +417,7 @@ For backward compatibility the result is iterable: `x, fun = result` works.
 
 ---
 
-## Glossary of hyper-parameters
+### Glossary of hyper-parameters
 
 | Field                       | Default | Meaning                                                            |
 |-----------------------------|---------|--------------------------------------------------------------------|
@@ -490,7 +444,7 @@ For backward compatibility the result is iterable: `x, fun = result` works.
 
 ---
 
-## Adapting to a domain-specific model
+### Adapting to a domain-specific model
 
 The library knows nothing about your problem. Wrap your domain code so it
 exposes a `func(x: np.ndarray) -> float` and a list of bounds. Penalty terms,
@@ -516,16 +470,288 @@ see the SOG2 adapter in the upstream project repository
 
 ---
 
+## Julia
+
+The Julia port exposes the same algorithm with an idiomatic Julia API.
+Install via the [Julia installation](#julia-installation) instructions above.
+
+### Julia quick start
+
+```julia
+using GIVPOptimizer
+
+function sphere(x::Vector{Float64})::Float64
+    return sum(x .^ 2)
+end
+
+result = givp(sphere, [(-5.0, 5.0) for _ in 1:10])
+println(result.x)       # best vector found
+println(result.fun)     # best objective value
+println(result.nfev)    # number of evaluations
+```
+
+Maximization:
+
+```julia
+result = givp(my_score, bounds; direction=maximize)
+```
+
+### Julia bounds and integer variables
+
+`bounds` is a vector of `(lower, upper)` tuples, one per variable.
+Use `integer_split` to declare mixed continuous/integer problems:
+
+```julia
+n_cont, n_int = 8, 4
+bounds = vcat(fill((-5.0, 5.0), n_cont), fill((0.0, 3.0), n_int))
+cfg = GIVPConfig(; integer_split=n_cont)          # indices >= n_cont are integer
+result = givp(my_obj, bounds; config=cfg)
+```
+
+### Julia configuration cookbook
+
+```julia
+# 1) Fast triage
+cfg_fast = GIVPConfig(;
+    max_iterations=20, vnd_iterations=50, ils_iterations=5,
+    use_elite_pool=false, use_convergence_monitor=false,
+)
+
+# 2) Production-quality with wall-clock budget
+cfg_quality = GIVPConfig(;
+    max_iterations=200, vnd_iterations=300, ils_iterations=15,
+    elite_size=10, path_relink_frequency=5,
+    adaptive_alpha=true, alpha_min=0.05, alpha_max=0.20,
+    time_limit=600.0,
+)
+
+# 3) Maximization
+cfg_max = GIVPConfig(; direction=maximize, max_iterations=100)
+
+result = givp(sphere, bounds; config=cfg_quality, seed=42, verbose=true)
+```
+
+### Julia result fields
+
+| Field       | Type               | Meaning                                          |
+|-------------|--------------------|--------------------------------------------------|
+| `x`         | `Vector{Float64}`  | Best solution vector.                            |
+| `fun`       | `Float64`          | Objective value at `x`, in the original sign.    |
+| `nit`       | `Int`              | Outer GRASP iterations executed.                 |
+| `nfev`      | `Int`              | Total objective-function evaluations.            |
+| `success`   | `Bool`             | True when `fun` is finite.                       |
+| `message`   | `String`           | Human-readable termination reason.               |
+| `direction` | `Direction`        | `minimize` or `maximize` (enum).                 |
+| `meta`      | `Dict{String,Any}` | Algorithm-specific extras (cache stats, etc.).   |
+
+Tuple unpacking works: `x, fun = result`.
+
+### Julia progress monitoring
+
+```julia
+costs = Float64[]
+
+function log_iter(i, cost, sol)
+    push!(costs, cost)
+end
+
+result = givp(sphere, bounds; iteration_callback=log_iter, verbose=true)
+```
+
+### Running Julia tests and benchmarks
+
+```bash
+cd julia
+julia --project=. -e 'using Pkg; Pkg.test()'
+julia --project=. benchmarks/benchmarks.jl
+```
+
+---
+
+## Rust
+
+The Rust port is a zero-dependency (no NumPy), native-performance implementation
+suitable for embedding in systems code or for maximum throughput.
+Install via the [Rust installation](#rust-installation) instructions above.
+
+### Rust quick start
+
+```rust
+use givp::{givp, GivpConfig};
+
+let sphere = |x: &[f64]| -> f64 { x.iter().map(|v| v * v).sum() };
+let bounds: Vec<(f64, f64)> = vec![(-5.12, 5.12); 5];
+
+let result = givp(sphere, &bounds, GivpConfig::default()).unwrap();
+println!("best: {:.6}", result.fun);
+println!("x:    {:?}", result.x);
+println!("nfev: {}", result.nfev);
+```
+
+### Rust bounds and integer variables
+
+Bounds are a `&[(f64, f64)]` slice. Use `integer_split` for mixed problems:
+
+```rust
+use givp::{givp, GivpConfig};
+
+let n_cont = 8usize;
+let mut bounds: Vec<(f64, f64)> = vec![(-5.0, 5.0); n_cont];
+bounds.extend(vec![(0.0, 3.0); 4]);  // 4 integer variables
+
+let config = GivpConfig {
+    integer_split: Some(n_cont),  // indices >= n_cont are rounded to int
+    ..Default::default()
+};
+let result = givp(my_obj, &bounds, config).unwrap();
+```
+
+### Rust configuration cookbook
+
+```rust
+use givp::{givp, GivpConfig, Direction};
+
+// Maximization
+let cfg_max = GivpConfig {
+    direction: Direction::Maximize,
+    seed: Some(42),
+    ..Default::default()
+};
+
+// Production-quality run with wall-clock budget
+let cfg_quality = GivpConfig {
+    max_iterations: 200,
+    vnd_iterations: 300,
+    ils_iterations: 15,
+    elite_size: 7,
+    path_relink_frequency: 5,
+    adaptive_alpha: true,
+    alpha_min: 0.05,
+    alpha_max: 0.20,
+    time_limit: 600.0,
+    seed: Some(0),
+    ..Default::default()
+};
+
+let result = givp(sphere, &bounds, cfg_quality).unwrap();
+```
+
+### Rust result fields
+
+| Field       | Type         | Meaning                                         |
+|-------------|--------------|-------------------------------------------------|
+| `x`         | `Vec<f64>`   | Best solution vector.                           |
+| `fun`       | `f64`        | Objective value at `x`, in the original sign.   |
+| `nit`       | `usize`      | Outer GRASP iterations executed.                |
+| `nfev`      | `usize`      | Total objective-function evaluations.           |
+| `success`   | `bool`       | True when `fun` is finite.                      |
+| `message`   | `String`     | Human-readable termination reason.              |
+| `termination` | `TerminationReason` | Typed termination enum.               |
+
+The function returns `Result<OptimizeResult, GivpError>` — use `.unwrap()` for
+quick scripts or pattern-match for production code.
+
+### Running Rust tests and benchmarks
+
+```bash
+cd rust
+cargo test
+cargo bench
+```
+
+---
+
+## C++
+
+The C++ port is a **header-only, zero-runtime-dependency** implementation.
+It uses the same algorithm and identical default hyper-parameters as the
+Python, Julia, and Rust ports.
+
+### C++ quick start
+
+```cpp
+#include <givp/givp.hpp>
+#include <iostream>
+#include <vector>
+
+int main() {
+    auto sphere = [](const std::vector<double>& x) {
+        double s = 0.0;
+        for (auto v : x) s += v * v;
+        return s;
+    };
+
+    std::vector<std::pair<double, double>> bounds(10, {-5.0, 5.0});
+    givp::OptimizeResult r = givp::givp(sphere, bounds);
+
+    std::cout << "best: " << r.fun  << "\n";  // best objective value
+    std::cout << "nfev: " << r.nfev << "\n";  // evaluations used
+    std::cout << "nit:  " << r.nit  << "\n";  // outer iterations
+}
+```
+
+Maximization:
+
+```cpp
+givp::GivpConfig cfg;
+cfg.direction = givp::Direction::Maximize;
+auto result = givp::givp(my_func, bounds, cfg);
+```
+
+### C++ configuration
+
+```cpp
+givp::GivpConfig cfg;
+cfg.max_iterations          = 50;
+cfg.vnd_iterations          = 100;
+cfg.time_limit              = 30.0;          // wall-clock seconds
+cfg.seed                    = 42;
+cfg.integer_split           = 8;             // first 8 vars continuous
+cfg.verbose                 = true;
+
+givp::OptimizeResult r = givp::givp(sphere, bounds, cfg);
+```
+
+`OptimizeResult` fields mirror all other ports:
+
+| Field     | Type                    | Meaning                                          |
+|-----------|-------------------------|--------------------------------------------------|
+| `x`       | `std::vector<double>`   | Best solution vector.                            |
+| `fun`     | `double`                | Objective value at `x`, in the original sign.    |
+| `nit`     | `std::size_t`           | Outer GRASP iterations executed.                 |
+| `nfev`    | `std::size_t`           | Total objective-function evaluations.            |
+| `success` | `bool`                  | True when `fun` is finite.                       |
+| `message` | `std::string`           | Human-readable termination reason.               |
+
+### Running tests and benchmarks
+
+```bash
+# Configure and build
+cmake -S cpp -B build -DCMAKE_BUILD_TYPE=Release -DGIVP_BUILD_TESTS=ON
+cmake --build build
+
+# Run the 41 Catch2 test cases
+ctest --test-dir build --output-on-failure
+
+# Build and run nanobench benchmarks
+cmake -S cpp -B build_bench -DCMAKE_BUILD_TYPE=Release -DGIVP_BUILD_BENCHMARKS=ON
+cmake --build build_bench
+./build_bench/benchmarks/givp_benchmarks
+```
+
+---
+
 ## Comparison with other optimizers
 
-| Library                                  | Sense convention                  | Discrete vars?  | Built-in cache | Built-in time budget | Language     |
-|------------------------------------------|-----------------------------------|-----------------|----------------|----------------------|--------------|
-| `scipy.optimize.minimize`                | Always minimize                   | No              | No             | No                   | Python       |
-| `scipy.optimize.differential_evolution`  | Always minimize                   | Continuous only | No             | Via callback         | Python       |
-| `scipy.optimize.dual_annealing`          | Always minimize                   | No              | No             | `maxiter` only       | Python       |
-| `optuna`                                 | Explicit (`direction`)            | Yes             | Per-trial only | Yes (`timeout`)      | Python       |
-| `pygad`                                  | Always maximize                   | Yes             | No             | No                   | Python       |
-| **`givp`**                               | Explicit (`minimize`/`direction`) | Yes (mixed)     | LRU cache      | Yes (`time_limit`)   | Python+Julia+Rust |
+| Library                                  | Sense convention                  | Discrete vars?  | Built-in cache | Built-in time budget | Language          |
+|------------------------------------------|-----------------------------------|-----------------|----------------|----------------------|-------------------|
+| `scipy.optimize.minimize`                | Always minimize                   | No              | No             | No                   | Python            |
+| `scipy.optimize.differential_evolution`  | Always minimize                   | Continuous only | No             | Via callback         | Python            |
+| `scipy.optimize.dual_annealing`          | Always minimize                   | No              | No             | `maxiter` only       | Python            |
+| `optuna`                                 | Explicit (`direction`)            | Yes             | Per-trial only | Yes (`timeout`)      | Python            |
+| `pygad`                                  | Always maximize                   | Yes             | No             | No                   | Python            |
+| **`givp`** (Python / Julia / Rust)       | Explicit (`minimize`/`direction`) | Yes (mixed)     | LRU cache      | Yes (`time_limit`)   | Python+Julia+Rust |
+| **`givp`** (C++)                         | Explicit (`Direction` enum)       | Yes (mixed)     | LRU cache      | Yes (`time_limit`)   | C++17             |
 
 ---
 
