@@ -3,7 +3,15 @@ name: Audit
 on:
     push:
         branches: [ main ]
+        paths:
+            - "python/requirements/**"
+            - "pyproject.toml"
+            - ".github/workflows/audit.yml"
     pull_request:
+        paths:
+            - "python/requirements/**"
+            - "pyproject.toml"
+            - ".github/workflows/audit.yml"
     schedule:
         - cron: "13 5 * * 1"
 
