@@ -49,9 +49,9 @@ optional configuration, get back an `OptimizeResult` with `x`, `fun`, `nit`,
 - [givp — GRASP-ILS-VND with Path Relinking](#givp--grasp-ils-vnd-with-path-relinking)
   - [Table of contents](#table-of-contents)
   - [Install](#install)
-    - [Python](#python)
+    - [Python installation](#python-installation)
     - [Julia installation](#julia-installation)
-    - [Rust Installation](#rust-installation)
+    - [Rust installation](#rust-installation)
   - [Quick start](#quick-start)
   - [Julia](#julia)
   - [Rust](#rust)
@@ -77,7 +77,7 @@ optional configuration, get back an `OptimizeResult` with `x`, `fun`, `nit`,
 
 ## Install
 
-### Python
+### Python installation
 
 From PyPI (once published):
 
@@ -107,7 +107,7 @@ julia --project=. -e 'using Pkg; Pkg.instantiate()'
 
 Requires Julia 1.9+.
 
-### Rust Installation
+### Rust installation
 
 Add to your `Cargo.toml` (once published to crates.io):
 
