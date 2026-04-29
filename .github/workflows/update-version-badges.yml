@@ -88,7 +88,7 @@ jobs:
 
                       Signed-off-by: github-actions[bot]
                       <github-actions[bot]@users.noreply.github.com>"
-                  branch: chore/update-version-badges
+                  branch: chore/update-version-badges-${{ github.sha }}
                   delete-branch: true
                   title: "chore(docs): update version badges"
                   body: |
