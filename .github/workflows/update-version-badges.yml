@@ -21,6 +21,7 @@ jobs:
             - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
               with:
                   ref: ${{ github.ref }}
+                  persist-credentials: false
 
             - name: Update version badges in README
               run: |
@@ -81,7 +82,12 @@ jobs:
             - name: Open PR if badge changed
               uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
               with:
-                  commit-message: "chore(docs): update version badges from config files\n\nSigned-off-by: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  commit-message: "chore(docs): update version badges from config files
+
+
+                      Signed-off-by: github-actions[bot]
+                      <github-actions[bot]@users.noreply.github.com>"
                   branch: chore/update-version-badges
                   delete-branch: true
                   title: "chore(docs): update version badges"
