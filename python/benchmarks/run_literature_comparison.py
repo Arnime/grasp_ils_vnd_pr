@@ -68,8 +68,9 @@ if TYPE_CHECKING:
 
 try:
     import givp as _givp_mod
-    from givp import GIVPConfig, givp
-    from givp import benchmarks as bm
+    GIVPConfig = _givp_mod.GIVPConfig
+    givp = _givp_mod.givp
+    bm = _givp_mod.benchmarks
 except ImportError as exc:  # pragma: no cover
     sys.exit(
         f"[error] givp not installed: {exc}\n"
