@@ -12,7 +12,9 @@
   parity, 1100+ line test suite, coverage measured, multi-version CI, JuliaHub
 * Rust implementation reaches v0.7.0 (70% production-ready): all modules ported,
   multi-toolchain CI, published on crates.io
-* C++ header-only library updated to v1.0.0 in sync with Python release
+* C++ header-only library updated to v0.7.0 (70% production-ready): 4-file/728-line
+  test suite, multi-compiler CI (GCC/Clang/MSVC/macOS) — lacks coverage tracking
+  and dedicated docs site
 
 ## [0.5.2](https://github.com/Arnime/grasp_ils_vnd_pr/compare/v0.5.1...v0.5.2) (2026-04-27)
 
