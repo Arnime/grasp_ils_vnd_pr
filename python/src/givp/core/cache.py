@@ -10,7 +10,7 @@ import numpy as np
 from givp.core.helpers import _get_half
 
 try:
-    import xxhash as _xxhash
+    import xxhash as _xxhash  # type: ignore[import-untyped]
 
     _FAST_HASH = True
 except ImportError:  # pragma: no cover
@@ -55,7 +55,7 @@ class EvaluationCache:
         rounded[half:] = np.round(solution[half:], decimals=0)
         data = np.ascontiguousarray(rounded).tobytes()
         if _FAST_HASH:
-            return _xxhash.xxh64_intdigest(data)  # type: ignore[union-attr]
+            return int(_xxhash.xxh64_intdigest(data))  # type: ignore[union-attr]
         return int.from_bytes(
             hashlib.sha1(data, usedforsecurity=False).digest()[:8], "big"
         )
