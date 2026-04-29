@@ -176,7 +176,7 @@ include(FetchContent)
 FetchContent_Declare(
     givp
     GIT_REPOSITORY https://github.com/Arnime/grasp_ils_vnd_pr.git
-    GIT_TAG        v0.5.4
+    GIT_TAG        v0.7.0
     SOURCE_SUBDIR  cpp
 )
 FetchContent_MakeAvailable(givp)

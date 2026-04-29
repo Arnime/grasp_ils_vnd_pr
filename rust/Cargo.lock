@@ -195,7 +195,7 @@ dependencies = [
 
 [[package]]
 name = "givp"
-version = "0.5.4"
+version = "0.7.0"
 dependencies = [
  "approx",
  "criterion",

@@ -1,7 +1,7 @@
 name = "GIVPOptimizer"
 uuid = "52b765d9-9955-43cf-8457-2e847d316e43"
 license = "MIT"
-version = "0.5.4"
+version = "0.8.0"
 authors = ["Arnaldo Mendes Pires Junior"]
 description = "GRASP-ILS-VND with Path Relinking metaheuristic for continuous black-box optimization"
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "givp"
-version = "0.5.4"
+version = "1.0.0"
 description = "GRASP-ILS-VND with Path Relinking — direction-agnostic metaheuristic optimizer."
 readme = "README.md"
 license = { text = "MIT" }
@@ -49,6 +49,7 @@ dev = [
     "pytest-benchmark>=4.0",
     "tqdm>=4.66",
 ]
+benchmarks = ["optuna>=3.0", "scipy>=1.13", "matplotlib>=3.8", "pandas>=2.2"]
 fuzz = ["atheris>=2.3.0; sys_platform == 'linux'"]
 docs = ["mkdocs>=1.6", "mkdocs-material>=9.5", "mkdocstrings[python]>=0.26"]
 notebooks = [
@@ -84,7 +85,7 @@ include = [
 
 [tool.pytest.ini_options]
 testpaths = ["python/tests"]
-addopts = "-q --cov=givp --cov-report=term-missing --cov-fail-under=95 --strict-markers"
+addopts = "-q --cov=givp --cov-report=term-missing --cov-fail-under=95 --strict-markers -m 'not slow'"
 markers = ["slow: tests that are not run by default; use -m slow to enable"]
 
 [tool.pytest-benchmark]

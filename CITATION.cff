@@ -22,5 +22,5 @@ keywords:
   - global-optimization
   - julia
   - python
-version: 0.1.0
-date-released: 2026-04-21
+version: 1.0.0
+date-released: 2026-04-29

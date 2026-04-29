@@ -93,6 +93,24 @@ jobs:
           version: v11.2.8
           fail_ci_if_error: false
 
+  benchmark-smoke:
+    runs-on: ubuntu-latest
+    # Informational job: does not block merges, but surfaces regressions
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+      - name: Install (with benchmark extras)
+        run: |
+          pip install --require-hashes -r python/requirements/ci.txt
+          pip install --require-hashes -r python/requirements/benchmarks.txt
+          sh .github/scripts/install-package.sh
+      - name: Benchmark smoke tests
+        run: pytest -m slow python/tests/test_benchmark_scripts.py -v
+          --override-ini="addopts="
+
   test-pre-release:
     needs: setup
     if: needs.setup.outputs.source_changed == 'true'
