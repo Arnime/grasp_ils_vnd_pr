@@ -42,6 +42,8 @@ from givp.core.helpers import (
 from givp.core.ils import ils_search, perturb_solution_numpy
 from givp.core.impl import (
     _AlgorithmConfig as GIVPConfig,
+)
+from givp.core.impl import (
     _apply_path_relinking_to_pair,
     _check_early_stopping,
     _evaluate_solution_with_cache,
@@ -58,9 +60,17 @@ from givp.core.vnd import (
     _execute_neighborhood,
     _neighborhood_block,
     _neighborhood_group,
-    _perturb_index,
     local_search_vnd,
     local_search_vnd_adaptive,
+)
+from givp.core.vnd_moves import (
+    _modify_indices_for_multiflip,
+    _perturb_index,
+)
+from givp.core.vnd_neighborhoods import (
+    _group_layout,
+    _neighborhood_multiflip,
+    _sign_from_delta,
 )
 
 __all__ = [
@@ -78,11 +88,14 @@ __all__ = [
     "_execute_neighborhood",
     "_get_group_size",
     "_get_half",
+    "_group_layout",
     "_handle_convergence_monitor",
     "_initialize_optimization_components",
     "_maybe_apply_warm_start",
+    "_modify_indices_for_multiflip",
     "_neighborhood_block",
     "_neighborhood_group",
+    "_neighborhood_multiflip",
     "_perturb_index",
     "_prepare_bounds",
     "_print_cache_stats",
@@ -91,6 +104,7 @@ __all__ = [
     "_select_from_rcl",
     "_set_group_size",
     "_set_integer_split",
+    "_sign_from_delta",
     "_validate_bounds_and_initial",
     "bidirectional_path_relinking",
     "construct_grasp",

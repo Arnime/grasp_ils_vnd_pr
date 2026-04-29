@@ -87,7 +87,9 @@ include = [
 testpaths = ["python/tests"]
 addopts = "-q --cov=givp --cov-report=term-missing --cov-fail-under=95 --strict-markers"
 markers = ["slow: tests that are not run by default; use -m slow to enable"]
-benchmark_storage = "python/benchmarks/.results"
+
+[tool.pytest-benchmark]
+storage = "python/benchmarks/.results"
 
 [tool.coverage.run]
 branch = true

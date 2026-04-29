@@ -18,7 +18,8 @@ from givp.core.helpers import (
     _expired,
     _new_rng,
 )
-from givp.core.vnd import _perturb_index, local_search_vnd
+from givp.core.vnd import local_search_vnd
+from givp.core.vnd_moves import _perturb_index
 
 # ---------------------------------------------------------------------------
 # Perturbation

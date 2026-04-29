@@ -37,7 +37,6 @@ from givp.core.helpers import (
 # ---------------------------------------------------------------------------
 from givp.core.vnd_moves import (
     _modify_indices_for_multiflip,
-    _perturb_index,
     _try_continuous_move_module,
     _try_integer_moves_module,
 )
@@ -51,6 +50,24 @@ from givp.core.vnd_neighborhoods import (
     _neighborhood_swap,
     _sign_from_delta,
 )
+
+# Symbols re-exported so ``import givp.core.vnd as core_vnd`` exposes them.
+__all__ = [
+    "_create_cached_cost_fn",
+    "_execute_neighborhood",
+    "_group_layout",
+    "_modify_indices_for_multiflip",
+    "_neighborhood_block",
+    "_neighborhood_flip",
+    "_neighborhood_group",
+    "_neighborhood_multiflip",
+    "_neighborhood_swap",
+    "_search_continuous_flip_module",
+    "_search_integer_flip_module",
+    "_sign_from_delta",
+    "local_search_vnd",
+    "local_search_vnd_adaptive",
+]
 
 # ---------------------------------------------------------------------------
 # Cached cost-function wrapper

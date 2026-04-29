@@ -185,6 +185,16 @@ class TestEvaluationCache:
         assert np.isinf(out)
         assert len(cache.cache) == 0
 
+    def test_hash_solution_sha1_fallback(self, monkeypatch):
+        """Line 59: force the sha1 fallback path by patching _FAST_HASH to False."""
+        import givp.core.cache as cache_module
+
+        monkeypatch.setattr(cache_module, "_FAST_HASH", False)
+        cache = EvaluationCache(maxsize=4)
+        sol = np.array([1.0, 2.0])
+        cache.put(sol, 7.0)
+        assert cache.get(sol) == pytest.approx(7.0)
+
 
 # ----------------------------- ConvergenceMonitor -----------------------------
 
@@ -1225,7 +1235,6 @@ def test_initialize_optimization_components_all_on():
 def expired_deadline(monkeypatch):
     """Make ``_expired`` always return True regardless of deadline value."""
     monkeypatch.setattr(core_impl, "_expired", lambda _d: True)
-    return
 
 
 def test_path_relinking_loops_short_circuit(expired_deadline):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections import deque
 
 import numpy as np
@@ -13,8 +14,6 @@ try:
 
     _FAST_HASH = True
 except ImportError:  # pragma: no cover
-    import hashlib as _hashlib  # type: ignore[no-redef]
-
     _FAST_HASH = False
 
 
@@ -57,7 +56,9 @@ class EvaluationCache:
         data = np.ascontiguousarray(rounded).tobytes()
         if _FAST_HASH:
             return _xxhash.xxh64_intdigest(data)  # type: ignore[union-attr]
-        return int.from_bytes(_hashlib.sha1(data).digest()[:8], "big")  # type: ignore[name-defined]
+        return int.from_bytes(
+            hashlib.sha1(data, usedforsecurity=False).digest()[:8], "big"
+        )
 
     def get(self, solution: np.ndarray) -> float | None:
         """Return the cached cost or ``None`` if not found."""
