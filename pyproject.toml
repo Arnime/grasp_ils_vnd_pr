@@ -21,7 +21,7 @@ keywords = [
     "julia",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
@@ -34,7 +34,7 @@ classifiers = [
     "Programming Language :: Python :: 3.15",
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
-dependencies = ["numpy>=1.24,<3"]
+dependencies = ["numpy>=1.24,<3", "xxhash>=3.0"]
 
 [project.optional-dependencies]
 dev = [
@@ -86,7 +86,9 @@ include = [
 testpaths = ["python/tests"]
 addopts = "-q --cov=givp --cov-report=term-missing --cov-fail-under=95 --strict-markers"
 markers = ["slow: tests that are not run by default; use -m slow to enable"]
-benchmark_storage = "python/benchmarks/.results"
+
+[tool.pytest-benchmark]
+storage = "python/benchmarks/.results"
 
 [tool.coverage.run]
 branch = true
@@ -175,3 +177,4 @@ packages = [{ include = "givp", from = "python/src" }]
 
 [tool.poetry.group.dev.dependencies]
 nox = "^2026.4.10"
+notebook = "^7.5.5"

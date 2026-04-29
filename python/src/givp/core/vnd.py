@@ -1,12 +1,22 @@
-# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+﻿# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
 # SPDX-License-Identifier: MIT
-"""VND — Variable Neighborhood Descent.
+"""VND — Variable Neighborhood Descent (orchestration).
 
-Implements the local-search phase of GRASP-ILS-VND-PR:
-- Five neighbourhoods: flip (1-opt), swap (pair), group, block, multiflip (k-opt)
-- Standard VND with fixed neighbourhood ordering
-- Adaptive VND with Adaptive Neighbourhood Selection (ANS / roulette-wheel)
-- Variable sensitivity tracking (P9)
+Public entry points:
+
+- :func:`local_search_vnd`          — standard VND with fixed neighbourhood order
+- :func:`local_search_vnd_adaptive` — VND with Adaptive Neighbourhood Selection (ANS)
+
+Implementation is split into focused sub-modules:
+
+- :mod:`givp.core.vnd_moves`         — atomic move helpers (try_*, modify, perturb)
+- :mod:`givp.core.vnd_neighborhoods` — swap, multiflip, group, block neighbourhoods
+
+``_search_integer_flip_module``, ``_search_continuous_flip_module``,
+``_neighborhood_flip``, and ``_execute_neighborhood`` are defined here so that
+``monkeypatch.setattr(core_vnd, "_try_*", mock)`` continues to work in tests.
+
+All symbols are accessible via ``import givp.core.vnd as core_vnd``.
 """
 
 from __future__ import annotations
@@ -18,10 +28,46 @@ import numpy as np
 from givp.core.cache import EvaluationCache
 from givp.core.helpers import (
     _expired,
-    _get_group_size,
     _get_half,
     _new_rng,
 )
+
+# ---------------------------------------------------------------------------
+# Re-export atomic-move symbols for full backward compatibility
+# ---------------------------------------------------------------------------
+from givp.core.vnd_moves import (
+    _modify_indices_for_multiflip,
+    _try_continuous_move_module,
+    _try_integer_moves_module,
+)
+
+# Re-export group/block neighbourhood symbols
+from givp.core.vnd_neighborhoods import (
+    _group_layout,
+    _neighborhood_block,
+    _neighborhood_group,
+    _neighborhood_multiflip,
+    _neighborhood_swap,
+    _sign_from_delta,
+)
+
+# Symbols re-exported so ``import givp.core.vnd as core_vnd`` exposes them.
+__all__ = [
+    "_create_cached_cost_fn",
+    "_execute_neighborhood",
+    "_group_layout",
+    "_modify_indices_for_multiflip",
+    "_neighborhood_block",
+    "_neighborhood_flip",
+    "_neighborhood_group",
+    "_neighborhood_multiflip",
+    "_neighborhood_swap",
+    "_search_continuous_flip_module",
+    "_search_integer_flip_module",
+    "_sign_from_delta",
+    "local_search_vnd",
+    "local_search_vnd_adaptive",
+]
 
 # ---------------------------------------------------------------------------
 # Cached cost-function wrapper
@@ -31,7 +77,7 @@ from givp.core.helpers import (
 def _create_cached_cost_fn(
     cost_fn: Callable, cache: EvaluationCache | None
 ) -> Callable:
-    """Cria wrapper de função de custo com cache."""
+    """Create a cost-function wrapper with evaluation caching."""
 
     def cached_cost_fn(sol):
         if cache is not None:
@@ -47,58 +93,9 @@ def _create_cached_cost_fn(
 
 
 # ---------------------------------------------------------------------------
-# Atomic move helpers
+# Flip-sweep helpers
+# (defined here so monkeypatch.setattr(core_vnd, "_try_*", mock) works)
 # ---------------------------------------------------------------------------
-
-
-def _try_integer_moves_module(
-    idx: int,
-    sol: np.ndarray,
-    best_benefit: float,
-    cost_fn: Callable,
-    lower_arr: np.ndarray | None,
-    upper_arr: np.ndarray | None,
-):
-    old = sol[idx]
-    base = int(np.rint(old))
-    cand_vals = (base - 1, base, base + 1)
-    lo = int(np.ceil(lower_arr[idx])) if (lower_arr is not None) else -np.inf
-    hi = int(np.floor(upper_arr[idx])) if (upper_arr is not None) else np.inf
-    for v in cand_vals:
-        if v < lo or v > hi:
-            continue
-        sol[idx] = float(v)
-        c = cost_fn(sol)
-        if c < best_benefit:
-            return sol.copy(), c, True
-    sol[idx] = old
-    return sol, best_benefit, False
-
-
-def _try_continuous_move_module(
-    idx: int,
-    sol: np.ndarray,
-    best_benefit: float,
-    cost_fn: Callable,
-    rng: np.random.Generator,
-    lower_arr: np.ndarray | None,
-    upper_arr: np.ndarray | None,
-):
-    old = sol[idx]
-    if lower_arr is not None and upper_arr is not None:
-        span = upper_arr[idx] - lower_arr[idx]
-        perturb = rng.uniform(-0.05 * span, 0.05 * span)
-    else:
-        perturb = rng.uniform(-0.1, 0.1)
-    new_val = old + perturb
-    if lower_arr is not None and upper_arr is not None:
-        new_val = float(np.clip(new_val, lower_arr[idx], upper_arr[idx]))
-    sol[idx] = new_val
-    cost = cost_fn(sol)
-    if cost < best_benefit:
-        return True, cost
-    sol[idx] = old
-    return False, best_benefit
 
 
 def _search_integer_flip_module(
@@ -111,6 +108,7 @@ def _search_integer_flip_module(
     first_improvement: bool,
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float]:
+    """Sweep over *indices* (integer variables), applying 1-opt moves."""
     best_sol = sol.copy()
     best_ben = best_benefit
     for count, i in enumerate(indices):
@@ -138,6 +136,7 @@ def _search_continuous_flip_module(
     first_improvement: bool,
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float]:
+    """Sweep over *indices* (continuous variables), applying small perturbations."""
     best_sol = sol.copy()
     best_ben = best_benefit
     for count, i in enumerate(indices):
@@ -156,78 +155,8 @@ def _search_continuous_flip_module(
     return best_sol, best_ben
 
 
-def _modify_indices_for_multiflip(
-    solution: np.ndarray,
-    indices: np.ndarray,
-    rng: np.random.Generator,
-    lower_arr: np.ndarray | None,
-    upper_arr: np.ndarray | None,
-):
-    half = _get_half(solution.size)
-    old_vals = solution[indices].copy()
-
-    int_mask = indices >= half
-    int_indices = indices[int_mask]
-    if int_indices.size > 0:
-        base = np.rint(solution[int_indices]).astype(int)
-        deltas = rng.integers(-1, 2, size=int_indices.size)
-        new_vals = base + deltas
-        if lower_arr is not None and upper_arr is not None:
-            lo = np.ceil(lower_arr[int_indices]).astype(int)
-            hi = np.floor(upper_arr[int_indices]).astype(int)
-            new_vals = np.clip(new_vals, lo, hi)
-        solution[int_indices] = new_vals.astype(float)
-
-    cont_mask = indices < half
-    cont_indices = indices[cont_mask]
-    if cont_indices.size > 0:
-        if lower_arr is not None and upper_arr is not None:
-            spans = upper_arr[cont_indices] - lower_arr[cont_indices]
-            perturb = rng.uniform(-0.05, 0.05, size=cont_indices.size) * spans
-        else:
-            perturb = rng.uniform(-0.1, 0.1, size=cont_indices.size)
-        new_vals = solution[cont_indices] + perturb
-        if lower_arr is not None and upper_arr is not None:
-            new_vals = np.clip(
-                new_vals, lower_arr[cont_indices], upper_arr[cont_indices]
-            )
-        solution[cont_indices] = new_vals
-
-    return old_vals
-
-
-def _perturb_index(
-    perturbed: np.ndarray,
-    idx: int,
-    strength: int,
-    rng: np.random.Generator,
-    lower_arr: np.ndarray | None,
-    upper_arr: np.ndarray | None,
-):
-    half = _get_half(perturbed.size)
-    old = perturbed[idx]
-    if idx >= half:
-        lo = int(np.ceil(lower_arr[idx])) if lower_arr is not None else None
-        hi = int(np.floor(upper_arr[idx])) if upper_arr is not None else None
-        step = max(1, int(round(strength / 2)))
-        delta = int(rng.integers(-step, step + 1))
-        new_val = int(np.rint(old)) + delta
-        if lo is not None and hi is not None:
-            new_val = int(np.clip(new_val, lo, hi))
-        perturbed[idx] = float(new_val)
-    else:
-        if lower_arr is not None and upper_arr is not None:
-            span = upper_arr[idx] - lower_arr[idx]
-            # P15: amplitude aumentada para ±15% para diversificação efetiva
-            delta = rng.uniform(-0.15 * span, 0.15 * span)
-            perturbed[idx] = float(np.clip(old + delta, lower_arr[idx], upper_arr[idx]))
-        else:
-            delta = rng.normal(scale=0.12 * (abs(old) + 1e-6))
-            perturbed[idx] = old + delta
-
-
 # ---------------------------------------------------------------------------
-# Neighbourhood functions
+# 1-opt neighbourhood (defined here to call local _search_* references)
 # ---------------------------------------------------------------------------
 
 
@@ -243,28 +172,14 @@ def _neighborhood_flip(
     sensitivity: np.ndarray | None = None,
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float]:
-    """
-    Vizinhança 1-opt: Tenta inverter cada bit individualmente na solução.
+    """1-opt neighbourhood: try modifying each variable individually.
 
-    P9: Se sensitivity array fornecido, prioriza variáveis com maior sensibilidade
-    (maior impacto histórico no custo), reduzindo avaliações desperdiçadas.
-
-    Args:
-        cost_fn (Callable): Função de custo.
-        solution (np.ndarray): Solução atual.
-        current_benefit (float): Benefício atual.
-        num_vars (int): Número de variáveis.
-        first_improvement (bool): Se True, retorna na primeira melhoria.
-        seed (int, optional): Semente aleatória.
-        sensitivity (np.ndarray, optional): P9 — scores de sensibilidade por variável.
-
-    Returns:
-        tuple: (melhor_solução, melhor_benefício)
+    P9: When a ``sensitivity`` array is provided, variables with a higher
+    historical impact on the cost are explored first, reducing wasted evaluations.
     """
     rng = _new_rng(seed)
     half = _get_half(num_vars)
     if sensitivity is not None and np.any(sensitivity > 0):
-        # P9: ordenar por sensibilidade (maior primeiro), com ruído para exploração
         noise = rng.uniform(0, 0.1, size=num_vars) * np.max(sensitivity)
         priority = sensitivity + noise
         indices = np.argsort(-priority)
@@ -307,351 +222,82 @@ def _neighborhood_flip(
     return best_solution, best_benefit
 
 
-def _neighborhood_swap(
+# ---------------------------------------------------------------------------
+# Neighbourhood dispatcher (defined here so all 5 neighbourhoods are resolved
+# from vnd.py's namespace, avoiding any circular-import issues)
+# ---------------------------------------------------------------------------
+
+
+def _execute_neighborhood(
+    idx: int,
     cost_fn: Callable,
     solution: np.ndarray,
     current_benefit: float,
     num_vars: int,
-    first_improvement: bool = True,
-    max_attempts: int = 50,
-    lower_arr: np.ndarray | None = None,
-    upper_arr: np.ndarray | None = None,
+    first_improvement: bool,
+    lower_arr: np.ndarray | None,
+    upper_arr: np.ndarray | None,
+    sensitivity: np.ndarray | None,
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float]:
-    """
-    Vizinhança de par: perturba uma variável contínua e sua correspondente inteira simultaneamente.
-
-    Modifica conjuntamente a variável contínua e a inteira de mesmo índice,
-    capturando correlações entre as duas metades que a busca 1-opt ignora.
-
-    Args:
-        cost_fn (Callable): Função de custo.
-        solution (np.ndarray): Solução atual.
-        current_benefit (float): Benefício atual.
-        num_vars (int): Número de variáveis.
-        first_improvement (bool): Se True, retorna na primeira melhoria.
-        max_attempts (int): Número máximo de tentativas.
-        lower_arr (np.ndarray | None): Limites inferiores.
-        upper_arr (np.ndarray | None): Limites superiores.
-
-    Returns:
-        tuple: (melhor_solução, melhor_benefício)
-    """
-    best_solution = solution.copy()
-    best_benefit = current_benefit
-    rng = _new_rng()
-    half = _get_half(num_vars)
-    if half <= 0 or half >= num_vars:
-        # Neighborhood requires both continuous and integer halves.
-        return best_solution, best_benefit
-    for _ in range(max_attempts):
-        if _expired(deadline):
-            break
-        cont_idx = rng.integers(0, half)
-        int_idx = cont_idx + half
-
-        old_cont = solution[cont_idx]
-        old_int = solution[int_idx]
-
-        if lower_arr is not None and upper_arr is not None:
-            span_cont = upper_arr[cont_idx] - lower_arr[cont_idx]
-            solution[cont_idx] = float(
-                np.clip(
-                    old_cont + rng.uniform(-0.08 * span_cont, 0.08 * span_cont),
-                    lower_arr[cont_idx],
-                    upper_arr[cont_idx],
-                )
-            )
-            lo_int = int(np.ceil(lower_arr[int_idx]))
-            hi_int = int(np.floor(upper_arr[int_idx]))
-            new_int = int(np.rint(old_int)) + int(rng.integers(-1, 2))
-            solution[int_idx] = float(np.clip(new_int, lo_int, hi_int))
-        else:
-            solution[cont_idx] = old_cont + rng.uniform(-0.1, 0.1)
-            solution[int_idx] = float(int(np.rint(old_int)) + int(rng.integers(-1, 2)))
-
-        cost = cost_fn(solution)
-        if cost < best_benefit:
-            best_benefit = cost
-            best_solution = solution.copy()
-            if first_improvement:
-                return best_solution, best_benefit
-
-        solution[cont_idx] = old_cont
-        solution[int_idx] = old_int
-
-    return best_solution, best_benefit
-
-
-def _neighborhood_multiflip(
-    cost_fn: Callable,
-    solution: np.ndarray,
-    current_benefit: float,
-    num_vars: int,
-    k: int = 3,
-    max_attempts: int = 50,
-    seed: int | None = None,
-    lower_arr: np.ndarray | None = None,
-    upper_arr: np.ndarray | None = None,
-    deadline: float = 0.0,
-) -> tuple[np.ndarray, float]:
-    """
-    Vizinhança k-opt: Inverte k bits simultaneamente na solução.
-
-    Args:
-        cost_fn (Callable): Função de custo.
-        solution (np.ndarray): Solução atual.
-        current_benefit (float): Benefício atual.
-        num_vars (int): Número de variáveis.
-        k (int): Número de bits a inverter.
-        max_attempts (int): Número máximo de tentativas.
-        seed (int, optional): Semente aleatória.
-
-    Returns:
-        tuple: (melhor_solução, melhor_benefício)
-    """
-    best_solution = solution.copy()
-    best_benefit = current_benefit
-    rng = _new_rng(seed)
-
-    for _ in range(max_attempts):
-        if _expired(deadline):
-            break
-        indices = rng.choice(num_vars, size=min(k, num_vars), replace=False)
-        old_vals = _modify_indices_for_multiflip(
-            solution, indices, rng, lower_arr, upper_arr
+    """Dispatch to a specific neighbourhood by index (0=flip, 1=pair, 2=group, 3=block, 4=multiflip)."""
+    if idx == 0:
+        return _neighborhood_flip(
+            cost_fn,
+            solution,
+            current_benefit,
+            num_vars,
+            first_improvement,
+            seed=None,
+            lower_arr=lower_arr,
+            upper_arr=upper_arr,
+            sensitivity=sensitivity,
+            deadline=deadline,
         )
-        cost = cost_fn(solution)
-        if cost < best_benefit:
-            best_benefit = cost
-            best_solution = solution.copy()
-        solution[indices] = old_vals
-
-    return best_solution, best_benefit
-
-
-# ---------------------------------------------------------------------------
-# Group / block neighbourhoods
-# ---------------------------------------------------------------------------
-
-
-def _group_layout(num_vars: int) -> tuple[int, int, int] | None:
-    """Infer grouped variable layout (half, n_groups, n_steps) when valid."""
-    half = _get_half(num_vars)
-    if half <= 0 or half >= num_vars:
-        return None
-    n_steps = _get_group_size()
-    if n_steps is None or n_steps < 1:
-        return None
-    n_groups = half // n_steps
-    if n_groups < 1 or n_groups * n_steps != half:
-        return None
-    return half, n_groups, n_steps
-
-
-def _sign_from_delta(delta: float) -> int:
-    """Return discrete direction sign from continuous delta."""
-    if delta > 0:
-        return 1
-    if delta < 0:
-        return -1
-    return 0
-
-
-def _apply_group_perturbation(
-    solution: np.ndarray,
-    old_cont: np.ndarray,
-    old_int: np.ndarray,
-    start: int,
-    half: int,
-    n_steps: int,
-    lower_arr: np.ndarray,
-    upper_arr: np.ndarray,
-    rng: np.random.Generator,
-) -> None:
-    """Apply a correlated perturbation to all steps of one group."""
-    end = start + n_steps
-    span = upper_arr[start:end] - lower_arr[start:end]
-    base_delta = rng.uniform(-0.05, 0.05)
-    noise = rng.uniform(-0.02, 0.02, size=n_steps)
-    solution[start:end] = np.clip(
-        old_cont + (base_delta + noise) * span,
-        lower_arr[start:end],
-        upper_arr[start:end],
+    if idx == 1:
+        return _neighborhood_swap(
+            cost_fn,
+            solution,
+            current_benefit,
+            num_vars,
+            first_improvement,
+            lower_arr=lower_arr,
+            upper_arr=upper_arr,
+            deadline=deadline,
+        )
+    if idx == 2:
+        return _neighborhood_group(
+            cost_fn,
+            solution,
+            current_benefit,
+            num_vars,
+            first_improvement,
+            lower_arr=lower_arr,
+            upper_arr=upper_arr,
+            deadline=deadline,
+        )
+    if idx == 3:
+        return _neighborhood_block(
+            cost_fn,
+            solution,
+            current_benefit,
+            num_vars,
+            first_improvement,
+            lower_arr=lower_arr,
+            upper_arr=upper_arr,
+            deadline=deadline,
+        )
+    return _neighborhood_multiflip(
+        cost_fn,
+        solution,
+        current_benefit,
+        num_vars,
+        k=3,
+        seed=None,
+        lower_arr=lower_arr,
+        upper_arr=upper_arr,
+        deadline=deadline,
     )
-    delta_int = _sign_from_delta(base_delta)
-    int_start = half + start
-    for step_idx in range(n_steps):
-        lo = int(np.ceil(lower_arr[int_start + step_idx]))
-        hi = int(np.floor(upper_arr[int_start + step_idx]))
-        new_val = int(np.rint(old_int[step_idx])) + delta_int
-        solution[int_start + step_idx] = float(np.clip(new_val, lo, hi))
-
-
-def _apply_block_perturbation(
-    solution: np.ndarray,
-    old_vals: np.ndarray,
-    half: int,
-    n_groups: int,
-    n_steps: int,
-    block_start: int,
-    block_end: int,
-    lower_arr: np.ndarray,
-    upper_arr: np.ndarray,
-    base_delta: float,
-) -> None:
-    """Apply a coordinated perturbation to a contiguous step-block across all groups."""
-    int_delta = _sign_from_delta(base_delta)
-    for group_idx in range(n_groups):
-        offset = group_idx * n_steps
-        for step_idx in range(block_start, block_end):
-            cont_idx = offset + step_idx
-            int_idx = half + cont_idx
-            span = upper_arr[cont_idx] - lower_arr[cont_idx]
-            solution[cont_idx] = float(
-                np.clip(
-                    old_vals[cont_idx] + base_delta * span,
-                    lower_arr[cont_idx],
-                    upper_arr[cont_idx],
-                )
-            )
-            lo = int(np.ceil(lower_arr[int_idx]))
-            hi = int(np.floor(upper_arr[int_idx]))
-            solution[int_idx] = float(
-                np.clip(int(np.rint(old_vals[int_idx])) + int_delta, lo, hi)
-            )
-
-
-def _neighborhood_group(
-    cost_fn: Callable,
-    solution: np.ndarray,
-    current_benefit: float,
-    num_vars: int,
-    first_improvement: bool = True,
-    max_attempts: int = 30,
-    lower_arr: np.ndarray | None = None,
-    upper_arr: np.ndarray | None = None,
-    deadline: float = 0.0,
-) -> tuple[np.ndarray, float]:
-    """
-    Vizinhança de grupo: perturba todos os passos de um mesmo grupo simultaneamente.
-
-    Requer que a metade contínua esteja organizada como
-    [group0_step0, group0_step1, ..., group1_step0, ...] com grupos de
-    tamanho ``config.group_size``.  Desativada automaticamente se
-    ``group_size`` não estiver configurado.
-    """
-    best_solution = solution.copy()
-    best_benefit = current_benefit
-    rng = _new_rng()
-    layout = _group_layout(num_vars)
-    if layout is None:
-        return best_solution, best_benefit
-    half, n_groups, n_steps = layout
-    if lower_arr is None or upper_arr is None:
-        return best_solution, best_benefit
-
-    for _ in range(max_attempts):
-        if _expired(deadline):
-            break
-        group_idx = rng.integers(0, n_groups)
-        start = group_idx * n_steps
-        end = start + n_steps
-
-        old_cont = solution[start:end].copy()
-        old_int = solution[half + start : half + end].copy()
-
-        _apply_group_perturbation(
-            solution,
-            old_cont,
-            old_int,
-            int(start),
-            half,
-            n_steps,
-            lower_arr,
-            upper_arr,
-            rng,
-        )
-
-        cost = cost_fn(solution)
-        if cost < best_benefit:
-            best_benefit = cost
-            best_solution = solution.copy()
-            if first_improvement:
-                return best_solution, best_benefit
-
-        solution[start:end] = old_cont
-        solution[half + start : half + end] = old_int
-
-    return best_solution, best_benefit
-
-
-def _neighborhood_block(
-    cost_fn: Callable,
-    solution: np.ndarray,
-    current_benefit: float,
-    num_vars: int,
-    first_improvement: bool = True,
-    max_attempts: int = 30,
-    lower_arr: np.ndarray | None = None,
-    upper_arr: np.ndarray | None = None,
-    deadline: float = 0.0,
-) -> tuple[np.ndarray, float]:
-    """
-    Vizinhança de bloco: perturba um bloco contíguo de passos em todos os grupos.
-
-    Seleciona aleatoriamente um subintervalo de 3–6 passos e aplica uma
-    perturbação coordenada em todos os grupos simultaneamente.  Desativada
-    automaticamente se ``group_size`` não estiver configurado.
-    """
-    best_solution = solution.copy()
-    best_benefit = current_benefit
-    rng = _new_rng()
-    layout = _group_layout(num_vars)
-    if layout is None:
-        return best_solution, best_benefit
-    half, n_groups, n_steps = layout
-    if lower_arr is None or upper_arr is None:
-        return best_solution, best_benefit
-
-    for _ in range(max_attempts):
-        if _expired(deadline):
-            break
-        block_size = rng.integers(3, min(7, n_steps + 1))
-        b_start = rng.integers(0, n_steps - block_size + 1)
-        b_end = b_start + block_size
-
-        old_vals = solution.copy()
-
-        base_delta = rng.uniform(-0.04, 0.04)
-        _apply_block_perturbation(
-            solution,
-            old_vals,
-            half,
-            n_groups,
-            n_steps,
-            int(b_start),
-            int(b_end),
-            lower_arr,
-            upper_arr,
-            base_delta,
-        )
-
-        cost = cost_fn(solution)
-        if cost < best_benefit:
-            best_benefit = cost
-            best_solution = solution.copy()
-            if first_improvement:
-                return best_solution, best_benefit
-
-        np.copyto(solution, old_vals)
-
-    return best_solution, best_benefit
-
-
-# ---------------------------------------------------------------------------
-# VND orchestration
-# ---------------------------------------------------------------------------
 
 
 def _try_neighborhoods(
@@ -667,9 +313,9 @@ def _try_neighborhoods(
     sensitivity: np.ndarray | None = None,
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float, bool]:
-    """Tenta vizinhanças 1-opt, pair, group, block e multiflip.
+    """Try neighbourhoods: 1-opt, pair, group, block, and multiflip.
 
-    Retorna (solution, benefit, improved).
+    Returns (solution, benefit, improved).
     """
     if _expired(deadline):
         return solution, current_benefit, False
@@ -757,93 +403,6 @@ def _try_neighborhoods(
     return solution, current_benefit, False
 
 
-def _execute_neighborhood(
-    idx: int,
-    cost_fn: Callable,
-    solution: np.ndarray,
-    current_benefit: float,
-    num_vars: int,
-    first_improvement: bool,
-    lower_arr: np.ndarray | None,
-    upper_arr: np.ndarray | None,
-    sensitivity: np.ndarray | None,
-    deadline: float = 0.0,
-) -> tuple[np.ndarray, float]:
-    """Executa uma vizinhança específica pelo índice.
-
-    Args:
-        idx: Índice da vizinhança (0=flip, 1=pair, 2=group, 3=block, 4=multiflip).
-        cost_fn: Função de custo.
-        solution: Solução atual.
-        current_benefit: Custo atual.
-        num_vars: Número de variáveis.
-        first_improvement: Se True, aceita primeira melhoria.
-        lower_arr: Limites inferiores.
-        upper_arr: Limites superiores.
-        sensitivity: Scores de sensibilidade por variável (P9).
-
-    Returns:
-        tuple: (melhor_solução, melhor_benefício).
-    """
-    if idx == 0:
-        return _neighborhood_flip(
-            cost_fn,
-            solution,
-            current_benefit,
-            num_vars,
-            first_improvement,
-            seed=None,
-            lower_arr=lower_arr,
-            upper_arr=upper_arr,
-            sensitivity=sensitivity,
-            deadline=deadline,
-        )
-    if idx == 1:
-        return _neighborhood_swap(
-            cost_fn,
-            solution,
-            current_benefit,
-            num_vars,
-            first_improvement,
-            lower_arr=lower_arr,
-            upper_arr=upper_arr,
-            deadline=deadline,
-        )
-    if idx == 2:
-        return _neighborhood_group(
-            cost_fn,
-            solution,
-            current_benefit,
-            num_vars,
-            first_improvement,
-            lower_arr=lower_arr,
-            upper_arr=upper_arr,
-            deadline=deadline,
-        )
-    if idx == 3:
-        return _neighborhood_block(
-            cost_fn,
-            solution,
-            current_benefit,
-            num_vars,
-            first_improvement,
-            lower_arr=lower_arr,
-            upper_arr=upper_arr,
-            deadline=deadline,
-        )
-    return _neighborhood_multiflip(
-        cost_fn,
-        solution,
-        current_benefit,
-        num_vars,
-        k=3,
-        seed=None,
-        lower_arr=lower_arr,
-        upper_arr=upper_arr,
-        deadline=deadline,
-    )
-
-
 def local_search_vnd(
     cost_fn: Callable,
     solution: np.ndarray,
@@ -857,22 +416,23 @@ def local_search_vnd(
     cache: EvaluationCache | None = None,
     deadline: float = 0.0,
 ) -> np.ndarray:
-    """
-    Executa busca local usando Variable Neighborhood Descent (VND),
-    alternando entre vizinhanças 1-opt, 2-opt e multi-flip com cache.
+    """Run Variable Neighborhood Descent (VND) local search.
+
+    Alternates between 1-opt, pair, group, block, and multiflip neighbourhoods
+    with an optional LRU evaluation cache.
 
     Args:
-        cost_fn (Callable): Função de custo a maximizar.
-        solution (np.ndarray): Solução inicial.
-        num_vars (int): Número de variáveis.
-        max_iter (int): Máximo de iterações.
-        use_first_improvement (bool): Se True, aceita primeira melhoria encontrada.
-        no_improve_limit (int): Limite de iterações sem melhoria.
-        no_improve_flip_limit (int): Frequência para multi-flip.
-        cache: Cache de avaliações (opcional).
+        cost_fn: Objective function (minimisation).
+        solution: Starting solution.
+        num_vars: Number of variables.
+        max_iter: Maximum number of VND iterations.
+        use_first_improvement: If True, accept the first improving move.
+        no_improve_limit: Maximum consecutive iterations without improvement.
+        no_improve_flip_limit: Multiflip trigger period.
+        cache: Evaluation cache (optional).
 
     Returns:
-        np.ndarray: Solução melhorada.
+        Improved solution vector.
     """
     solution = np.array(solution, dtype=float)
     cached_cost_fn = _create_cached_cost_fn(cost_fn, cache)
@@ -932,30 +492,29 @@ def local_search_vnd_adaptive(
     decay_factor: float = 0.95,
     min_probability: float = 0.05,
 ) -> np.ndarray:
-    """
-    VND com Seleção Adaptativa de Vizinhança (Adaptive Neighborhood Selection — ANS).
+    """VND with Adaptive Neighbourhood Selection (ANS / roulette-wheel).
 
-    Em vez de aplicar vizinhanças em ordem fixa (flip→pair→group→block→multiflip),
-    usa roulette-wheel proporcional ao sucesso histórico de cada vizinhança.
-    Vizinhanças que geram melhorias recebem recompensa; todas sofrem decaimento
-    exponencial para permitir readaptação ao longo da busca.
+    Instead of a fixed neighbourhood order (flip->pair->group->block->multiflip),
+    uses roulette-wheel selection proportional to each neighbourhood's historical
+    success.  Neighbourhoods that yield improvements receive a reward; all scores
+    decay exponentially to allow re-adaptation throughout the search.
 
     Args:
-        cost_fn: Função de custo (minimização).
-        solution: Solução inicial.
-        num_vars: Número de variáveis.
-        max_iter: Máximo de iterações.
-        use_first_improvement: Se True, aceita primeira melhoria encontrada.
-        no_improve_limit: Limite de iterações sem melhoria para parar.
-        lower_arr: Limites inferiores das variáveis.
-        upper_arr: Limites superiores das variáveis.
-        cache: Cache de avaliações (opcional).
-        reward_factor: Fator de recompensa para vizinhança bem-sucedida.
-        decay_factor: Fator de decaimento dos scores por iteração (0 < d < 1).
-        min_probability: Probabilidade mínima de seleção por vizinhança.
+        cost_fn: Objective function (minimisation).
+        solution: Starting solution.
+        num_vars: Number of variables.
+        max_iter: Maximum number of iterations.
+        use_first_improvement: If True, accept the first improving move.
+        no_improve_limit: Maximum consecutive iterations without improvement.
+        lower_arr: Lower bounds for each variable.
+        upper_arr: Upper bounds for each variable.
+        cache: Evaluation cache (optional).
+        reward_factor: Reward multiplier for a successful neighbourhood.
+        decay_factor: Per-iteration score decay (0 < decay_factor < 1).
+        min_probability: Minimum selection probability per neighbourhood.
 
     Returns:
-        np.ndarray: Solução melhorada.
+        Improved solution vector.
     """
     solution = np.array(solution, dtype=float)
     cached_cost_fn = _create_cached_cost_fn(cost_fn, cache)

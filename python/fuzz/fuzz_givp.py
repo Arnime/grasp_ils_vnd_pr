@@ -21,7 +21,7 @@ import struct
 import sys
 
 try:
-    import atheris  # type: ignore[import-untyped]  # pylint: disable=import-error
+    import atheris  # type: ignore[import-untyped]
 
     HAS_ATHERIS = True
 except ImportError:
@@ -29,10 +29,9 @@ except ImportError:
     HAS_ATHERIS = False
 
 import numpy as np
+from givp import GIVPConfig, givp
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
-
-from givp import GIVPConfig, givp
 
 _FAST_CFG = GIVPConfig(
     max_iterations=2,

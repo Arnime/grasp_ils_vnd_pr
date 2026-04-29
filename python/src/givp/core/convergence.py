@@ -6,18 +6,18 @@ import numpy as np
 
 
 class ConvergenceMonitor:
-    """Monitora convergência e decide quando fazer restart.
+    """Monitor that tracks stagnation and recommends restarts or intensification.
 
-    Rastreia histórico de melhorias e detecta estagnação prolongada,
-    sugerindo restart com perturbação forte quando necessário.
+    Tracks the improvement history and detects prolonged stagnation,
+    suggesting a restart with strong perturbation when needed.
 
     Args:
-            window_size (int): Tamanho da janela para análise de tendência.
-            restart_threshold (int): Iterações sem melhoria para sugerir restart.
+        window_size: Window size for trend analysis.
+        restart_threshold: Iterations without improvement before recommending a restart.
 
     Attributes:
-            history (list): Histórico dos melhores custos.
-            no_improve_count (int): Contador de iterações sem melhoria.
+        history: History of best objective costs.
+        no_improve_count: Number of consecutive iterations without improvement.
     """
 
     def __init__(self, window_size: int = 20, restart_threshold: int = 50):
@@ -29,11 +29,11 @@ class ConvergenceMonitor:
         self.diversity_scores: list[float] = []
 
     def update(self, current_cost: float, elite_pool=None) -> dict:
-        """Atualiza monitor com novo custo e retorna recomendações.
+        """Update the monitor with the latest cost and return recommendations.
 
         Returns:
-                dict com chaves: ``should_restart``, ``should_intensify``,
-                ``diversity``, ``no_improve_count``.
+            Dict with keys: ``should_restart``, ``should_intensify``,
+            ``diversity``, ``no_improve_count``.
         """
         self.history.append(current_cost)
 

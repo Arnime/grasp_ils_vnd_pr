@@ -18,7 +18,8 @@ from givp.core.helpers import (
     _expired,
     _new_rng,
 )
-from givp.core.vnd import _perturb_index, local_search_vnd
+from givp.core.vnd import local_search_vnd
+from givp.core.vnd_moves import _perturb_index
 
 # ---------------------------------------------------------------------------
 # Perturbation
@@ -34,16 +35,16 @@ def perturb_solution_numpy(
     upper_arr: np.ndarray | None = None,
 ) -> np.ndarray:
     """
-    Aplica perturbação à solução, invertendo 'strength' bits aleatórios.
+    Apply perturbation to the solution by modifying ``strength`` randomly chosen variables.
 
     Args:
-        solution (np.ndarray): Solução original.
-        num_vars (int): Número de variáveis.
-        strength (int): Intensidade da perturbação (quantos bits inverter).
-        seed (int, optional): Semente aleatória.
+        solution: Original solution.
+        num_vars: Number of variables.
+        strength: Perturbation intensity (number of variables to modify).
+        seed: Random seed.
 
     Returns:
-        np.ndarray: Solução perturbada.
+        Perturbed solution.
     """
     perturbed: np.ndarray = solution.copy().astype(float)
     rng = _new_rng(seed)
@@ -72,20 +73,20 @@ def ils_search(
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float]:
     """
-    Executa Iterated Local Search (ILS) sobre a solução, aplicando perturbações e busca local.
+    Run Iterated Local Search (ILS) over the solution, applying perturbations and VND.
 
     Args:
-        solution (np.ndarray): Solução inicial.
-        current_cost (float): Custo atual (minimização).
-        num_vars (int): Número de variáveis.
-        cost_fn (Callable): Função de custo.
-        config: Configuração do algoritmo (GIVPConfig).
-        lower_arr (np.ndarray, optional): Limites inferiores das variáveis.
-        upper_arr (np.ndarray, optional): Limites superiores das variáveis.
-        cache (EvaluationCache, optional): Cache de avaliações.
+        solution: Starting solution.
+        current_cost: Current objective cost (minimisation).
+        num_vars: Number of variables.
+        cost_fn: Objective function.
+        config: Algorithm configuration.
+        lower_arr: Lower bounds for each variable.
+        upper_arr: Upper bounds for each variable.
+        cache: Evaluation cache.
 
     Returns:
-        tuple: (solução final, custo final)
+        Tuple (best_solution, best_cost).
     """
     best_solution = solution.copy()
     best_cost = current_cost

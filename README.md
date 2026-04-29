@@ -97,6 +97,12 @@ The library bundles:
     - [C++ configuration](#c-configuration)
     - [Running tests and benchmarks](#running-tests-and-benchmarks)
   - [Comparison with other optimizers](#comparison-with-other-optimizers)
+  - [Empirical results](#empirical-results)
+    - [Sphere — $f(\\mathbf{x}) = \\sum x\_i^2$, global minimum 0 at **0**](#sphere--fmathbfx--sum-x_i2-global-minimum-0-at-0)
+    - [Rosenbrock — global minimum 0 at **1**](#rosenbrock--global-minimum-0-at-1)
+    - [Rastrigin — multimodal, global minimum 0 at **0**](#rastrigin--multimodal-global-minimum-0-at-0)
+    - [Ackley — multimodal, global minimum 0 at **0**](#ackley--multimodal-global-minimum-0-at-0)
+      - [**References**](#references)
   - [Troubleshooting](#troubleshooting)
   - [License](#license)
 
@@ -109,6 +115,17 @@ The library bundles:
 ```bash
 pip install givp
 ```
+
+> **Recommended:** install with the optional `cache` extra to use
+> [xxhash](https://github.com/ifduyue/python-xxhash) for a ~10× faster
+> evaluation cache:
+>
+> ```bash
+> pip install givp[cache]
+> ```
+>
+> Without `xxhash`, the cache falls back to Python's built-in `hashlib`
+> (SHA-256), which works correctly but is slower.
 
 From source (editable):
 
@@ -436,7 +453,7 @@ For backward compatibility the result is iterable: `x, fun = result` works.
 | `cache_size`                | 10000   | LRU cache capacity.                                                |
 | `early_stop_threshold`      | 80      | Iterations without improvement before terminating.                 |
 | `use_convergence_monitor`   | True    | Enable diversification/restart heuristics.                         |
-| `n_workers`                 | 1       | Threads used to evaluate candidates concurrently.                  |
+| `n_workers`                 | 1       | Threads used to evaluate candidates concurrently in the GRASP construction phase. Set to `os.cpu_count()` or a fixed value (2–4) for CPU-bound objectives. Due to the Python GIL, gains are most visible when `func` releases the GIL (e.g. NumPy-heavy code). |
 | `time_limit`                | 0.0     | Wall-clock budget in seconds (`0` = unlimited).                    |
 | `minimize`                  | `None`  | Boolean direction flag. `True` = minimize, `False` = maximize.     |
 | `direction`                 | `'minimize'` | String direction flag (alternative form).                     |
@@ -755,6 +772,57 @@ cmake --build build_bench
 
 ---
 
+## Empirical results
+
+Results of **30 independent runs** (seeds 0–29) on four standard continuous benchmarks
+(`n = 10` dimensions) comparing the full GIVP pipeline against a GRASP-only baseline
+(construction phase only, no ILS/VND/path relinking — equivalent to plain GRASP
+as described by Feo & Resende, 1995).
+
+Each run uses an explicit seed for full reproducibility.  To reproduce, run the
+[`Notebooks/benchmark_literature_comparison.ipynb`](Notebooks/benchmark_literature_comparison.ipynb)
+notebook.
+
+> **Note**: Values below are representative results from the notebook execution.
+> Run the notebook on your machine to obtain hardware-specific timings.
+
+### Sphere — $f(\mathbf{x}) = \sum x_i^2$, global minimum 0 at **0**
+
+| Algorithm   | Mean ± Std          | Best         | Median       | NFev (mean) |
+|-------------|---------------------|--------------|--------------|-------------|
+| GIVP-full   | 0.0002 ± 0.0001     | 6.2935e-05   | 1.9862e-04   | 605 626     |
+| GRASP-only  | 2.1568 ± 0.4827     | 1.0564e+00   | 2.1947e+00   | 4 828       |
+
+### Rosenbrock — global minimum 0 at **1**
+
+| Algorithm   | Mean ± Std          | Best         | Median       | NFev (mean) |
+|-------------|---------------------|--------------|--------------|-------------|
+| GIVP-full   | 0.513 ± 0.325       | 1.0413e-02   | 5.1000e-01   | 571 765     |
+| GRASP-only  | 5441.154 ± 2232.312 | 1.6380e+03   | 5.3735e+03   | 4 834       |
+
+### Rastrigin — multimodal, global minimum 0 at **0**
+
+| Algorithm   | Mean ± Std          | Best         | Median       | NFev (mean) |
+|-------------|---------------------|--------------|--------------|-------------|
+| GIVP-full   | 0.8492 ± 0.6247     | 9.1427e-03   | 1.0144e+00   | 524 825     |
+| GRASP-only  | 28.0927 ± 4.9224    | 1.8621e+01   | 2.9218e+01   | 4 898       |
+
+### Ackley — multimodal, global minimum 0 at **0**
+
+| Algorithm   | Mean ± Std          | Best         | Median       | NFev (mean) |
+|-------------|---------------------|--------------|--------------|-------------|
+| GIVP-full   | 0.1525 ± 0.0277     | 1.0691e-01   | 1.5015e-01   | 477 840     |
+| GRASP-only  | 8.9242 ± 1.0037     | 7.2171e+00   | 9.2427e+00   | 4 852       |
+
+#### **References**
+
+- Feo, T.A. & Resende, M.G.C. (1995). *Greedy randomized adaptive search procedures.*
+  Journal of Global Optimization, 6, 109–133.
+- Festa, P. & Resende, M.G.C. (2011). *GRASP: An annotated bibliography.*
+  Essays and Surveys in Metaheuristics. Springer.
+
+---
+
 ## Troubleshooting
 
 **`ValueError: each element of upper must be strictly greater than lower`**
@@ -776,8 +844,10 @@ infeasible the algorithm has nothing to improve. Lower `perturbation_strength`,
 revisit your bounds, or relax the feasibility logic in `func`.
 
 **Run is too slow.**
-Try `use_cache=True`, increase `cache_size`, raise `n_workers`, lower
-`num_candidates_per_step`, or set a `time_limit`. For very expensive
+Try `use_cache=True` (with `givp[cache]` for maximum speed), increase
+`cache_size`, raise `n_workers` (2–4 is a practical sweet spot under the
+Python GIL; set `n_workers=os.cpu_count()` for NumPy-heavy objectives),
+lower `num_candidates_per_step`, or set a `time_limit`. For very expensive
 objectives, also reduce `vnd_iterations` and `ils_iterations`.
 
 **Final solution looks too "rough" / integer values look noisy.**

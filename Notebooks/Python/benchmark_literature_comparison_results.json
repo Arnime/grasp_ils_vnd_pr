@@ -1,0 +1,139 @@
+{
+  "metadata": {
+    "n_dims": 10,
+    "n_runs": 30,
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29
+    ],
+    "algorithms": [
+      "GIVP-full",
+      "GRASP-only"
+    ],
+    "benchmarks": [
+      "Sphere",
+      "Rosenbrock",
+      "Rastrigin",
+      "Ackley"
+    ]
+  },
+  "summary": [
+    {
+      "function": "Ackley",
+      "algorithm": "GIVP-full",
+      "mean": 0.1525390372,
+      "std": 0.0277409154,
+      "best": 0.1069077669,
+      "median": 0.1501541278,
+      "worst": 0.2226127402,
+      "nfev": 477840.0,
+      "time_s": 30.002
+    },
+    {
+      "function": "Ackley",
+      "algorithm": "GRASP-only",
+      "mean": 8.924178331,
+      "std": 1.0037198282,
+      "best": 7.2170828879,
+      "median": 9.2426912604,
+      "worst": 10.4296956988,
+      "nfev": 4852.0,
+      "time_s": 0.2
+    },
+    {
+      "function": "Rastrigin",
+      "algorithm": "GIVP-full",
+      "mean": 0.8491920679,
+      "std": 0.6247252637,
+      "best": 0.0091427002,
+      "median": 1.0143886927,
+      "worst": 1.9991256137,
+      "nfev": 524825.0,
+      "time_s": 29.745
+    },
+    {
+      "function": "Rastrigin",
+      "algorithm": "GRASP-only",
+      "mean": 28.0926571796,
+      "std": 4.9224019327,
+      "best": 18.6212176603,
+      "median": 29.2184258074,
+      "worst": 35.5723462372,
+      "nfev": 4898.0,
+      "time_s": 0.188
+    },
+    {
+      "function": "Rosenbrock",
+      "algorithm": "GIVP-full",
+      "mean": 0.5135117092,
+      "std": 0.3252229042,
+      "best": 0.0104134026,
+      "median": 0.5099990148,
+      "worst": 1.1322640187,
+      "nfev": 571765.0,
+      "time_s": 30.001
+    },
+    {
+      "function": "Rosenbrock",
+      "algorithm": "GRASP-only",
+      "mean": 5441.1543129823,
+      "std": 2232.3121002803,
+      "best": 1638.0464476359,
+      "median": 5373.534261682,
+      "worst": 10411.4109232346,
+      "nfev": 4834.0,
+      "time_s": 0.191
+    },
+    {
+      "function": "Sphere",
+      "algorithm": "GIVP-full",
+      "mean": 0.0001869025,
+      "std": 5.76895e-05,
+      "best": 6.29345e-05,
+      "median": 0.0001986235,
+      "worst": 0.0002997746,
+      "nfev": 605626.0,
+      "time_s": 29.26
+    },
+    {
+      "function": "Sphere",
+      "algorithm": "GRASP-only",
+      "mean": 2.1567648927,
+      "std": 0.4827138449,
+      "best": 1.0563566704,
+      "median": 2.1946599961,
+      "worst": 3.2551715793,
+      "nfev": 4828.0,
+      "time_s": 0.185
+    }
+  ],
+  "records": []
+}

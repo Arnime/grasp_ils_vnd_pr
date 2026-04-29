@@ -8,20 +8,19 @@ from givp.exceptions import EmptyPoolError
 
 
 class ElitePool:
-    """Pool de soluções elite com manutenção de diversidade.
+    """Diversity-aware elite pool of high-quality solutions.
 
-    Mantém um conjunto de soluções de alta qualidade, garantindo distância
-    relativa mínima entre elas. Permite adicionar, recuperar e limpar
-    soluções elite.
+    Maintains a set of high-quality solutions guaranteeing a minimum relative
+    distance between them.  Solutions can be added, retrieved, and cleared.
 
     Args:
-            max_size (int): Tamanho máximo do pool.
-            min_distance (float): Distância relativa mínima normalizada (0-1).
-            lower (np.ndarray | None): Limites inferiores das variáveis.
-            upper (np.ndarray | None): Limites superiores das variáveis.
+        max_size: Maximum pool size.
+        min_distance: Minimum normalised relative distance between solutions (0–1).
+        lower: Lower bounds for each variable (used to normalise distances).
+        upper: Upper bounds for each variable (used to normalise distances).
 
     Attributes:
-            pool (list[tuple[np.ndarray, float]]): ``(solução, benefício)``.
+        pool: List of ``(solution, cost)`` pairs, sorted by ascending cost.
     """
 
     def __init__(
@@ -39,16 +38,16 @@ class ElitePool:
             self._range = np.maximum(upper - lower, 1e-12)
 
     def _relative_distance(self, a: np.ndarray, b: np.ndarray) -> float:
-        """Calcula distância relativa normalizada média entre duas soluções."""
+        """Compute the normalised mean relative distance between two solutions."""
         if self._range is not None:
             return float(np.mean(np.abs(a - b) / self._range))
         return float(np.linalg.norm(a - b))
 
     def add(self, solution: np.ndarray, benefit: float) -> bool:
-        """Adiciona solução ao pool se for boa o suficiente e diversa.
+        """Add a solution to the pool if it is good enough and sufficiently diverse.
 
         Returns:
-                ``True`` se a solução foi adicionada.
+            ``True`` if the solution was added.
         """
         solution = np.array(solution, dtype=float)
 
@@ -70,13 +69,13 @@ class ElitePool:
         return False
 
     def get_best(self) -> tuple[np.ndarray, float]:
-        """Retorna a melhor solução do pool."""
+        """Return the best (lowest-cost) solution in the pool."""
         if not self.pool:
             raise EmptyPoolError("elite pool is empty; cannot return best solution")
         return self.pool[0]
 
     def get_all(self) -> list[tuple[np.ndarray, float]]:
-        """Retorna todas as soluções do pool."""
+        """Return a copy of all solutions in the pool."""
         return self.pool.copy()
 
     def size(self) -> int:
