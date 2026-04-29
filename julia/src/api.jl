@@ -21,15 +21,17 @@ Minimize (or maximize) a scalar function with GRASP-ILS-VND-PR.
 - `seed::Union{Int,Nothing}=nothing`: RNG seed for reproducibility.
 - `verbose::Bool=false`: Print progress.
 """
-function givp(func::Function, bounds;
-              num_vars::Union{Int,Nothing}=nothing,
-              direction::Direction=minimize,
-              config::Union{GIVPConfig,Nothing}=nothing,
-              initial_guess::Union{Vector{Float64},Nothing}=nothing,
-              iteration_callback::Union{Function,Nothing}=nothing,
-              seed::Union{Int,Nothing}=nothing,
-              verbose::Bool=false)::OptimizeResult
-
+function givp(
+    func::Function,
+    bounds;
+    num_vars::Union{Int, Nothing} = nothing,
+    direction::Direction = minimize,
+    config::Union{GIVPConfig, Nothing} = nothing,
+    initial_guess::Union{Vector{Float64}, Nothing} = nothing,
+    iteration_callback::Union{Function, Nothing} = nothing,
+    seed::Union{Int, Nothing} = nothing,
+    verbose::Bool = false,
+)::OptimizeResult
     cfg = config !== nothing ? config : GIVPConfig()
     validate_config!(cfg)
     cfg.direction = direction
@@ -59,26 +61,37 @@ function givp(func::Function, bounds;
         end
     end
 
-    sol, core_value = grasp_ils_vnd(wrapped, n, cfg;
-        verbose, iteration_callback, lower, upper, initial_guess)
+    sol, core_value, actual_nit, term_msg = grasp_ils_vnd(
+        wrapped,
+        n,
+        cfg;
+        verbose,
+        iteration_callback,
+        lower,
+        upper,
+        initial_guess,
+    )
 
     x = sol
     fun_value = sign * core_value
     success = isfinite(fun_value)
 
     return OptimizeResult(;
-        x, fun=fun_value,
-        nit=cfg.max_iterations,
-        nfev=nfev_counter[],
+        x,
+        fun = fun_value,
+        nit = actual_nit,
+        nfev = nfev_counter[],
         success,
-        message=success ? "Optimization completed" : "No feasible solution found",
+        message = isfinite(fun_value) ? term_msg : "no feasible solution found",
         direction,
-        meta=Dict{String,Any}(),
+        meta = Dict{String, Any}(),
     )
 end
 
-function _normalize_bounds(bounds::Vector{Tuple{Float64,Float64}},
-                           num_vars::Union{Int,Nothing})
+function _normalize_bounds(
+    bounds::Vector{Tuple{Float64, Float64}},
+    num_vars::Union{Int, Nothing},
+)
     lower = [b[1] for b in bounds]
     upper = [b[2] for b in bounds]
     n = length(lower)
@@ -88,9 +101,27 @@ function _normalize_bounds(bounds::Vector{Tuple{Float64,Float64}},
     return lower, upper, n
 end
 
-function _normalize_bounds(bounds::Tuple{Vector{Float64},Vector{Float64}},
-                           num_vars::Union{Int,Nothing})
+function _normalize_bounds(
+    bounds::Tuple{Vector{Float64}, Vector{Float64}},
+    num_vars::Union{Int, Nothing},
+)
     lower, upper = bounds
+    n = length(lower)
+    length(upper) != n && throw(ArgumentError("lower and upper must have same length"))
+    if num_vars !== nothing && n != num_vars
+        throw(ArgumentError("bounds length ($n) does not match num_vars ($num_vars)"))
+    end
+    return lower, upper, n
+end
+
+"""Accept `[[lower...], [upper...]]` — two-element vector of vectors."""
+function _normalize_bounds(bounds::Vector{Vector{Float64}}, num_vars::Union{Int, Nothing})
+    length(bounds) == 2 || throw(
+        ArgumentError(
+            "Vector{Vector} bounds must be [[lower…], [upper…]] (exactly 2 elements)",
+        ),
+    )
+    lower, upper = bounds[1], bounds[2]
     n = length(lower)
     length(upper) != n && throw(ArgumentError("lower and upper must have same length"))
     if num_vars !== nothing && n != num_vars

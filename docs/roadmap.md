@@ -6,9 +6,9 @@ available contributor time.
 
 ## Current version
 
-**v0.5.x** — stable, feature-complete implementation of the GRASP + ILS +
+**v0.8.0** — stable, feature-complete implementation of the GRASP + ILS +
 VND + Path Relinking metaheuristic for continuous black-box optimization.
-Available in **Python** (NumPy-native) and **Julia**.
+Available in **Python**, **Julia**, **Rust**, and **C++** (header-only).
 
 ## Short-term (next 3 months)
 
@@ -16,15 +16,23 @@ Available in **Python** (NumPy-native) and **Julia**.
   on the Julia General Registry via
   [Registrator.jl](https://github.com/JuliaRegistries/Registrator.jl)
   so users can `Pkg.add("GIVPOptimizer")`.
-- **Parallel neighbourhood evaluation**: allow users to provide a
-  parallelism hint so VND neighbourhoods can be evaluated concurrently
-  on multi-core machines.
-- **Progress callback**: expose an optional `callback` parameter that
-  receives the best solution found after each iteration, enabling
-  custom early-stopping and progress bars.
+- **Parallel neighbourhood evaluation (Rust)**: implement `n_workers` with
+  `rayon` in the Rust backend (currently declared but single-threaded).
+- **Rust literature comparison pipeline**: create
+  `rust/benchmarks/run_literature_comparison.rs` with the same 6-function,
+  30-seed protocol used in Python and Julia.
+- **C++ literature comparison pipeline**: equivalent script with
+  `nlohmann/json` output for reproducible SBPO/BRACIS comparisons.
+- **C++ vcpkg/conan manifest**: add `vcpkg.json` so C++ users can
+  `vcpkg install givp` without manual CMake FetchContent.
 - **Expanded examples**: add worked examples for combinatorial
   problems (e.g., TSP-style discretised objective) and multi-objective
   scalarisation.
+
+> **Completed in v0.8.0:**
+> `julia/cli.jl` (✓), iteration callback (✓), warm start (✓),
+> Julia literature comparison notebook (✓), Wilcoxon + LaTeX reports (✓),
+> Julia fuzzing driver (✓), coverage gate 85% (✓), JuliaFormatter CI (✓).
 
 ## Medium-term (3–6 months)
 
