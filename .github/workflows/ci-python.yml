@@ -109,6 +109,7 @@ jobs:
           sh .github/scripts/install-package.sh
       - name: Benchmark smoke tests
         run: pytest -m slow python/tests/test_benchmark_scripts.py -v
+          --override-ini="addopts="
 
   test-pre-release:
     needs: setup
