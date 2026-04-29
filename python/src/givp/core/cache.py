@@ -10,7 +10,7 @@ import numpy as np
 from givp.core.helpers import _get_half
 
 try:
-    import xxhash as _xxhash  # type: ignore[import-untyped]
+    import xxhash as _xxhash
 
     _FAST_HASH = True
 except ImportError:  # pragma: no cover

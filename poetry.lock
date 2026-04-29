@@ -4642,10 +4642,9 @@ files = [
 name = "xxhash"
 version = "3.7.0"
 description = "Python binding for xxHash"
-optional = true
+optional = false
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "extra == \"cache\""
 files = [
     {file = "xxhash-3.7.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:cd8ab85c916a58d5c8656ea15e3ce9df836fe2f120a74c296e01d69fab2614b4"},
     {file = "xxhash-3.7.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:85f5c0e26d945b5bb475e0a3d95193117498130baa7619357bdc7869c2391b5a"},
@@ -4837,7 +4836,6 @@ files = [
 ]
 
 [extras]
-cache = ["xxhash"]
 dev = ["black", "hypothesis", "mypy", "pre-commit", "pytest", "pytest-benchmark", "pytest-cov", "pytest-xdist", "ruff", "tqdm"]
 docs = ["mkdocs", "mkdocs-material", "mkdocstrings"]
 fuzz = ["atheris"]
@@ -4846,4 +4844,4 @@ notebooks = ["ipykernel", "jupyter", "matplotlib", "pandas", "scipy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.16"
-content-hash = "0c88e04965f8f25143e8d613fdc1b8cc7c2b4ac87dc15a86f08de17567e230d4"
+content-hash = "7c64233875c770b01e0fe3be17f0121e80c61399da087038654a893575aa82c3"

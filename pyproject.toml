@@ -34,7 +34,7 @@ classifiers = [
     "Programming Language :: Python :: 3.15",
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
-dependencies = ["numpy>=1.24,<3"]
+dependencies = ["numpy>=1.24,<3", "xxhash>=3.0"]
 
 [project.optional-dependencies]
 dev = [
@@ -50,7 +50,6 @@ dev = [
     "tqdm>=4.66",
 ]
 fuzz = ["atheris>=2.3.0; sys_platform == 'linux'"]
-cache = ["xxhash>=3.0"]
 docs = ["mkdocs>=1.6", "mkdocs-material>=9.5", "mkdocstrings[python]>=0.26"]
 notebooks = [
     "jupyter>=1.1",
