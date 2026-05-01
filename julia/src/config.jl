@@ -3,6 +3,14 @@
 
 """Configuration for the GRASP-ILS-VND-PR algorithm."""
 
+"""
+    Direction
+
+Enum controlling the optimization direction.
+
+- `minimize` — find the global minimum of `f(x)` (default).
+- `maximize` — find the global maximum of `f(x)`.
+"""
 @enum Direction minimize maximize
 
 """

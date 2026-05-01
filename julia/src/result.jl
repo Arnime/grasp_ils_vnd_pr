@@ -3,6 +3,20 @@
 
 """Result container returned by the public optimizer API."""
 
+"""
+    TerminationReason
+
+Enum describing why the optimizer stopped.
+
+| Value | Meaning |
+|---|---|
+| `converged` | Convergence criterion met |
+| `max_iterations_reached` | Hit `max_iterations` limit |
+| `time_limit_reached` | Hit `time_limit` wall-clock limit |
+| `early_stop` | No improvement for `early_stop_threshold` iterations |
+| `no_feasible` | No feasible point found |
+| `unknown` | Reason could not be determined |
+"""
 @enum TerminationReason begin
     converged
     max_iterations_reached
@@ -52,6 +66,12 @@ function OptimizeResult(;
     OptimizeResult(x, fun, nit, nfev, success, message, direction, meta)
 end
 
+"""
+    to_dict(r::OptimizeResult) -> Dict{String,Any}
+
+Serialise an [`OptimizeResult`](@ref) to a plain `Dict` suitable for JSON
+export or logging.
+"""
 function to_dict(r::OptimizeResult)::Dict{String, Any}
     Dict{String, Any}(
         "x" => r.x,
