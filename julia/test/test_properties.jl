@@ -158,12 +158,10 @@ end
         use_cache = false,
     )
 
-    # Generator: dimension ∈ [1, 6]
-    ndim_gen = Data.Integers{Int}(1, 6)
-    # Generator: bound half-width ∈ [0.5, 5.0]
-    hw_gen = Data.Floats{Float64}(; minimum = 0.5, maximum = 5.0)
-    # Generator: seed ∈ [0, 9999]
-    seed_gen = Data.Integers{Int}(0, 9999)
+    # Raw generators. We map values into desired ranges inside each property.
+    ndim_gen = Data.Integers{Int}()
+    hw_gen = Data.Floats{Float64}()
+    seed_gen = Data.Integers{Int}()
 
     @testset "SP1: solution within bounds (random dim + bounds)" begin
         @check max_examples = 50 function sp1_bounds(
@@ -171,40 +169,51 @@ end
             hw = hw_gen,
             seed = seed_gen,
         )
-            bounds = [(-hw, hw) for _ in 1:ndim]
-            r = givp(sphere, bounds; config = cfg_sup, seed = seed)
-            all(-hw .<= r.x .<= hw)
+            n = 1 + mod(abs(ndim), 6)
+            halfwidth = clamp(abs(hw), 0.5, 5.0)
+            s = mod(abs(seed), 10_000)
+            bounds = [(-halfwidth, halfwidth) for _ in 1:n]
+            r = givp(sphere, bounds; config = cfg_sup, seed = s)
+            all(-halfwidth .<= r.x .<= halfwidth)
         end
     end
 
     @testset "SP2: nfev > 0 (random dim)" begin
         @check max_examples = 50 function sp2_nfev(ndim = ndim_gen, seed = seed_gen)
-            bounds = [(-5.0, 5.0) for _ in 1:ndim]
-            r = givp(sphere, bounds; config = cfg_sup, seed = seed)
+            n = 1 + mod(abs(ndim), 6)
+            s = mod(abs(seed), 10_000)
+            bounds = [(-5.0, 5.0) for _ in 1:n]
+            r = givp(sphere, bounds; config = cfg_sup, seed = s)
             r.nfev > 0
         end
     end
 
     @testset "SP3: sphere result non-negative" begin
         @check max_examples = 50 function sp3_nonneg(ndim = ndim_gen, seed = seed_gen)
-            bounds = [(-5.12, 5.12) for _ in 1:ndim]
-            r = givp(sphere, bounds; config = cfg_sup, seed = seed)
+            n = 1 + mod(abs(ndim), 6)
+            s = mod(abs(seed), 10_000)
+            bounds = [(-5.12, 5.12) for _ in 1:n]
+            r = givp(sphere, bounds; config = cfg_sup, seed = s)
             r.fun >= 0.0
         end
     end
 
     @testset "SP4: nit ≤ max_iterations" begin
         @check max_examples = 50 function sp4_nit(ndim = ndim_gen, seed = seed_gen)
-            bounds = [(-5.12, 5.12) for _ in 1:ndim]
-            r = givp(sphere, bounds; config = cfg_sup, seed = seed)
+            n = 1 + mod(abs(ndim), 6)
+            s = mod(abs(seed), 10_000)
+            bounds = [(-5.12, 5.12) for _ in 1:n]
+            r = givp(sphere, bounds; config = cfg_sup, seed = s)
             r.nit <= cfg_sup.max_iterations
         end
     end
 
     @testset "SP5: success ↔ isfinite(fun)" begin
         @check max_examples = 50 function sp5_success(ndim = ndim_gen, seed = seed_gen)
-            bounds = [(-5.12, 5.12) for _ in 1:ndim]
-            r = givp(sphere, bounds; config = cfg_sup, seed = seed)
+            n = 1 + mod(abs(ndim), 6)
+            s = mod(abs(seed), 10_000)
+            bounds = [(-5.12, 5.12) for _ in 1:n]
+            r = givp(sphere, bounds; config = cfg_sup, seed = s)
             r.success == isfinite(r.fun)
         end
     end
