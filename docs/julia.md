@@ -182,7 +182,7 @@ Exit code 0 = all passed, 1 = failures found.
 
 ## Coverage
 
-The CI enforces a minimum of **85 %** line coverage on `julia/src/`.
+The CI enforces a minimum of **95 %** line coverage on `julia/src/`.
 To check locally:
 
 ```bash
@@ -215,7 +215,7 @@ The Julia port aims for full feature parity with the Python implementation:
 | Warm start                 | ✓      | ✓     |
 | Reproducible (`seed=`)     | ✓      | ✓     |
 | CLI entry point            | ✓      | ✓     |
-| `GIVPOptimizer` class      | ✓      | —     |
+| `GIVPOptimizer` class      | ✓      | ✓     |
 | Literature comparison      | ✓      | ✓     |
 | Wilcoxon + LaTeX reports   | ✓      | ✓     |
 | Fuzzing driver             | ✓      | ✓     |

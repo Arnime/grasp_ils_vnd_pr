@@ -58,6 +58,7 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Quickstart: quickstart.md
+  - Python: python.md
   - Julia: julia.md
   - CLI Reference: cli.md
   - Algorithm: algorithm.md

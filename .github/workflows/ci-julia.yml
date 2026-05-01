@@ -133,7 +133,7 @@ jobs:
             LCOV.writefile("julia-lcov.info", coverage)
           '
 
-      - name: Check coverage gate (≥85%)
+      - name: Check coverage gate (≥95%)
         run: |
           julia -e '
             using Pkg; Pkg.add("CoverageTools")
@@ -147,7 +147,7 @@ jobs:
             end
             pct = total > 0 ? hit / total * 100.0 : 0.0
             println("Julia coverage: $(round(pct; digits=1))%  ($hit / $total lines)")
-            pct >= 85.0 || (println("::error::Coverage below 85% threshold (got $(round(pct; digits=1))%)"); exit(1))
+            pct >= 95.0 || (println("::error::Coverage below 95% threshold (got $(round(pct; digits=1))%)"); exit(1))
           '
 
       - name: Upload coverage to Codecov
@@ -213,3 +213,109 @@ jobs:
             --n-trials 500 \
             --seed 1337 \
             --timeout 600
+
+  lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: julia-actions/setup-julia@f6f565d9f7cf12f53dc8045742460d6260ad3b39 # v3.0.1
+        with:
+          version: "1"
+
+      - uses: julia-actions/cache@9a93c5fb3e9c1c20b60fc80a478cae53e38618a4 # v3.0.2
+
+      - name: Install dependencies
+        run: |
+          julia --project=julia -e '
+            using Pkg
+            Pkg.Registry.update()
+            rm(joinpath("julia", "Manifest.toml"); force=true)
+            Pkg.instantiate()
+          '
+
+      - name: Run Aqua package quality checks
+        run: |
+          julia --project=julia -e '
+            using Pkg
+            Pkg.add(["Aqua"])
+            using GIVPOptimizer, Aqua
+            Aqua.test_all(
+              GIVPOptimizer;
+              ambiguities = (broken = false,),
+              stale_deps = (ignore = [:JSON],),
+            )
+            println("Aqua: all checks passed ✓")
+          '
+
+      - name: Run JET static type analysis
+        run: |
+          julia --project=julia -e '
+            using Pkg
+            Pkg.add(["JET"])
+            using GIVPOptimizer, JET
+            result = JET.report_package("GIVPOptimizer"; ignored_modules=(Base, Core))
+            reports = JET.get_reports(result)
+            if !isempty(reports)
+              for r in reports
+                println("::error file=julia/src::JET: ", r)
+              end
+              exit(1)
+            end
+            println("JET: no type-inference errors ✓")
+          '
+
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: julia-actions/setup-julia@f6f565d9f7cf12f53dc8045742460d6260ad3b39 # v3.0.1
+        with:
+          version: "1"
+
+      - name: Audit dependencies for known vulnerabilities
+        run: |
+          julia -e '
+            using Pkg
+            Pkg.activate("julia")
+            Pkg.Registry.update()
+            Pkg.instantiate()
+            Pkg.audit()
+            println("Pkg.audit: no vulnerabilities found ✓")
+          '
+
+      - name: Check for unsafe FFI calls in source
+        run: |
+          if grep -rn --include="*.jl" -E '\bccall\b|\b@ccall\b|\bunsafe_' julia/src/; then
+            echo "::error::Unsafe FFI call (ccall/@ccall/unsafe_*) found in julia/src/."
+            echo "::error::Review each occurrence and add an explicit justification comment."
+            exit 1
+          fi
+          echo "No unsafe FFI calls found in julia/src/ ✓"
+
+      - name: Generate SBOM (dependency manifest)
+        run: |
+          julia -e '
+            using Pkg
+            Pkg.activate("julia")
+            deps = Pkg.dependencies()
+            open("julia-sbom.txt", "w") do io
+              println(io, "# GIVPOptimizer.jl — dependency manifest")
+              println(io, "# Generated: ", string(Dates.now()))
+              for (uuid, info) in sort(collect(deps); by = x -> x[2].name)
+                println(io, info.name, " @ ", something(info.version, "stdlib"))
+              end
+            end
+          ' || julia -e 'using Dates; open("julia-sbom.txt","w") do io; println(io,"Generated: ",Dates.now()); end'
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: julia-sbom
+          path: julia-sbom.txt
+          retention-days: 90

@@ -1,0 +1,32 @@
+{
+    "recommendations": [
+        // ── Python ─────────────────────────────────────────────────────────
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "charliermarsh.ruff",
+        "ms-python.mypy-type-checker",
+        "ms-python.pytest-adapter",
+        // ── Rust ───────────────────────────────────────────────────────────
+        "rust-lang.rust-analyzer",
+        "vadimcn.vscode-lldb", // debugger nativo para Rust
+        "tamasfe.even-better-toml", // Cargo.toml com schema e validação
+        // ── Julia ──────────────────────────────────────────────────────────
+        "julialang.language-julia",
+        // ── Notebooks / Jupyter ────────────────────────────────────────────
+        "ms-toolsai.jupyter",
+        "ms-toolsai.jupyter-renderers",
+        "ms-toolsai.vscode-jupyter-cell-tags",
+        // ── Formato / Markup ───────────────────────────────────────────────
+        "yzhang.markdown-all-in-one",
+        "redhat.vscode-yaml",
+        // ── Theme & Icons ──────────────────────────────────────────────────
+        "PKief.material-icon-theme",
+        // ── Git ────────────────────────────────────────────────────────────
+        "eamodio.gitlens",
+        // ── Utilitários ────────────────────────────────────────────────────
+        "usernamehw.errorlens",
+        "christian-kohler.path-intellisense",
+        "aaron-bond.better-comments"
+    ]
+}

@@ -1,0 +1,125 @@
+{
+    // ─── Editor ──────────────────────────────────────────────────────────────
+    "editor.formatOnSave": true,
+    "editor.rulers": [
+        88,
+        100
+    ],
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.renderWhitespace": "boundary",
+    "editor.bracketPairColorization.enabled": true,
+    "editor.guides.bracketPairs": true,
+    // ─── Theme & Icons ───────────────────────────────────────────────────────
+    "workbench.colorTheme": "Dark Modern",
+    "workbench.iconTheme": "material-icon-theme",
+    // ─── Python ──────────────────────────────────────────────────────────────
+    // Interpretador: virtualenv gerenciado pelo Poetry na raiz do projeto
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoImportCompletions": true,
+    // Pacote Python está em python/src/
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/python/src"
+    ],
+    // ─── Black (formatter) + Ruff (linter) ───────────────────────────────────
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll.ruff": "explicit",
+            "source.organizeImports.ruff": "explicit"
+        }
+    },
+    "black-formatter.args": [
+        "--line-length=88"
+    ],
+    "ruff.enable": true,
+    "ruff.lint.enable": true,
+    "ruff.format.enable": false,
+    "ruff.organizeImports": true,
+    "ruff.importStrategy": "fromEnvironment",
+    "ruff.path": [
+        "${workspaceFolder}/.venv/Scripts/ruff.exe"
+    ],
+    // ─── Rust ────────────────────────────────────────────────────────────────
+    // Crate Rust está em rust/; aponta o rust-analyzer para o Cargo.toml correto
+    "rust-analyzer.linkedProjects": [
+        "${workspaceFolder}/rust/Cargo.toml"
+    ],
+    "rust-analyzer.checkOnSave": true,
+    "rust-analyzer.check.command": "clippy",
+    "rust-analyzer.check.extraArgs": [
+        "--",
+        "-D",
+        "warnings"
+    ],
+    "[rust]": {
+        "editor.defaultFormatter": "rust-lang.rust-analyzer",
+        "editor.formatOnSave": true
+    },
+    // ─── Julia ───────────────────────────────────────────────────────────────
+    // Pacote Julia está em julia/
+    "julia.environmentPath": "${workspaceFolder}/julia",
+    "julia.enableTelemetry": false,
+    "[julia]": {
+        "editor.defaultFormatter": "julialang.language-julia",
+        "editor.formatOnSave": true,
+        "editor.tabSize": 4
+    },
+    // ─── Notebooks ───────────────────────────────────────────────────────────
+    "notebook.output.scrolling": true,
+    "notebook.lineNumbers": "on",
+    "notebook.formatOnSave.enabled": true,
+    "jupyter.notebookFileRoot": "${workspaceFolder}/Notebooks",
+    // ─── YAML ────────────────────────────────────────────────────────────────
+    "yaml.customTags": [
+        "!python/name scalar"
+    ],
+    // ─── Terminal ────────────────────────────────────────────────────────────
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    // ─── Exclusões de ficheiros ───────────────────────────────────────────────
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/.pytest_cache": true,
+        "**/.ruff_cache": true,
+        "**/*.egg-info": true,
+        "**/.mypy_cache": true,
+        "**/target": true
+    },
+    "files.watcherExclude": {
+        "**/__pycache__/**": true,
+        "**/.venv/**": true,
+        "**/dist/**": true,
+        "**/rust/target/**": true
+    },
+    "search.exclude": {
+        "**/rust/target": true,
+        "**/.venv": true,
+        "**/site": true
+    },
+    // ─── Color Customizations ─────────────────────────────────────────────────
+    "workbench.colorCustomizations": {
+        "activityBar.background": "#1a1a2e",
+        "activityBar.foreground": "#a9b1d6",
+        "activityBar.activeBorder": "#7aa2f7",
+        "activityBar.activeBackground": "#252540",
+        "activityBarBadge.background": "#7aa2f7",
+        "activityBarBadge.foreground": "#1a1a2e",
+        "panel.border": "#0f3460",
+        "statusBar.background": "#0f3460",
+        "statusBar.foreground": "#c0caf5",
+        "statusBar.border": "#7aa2f7",
+        "statusBar.noFolderBackground": "#1a1a2e",
+        "statusBar.debuggingBackground": "#bb9af7",
+        "statusBar.debuggingForeground": "#1a1a2e",
+        "titleBar.activeBackground": "#1a1a2e",
+        "titleBar.activeForeground": "#c0caf5",
+        "titleBar.inactiveBackground": "#16213e",
+        "titleBar.border": "#0f3460"
+    },
+    "cmake.sourceDirectory": "D:/Projetos/Projeto_SOG2/grasp_ils_vnd_pr/cpp",
+    "python-envs.defaultEnvManager": "ms-python.python:poetry",
+    "python-envs.defaultPackageManager": "ms-python.python:poetry"
+}

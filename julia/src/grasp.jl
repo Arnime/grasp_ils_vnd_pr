@@ -3,6 +3,14 @@
 
 """GRASP — Greedy Randomized Adaptive Search Procedure."""
 
+"""
+    validate_bounds_and_initial!(lower, upper, initial_guess, num_vars)
+
+Validate that `lower` and `upper` have length `num_vars`, that `upper[i] > lower[i]`
+for all variables, and that `initial_guess` (if provided) lies strictly within bounds.
+
+Throws [`InvalidBoundsError`](@ref) or [`InvalidInitialGuessError`](@ref) on failure.
+"""
 function validate_bounds_and_initial!(
     lower::Vector{Float64},
     upper::Vector{Float64},

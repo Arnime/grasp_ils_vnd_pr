@@ -14,7 +14,6 @@ htmlcov/
 .mypy_cache/
 .hypothesis/
 .idea/
-.vscode/
 .benchmarks/
 python/benchmarks/.results/
 site/
@@ -30,3 +29,6 @@ rust/target/
 
 Notebooks/Resultados_Dissertacao/
 Notebooks/*/*.png
+
+# github copilot
+.github/agents/

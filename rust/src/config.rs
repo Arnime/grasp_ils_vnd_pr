@@ -137,6 +137,9 @@ impl GivpConfig {
                 "num_candidates_per_step must be > 0".into(),
             ));
         }
+        if self.n_workers == 0 {
+            return Err(GivpError::InvalidConfig("n_workers must be >= 1".into()));
+        }
         Ok(())
     }
 }

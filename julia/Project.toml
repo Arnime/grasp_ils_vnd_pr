@@ -1,7 +1,7 @@
 name = "GIVPOptimizer"
 uuid = "52b765d9-9955-43cf-8457-2e847d316e43"
 license = "MIT"
-version = "0.8.0"
+version = "1.0.0"
 authors = ["Arnaldo Mendes Pires Junior"]
 description = "GRASP-ILS-VND with Path Relinking metaheuristic for continuous black-box optimization"
 
@@ -18,7 +18,12 @@ JSON = "0.21, 1"
 julia = "1.9"
 
 [extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+JuliaFormatter = "98e50ef6-434e-11e9-1051-2b60c6c9e899"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["Test", "JET", "Aqua"]
+format = ["JuliaFormatter"]

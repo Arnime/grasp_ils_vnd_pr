@@ -404,6 +404,7 @@ givp(
     config: GIVPConfig | None = None,
     initial_guess: Sequence[float] | None = None,
     iteration_callback: Callable[[int, float, np.ndarray], None] | None = None,
+    seed: int | None = None,
     verbose: bool = False,
 ) -> OptimizeResult
 ```

@@ -118,6 +118,12 @@ fn build_heuristic_candidate(
 }
 
 /// GRASP construction phase.
+///
+/// When `n_workers > 1` and `cache` is `None`, candidate evaluation is
+/// parallelised using **rayon**.  The cache cannot be shared across threads
+/// (single `&mut` reference), so the parallel path always calls
+/// `safe_evaluate` directly — semantically equivalent to
+/// `evaluate_with_cache` when no cache is active.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn construct_grasp<F>(
     num_vars: usize,
@@ -131,44 +137,58 @@ pub(crate) fn construct_grasp<F>(
     cache: &mut Option<EvaluationCache>,
     rng: &mut ChaCha8Rng,
     deadline: Option<Instant>,
+    n_workers: usize,
 ) -> (Vec<f64>, f64)
 where
-    F: Fn(&[f64]) -> f64,
+    F: Fn(&[f64]) -> f64 + Sync,
 {
     let mut candidates: Vec<Vec<f64>> = Vec::with_capacity(num_candidates);
-    let mut costs: Vec<f64> = Vec::with_capacity(num_candidates);
 
-    // Initial guess as first candidate
+    // ── Build candidates (all serial — RNG is not Sync) ──────────────────────
     if let Some(ig) = initial_guess {
         let mut sol = ig.to_vec();
         normalize_integer_tail(&mut sol, half);
-        let cost = evaluate_with_cache(&sol, func, cache, half);
         candidates.push(sol);
-        costs.push(cost);
     }
 
-    // One heuristic candidate
     if candidates.len() < num_candidates {
         let mut sol = build_heuristic_candidate(num_vars, half, lower, upper, rng);
         normalize_integer_tail(&mut sol, half);
-        let cost = evaluate_with_cache(&sol, func, cache, half);
         candidates.push(sol);
-        costs.push(cost);
     }
 
-    // Fill rest with random candidates
     while candidates.len() < num_candidates {
         if crate::helpers::expired(deadline) {
             break;
         }
         let mut sol = build_random_candidate(num_vars, half, lower, upper, rng);
         normalize_integer_tail(&mut sol, half);
-        let cost = evaluate_with_cache(&sol, func, cache, half);
         candidates.push(sol);
-        costs.push(cost);
     }
 
-    // RCL selection — costs is always non-empty here (heuristic candidate always added)
+    // ── Evaluate candidates ──────────────────────────────────────────────────
+    let costs: Vec<f64> = if n_workers > 1 && candidates.len() > 1 && cache.is_none() {
+        use rayon::prelude::*;
+        match rayon::ThreadPoolBuilder::new()
+            .num_threads(n_workers)
+            .build()
+        {
+            Ok(pool) => pool.install(|| {
+                candidates
+                    .par_iter()
+                    .map(|s| safe_evaluate(func, s))
+                    .collect()
+            }),
+            Err(_) => candidates.iter().map(|s| safe_evaluate(func, s)).collect(),
+        }
+    } else {
+        candidates
+            .iter()
+            .map(|s| evaluate_with_cache(s, func, cache, half))
+            .collect()
+    };
+
+    // ── RCL selection ────────────────────────────────────────────────────────
     let idx = select_from_rcl(&costs, alpha, rng).expect("costs should not be empty");
     (candidates.swap_remove(idx), costs[idx])
 }
@@ -197,7 +217,7 @@ mod tests {
         let func = |x: &[f64]| x.iter().map(|&xi| xi * xi).sum::<f64>();
         let deadline = Some(Instant::now() - Duration::from_secs(1));
         let (sol, cost) = construct_grasp(
-            2, &lower, &upper, &func, None, 0.5, 2, 100, &mut cache, &mut rng, deadline,
+            2, &lower, &upper, &func, None, 0.5, 2, 100, &mut cache, &mut rng, deadline, 1,
         );
         assert_eq!(sol.len(), 2);
         assert!(cost.is_finite());

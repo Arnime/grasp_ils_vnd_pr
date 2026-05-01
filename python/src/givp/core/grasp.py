@@ -11,8 +11,10 @@ Implements the construction phase of GRASP:
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from pickle import PicklingError
 
 import numpy as np
 
@@ -28,77 +30,46 @@ from givp.exceptions import (
     InvalidInitialGuessError,
 )
 
+_log = logging.getLogger(__name__)
+
+
 # ---------------------------------------------------------------------------
-# Legacy discrete-packing helpers
+# RCL selection — two variants for different problem types
 # ---------------------------------------------------------------------------
-
-
-def evaluate_candidates(
-    available: np.ndarray,
-    deps_active: np.ndarray,
-    current_cost: int,
-    deps_matrix: np.ndarray,
-    deps_len: np.ndarray,
-    c_arr: np.ndarray,
-    a_arr: np.ndarray,
-    b: int,
-):
-    """
-    Evaluate candidates based on dependency information and incremental costs.
-
-    NOTE: This helper is retained for compatibility with legacy discrete packing
-    use-cases; the main GRASP flow in this module works in continuous space via
-    `construct_grasp` and an external `evaluator`.
-
-    Args:
-        available: Indices of available packages.
-        deps_active: Boolean array indicating already-active dependencies.
-        current_cost: Current total cost (legacy semantics).
-        deps_matrix: Dependency matrix per package.
-        deps_len: Number of dependencies per package.
-        c_arr: Benefit array per package.
-        a_arr: Dependency cost array.
-        b: Budget limit.
-
-    Returns:
-        Tuple (ratios, incremental_costs, valid_mask):
-            ratios: Benefit/cost ratio per candidate (legacy).
-            incremental_costs: Incremental cost per candidate.
-            valid_mask: Boolean mask of feasible candidates.
-    """
-    n_available = len(available)
-    ratios = np.full(n_available, -np.inf, dtype=np.float32)
-    inc_costs = np.zeros(n_available, dtype=np.int32)
-    valid = np.zeros(n_available, dtype=np.bool_)
-    for idx, i in enumerate(available):
-        n_deps = deps_len[i]
-        incremental_cost = 0
-        if n_deps > 0:
-            pkg_deps = deps_matrix[i, :n_deps]
-            new_deps_mask = ~deps_active[pkg_deps]
-            new_deps = pkg_deps[new_deps_mask]
-            if len(new_deps) > 0:
-                incremental_cost = a_arr[new_deps].sum()
-        if current_cost + incremental_cost <= b:
-            valid[idx] = True
-            inc_costs[idx] = incremental_cost
-            ratios[idx] = c_arr[i] / incremental_cost if incremental_cost > 0 else 1e9
-    return ratios, inc_costs, valid
 
 
 def select_rcl(
     valid_indices: np.ndarray, valid_ratios: np.ndarray, alpha: float
 ) -> np.ndarray:
-    """
-    Build the Restricted Candidate List (RCL) using benefit/cost ratios and alpha.
+    """Build the Restricted Candidate List (RCL) using benefit/cost ratios and alpha.
+
+    This is the **ratio-based** RCL selector, suited for problems where
+    candidates are ranked by a benefit/cost ratio (e.g. discrete or
+    mixed-integer knapsack-style formulations where *higher* ratios are
+    better).  The threshold is computed as::
+
+        threshold = max_ratio - alpha * (max_ratio - min_ratio)
+
+    Candidates with ``ratio >= threshold`` enter the RCL.
+
+    For **continuous minimisation** problems (where lower cost is better)
+    use the internal :func:`_select_from_rcl`, which applies the symmetric
+    cost-based threshold::
+
+        threshold = min_cost + alpha * (max_cost - min_cost)
+
+    Both functions implement the same alpha semantics:
+    ``alpha = 0`` → purely greedy, ``alpha = 1`` → uniformly random.
 
     Args:
         valid_indices: Indices of feasible candidates.
-        valid_ratios: Benefit/cost ratios for the feasible candidates.
-        alpha: Randomisation parameter (0 = greedy, 1 = random).
+        valid_ratios: Benefit/cost ratios for the feasible candidates
+            (higher is better).
+        alpha: Randomisation parameter in ``[0, 1]``.  ``0`` is purely
+            greedy (only the best ratio), ``1`` admits all candidates.
 
     Returns:
-        Indices of candidates in the RCL.
+        Array of indices of candidates selected into the RCL.
     """
     max_ratio = valid_ratios.max()
     min_ratio = valid_ratios.min()
@@ -122,7 +93,8 @@ def _validate_bounds_and_initial(
     upper_arr: np.ndarray,
     initial_guess: np.ndarray | None,
     num_vars: int,
-):
+) -> None:
+    """Validate bounds and initial guess."""
     if lower_arr.shape[0] != num_vars or upper_arr.shape[0] != num_vars:
         raise InvalidBoundsError(
             f"lower (len={lower_arr.shape[0]}) and upper (len={upper_arr.shape[0]}) "
@@ -155,6 +127,7 @@ def _seed_from_initial(
     lower_arr: np.ndarray,
     upper_arr: np.ndarray,
 ) -> np.ndarray:
+    """Build a candidate from the initial guess, rounding integer variables and evaluating."""
     cost = _safe_evaluate(evaluator, chute)
     if np.isfinite(cost):
         copy: np.ndarray = chute.copy()
@@ -169,7 +142,7 @@ def _seed_from_initial(
 def _evaluate_with_cache(
     cand: np.ndarray, evaluator: EvaluatorFn, cache: EvaluationCache | None
 ) -> float:
-    """Avalia candidato usando cache se disponível."""
+    """Evaluate a candidate using the cache when available."""
     if cache is not None:
         cached_cost = cache.get(cand)
         if cached_cost is not None:
@@ -184,6 +157,7 @@ def _evaluate_with_cache(
 def _select_from_rcl(
     costs: np.ndarray, alpha: float, rng: np.random.Generator
 ) -> int | None:
+    """Select an index from the restricted candidate list (RCL) based on costs and alpha."""
     valid_mask = np.isfinite(costs)
     if not np.any(valid_mask):
         return None
@@ -199,9 +173,9 @@ def _select_from_rcl(
 
 
 def _normalize_integer_tail(sol: np.ndarray, half: int) -> None:
-    """Round integer-part variables in-place."""
-    for idx in range(half, sol.size):
-        sol[idx] = float(int(np.rint(sol[idx])))
+    """Round integer-part variables in-place (vectorised NumPy operation)."""
+    if half < sol.size:
+        sol[half:] = np.rint(sol[half:])
 
 
 def _build_seed_candidate(
@@ -283,6 +257,95 @@ def _build_random_candidate(
     return sol
 
 
+def _parallel_worker(args: tuple[np.ndarray, Callable]) -> float:
+    """Module-level worker for ProcessPoolExecutor (standard pickle).
+
+    Must be a top-level (non-closure) function to remain picklable.
+    Closures and lambdas cause a ``PicklingError`` — handled in
+    ``_evaluate_candidates_batch`` by trying ``_cloudpickle_worker`` first,
+    then falling back to ``ThreadPoolExecutor``.
+    """
+    s, evaluator = args
+    try:
+        v = float(evaluator(s))
+        return v if np.isfinite(v) else float("inf")
+    except Exception:  # pylint: disable=broad-exception-caught
+        return float("inf")
+
+
+def _cloudpickle_worker(args: tuple[np.ndarray, bytes]) -> float:
+    """Module-level worker for ProcessPoolExecutor using cloudpickle serialisation.
+
+    Deserialises the evaluator from ``cloudpickle.dumps`` bytes, enabling
+    closures and locally-defined functions (which are not picklable with
+    standard ``pickle``) to still run in separate processes and bypass the GIL.
+
+    Requires the optional ``cloudpickle`` package::
+
+        pip install "givp[parallel]"
+    """
+    # Optional dependency for closure/lambda serialisation:
+    # pip install "givp[parallel]"
+    import cloudpickle  # type: ignore[import-not-found,import-untyped]
+
+    s, serialized = args
+    evaluator = cloudpickle.loads(serialized)
+    try:
+        v = float(evaluator(s))
+        return v if np.isfinite(v) else float("inf")
+    except Exception:  # pylint: disable=broad-exception-caught
+        return float("inf")
+
+
+def _try_standard_process_pool(
+    unevaluated: list[np.ndarray],
+    evaluator: Callable,
+    n_workers: int,
+) -> tuple[list[float] | None, Exception | None]:
+    """Attempt candidate evaluation using standard ProcessPoolExecutor."""
+    try:
+        with ProcessPoolExecutor(max_workers=n_workers) as pool:
+            return (
+                list(
+                    pool.map(
+                        _parallel_worker,
+                        ((s, evaluator) for s in unevaluated),
+                    )
+                ),
+                None,
+            )
+    except (PicklingError, AttributeError, TypeError, OSError) as exc:
+        return None, exc
+
+
+def _try_cloudpickle_process_pool(
+    unevaluated: list[np.ndarray],
+    evaluator: Callable,
+    n_workers: int,
+) -> tuple[list[float] | None, Exception | None]:
+    """Attempt candidate evaluation using cloudpickle + ProcessPoolExecutor."""
+    try:
+        # Optional dependency for closure/lambda serialisation:
+        # pip install "givp[parallel]"
+        import cloudpickle  # type: ignore[import-not-found,import-untyped]
+
+        serialized = cloudpickle.dumps(evaluator)
+        with ProcessPoolExecutor(max_workers=n_workers) as pool:
+            return (
+                list(
+                    pool.map(
+                        _cloudpickle_worker,
+                        ((s, serialized) for s in unevaluated),
+                    )
+                ),
+                None,
+            )
+    except ImportError as exc:
+        return None, exc
+    except (PicklingError, AttributeError, TypeError, OSError) as exc:
+        return None, exc
+
+
 def _evaluate_candidates_batch(
     candidates: list[np.ndarray],
     evaluated_count: int,
@@ -290,20 +353,77 @@ def _evaluate_candidates_batch(
     cache: EvaluationCache | None,
     n_workers: int,
 ) -> list[float]:
-    """Evaluate candidates not yet evaluated (optionally in parallel)."""
+    """Evaluate candidates not yet evaluated (optionally in parallel).
+
+    When *n_workers* > 1 and the cache is disabled, the following strategy is
+    applied to bypass the GIL and achieve true multi-core speedup:
+
+    1. **Standard ProcessPoolExecutor**: used when the evaluator is picklable
+       (module-level functions, classes). Bypasses the GIL entirely.
+    2. **cloudpickle ProcessPoolExecutor**: if the evaluator is a closure or
+       lambda (not picklable with ``pickle``), a second attempt serialises it
+       with ``cloudpickle`` (optional dep: ``pip install "givp[parallel]"``).
+       This enables process-based parallelism for *any* Python callable.
+    3. **ThreadPoolExecutor fallback**: used only when both serialisation
+       strategies fail (e.g. cloudpickle is not installed).  Thread-based
+       execution still benefits objectives that release the GIL (NumPy-heavy,
+       Cython, Numba-compiled functions).
+
+    When the cache is enabled, always uses ``ThreadPoolExecutor`` so that
+    the in-process cache is shared across workers without IPC overhead.
+    """
     unevaluated = candidates[evaluated_count:]
-    if n_workers > 1 and len(unevaluated) > 1:
-        with ThreadPoolExecutor(max_workers=n_workers) as executor:
-            return list(
-                executor.map(
-                    lambda s: _evaluate_with_cache(s, evaluator, cache),
-                    unevaluated,
-                )
+    if n_workers <= 1 or len(unevaluated) <= 1:
+        return [_evaluate_with_cache(sol, evaluator, cache) for sol in unevaluated]
+
+    if cache is None:
+        process_results, process_exc = _try_standard_process_pool(
+            unevaluated,
+            evaluator,
+            n_workers,
+        )
+        if process_results is not None:
+            return process_results
+
+        cloudpickle_results, cloudpickle_exc = _try_cloudpickle_process_pool(
+            unevaluated,
+            evaluator,
+            n_workers,
+        )
+        if cloudpickle_results is not None:
+            return cloudpickle_results
+
+        if isinstance(cloudpickle_exc, ImportError):
+            _log.info(
+                "Objective is not picklable with standard pickle (%s). "
+                "Install cloudpickle for process-based parallelism with closures: "
+                'pip install "givp[parallel]". '
+                "Falling back to ThreadPoolExecutor (GIL-limited).",
+                process_exc,
             )
-    candidates_batch = [
-        _evaluate_with_cache(sol, evaluator, cache) for sol in unevaluated
-    ]
-    return candidates_batch
+        elif cloudpickle_exc is not None:
+            _log.info(
+                "cloudpickle serialisation failed (%s). "
+                "Falling back to ThreadPoolExecutor (GIL-limited).",
+                cloudpickle_exc,
+            )
+
+    # Thread fallback: shared in-process state; benefits GIL-releasing objectives.
+    if cache is not None:
+        _log.warning(
+            "n_workers=%d requested but use_cache=True forces ThreadPoolExecutor "
+            "(GIL-limited). For true multi-core speedup disable the cache: "
+            "GIVPConfig(use_cache=False, n_workers=%d).",
+            n_workers,
+            n_workers,
+        )
+    with ThreadPoolExecutor(max_workers=n_workers) as executor:
+        return list(
+            executor.map(
+                lambda s: _evaluate_with_cache(s, evaluator, cache),
+                unevaluated,
+            )
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -312,7 +432,7 @@ def _evaluate_candidates_batch(
 
 
 def construct_grasp(
-    num_vars,
+    num_vars: int,
     lower_arr: np.ndarray,
     upper_arr: np.ndarray,
     evaluator: Callable,
@@ -323,26 +443,28 @@ def construct_grasp(
     cache: EvaluationCache | None = None,
     n_workers: int = 1,
 ):
-    """
-    Constrói uma solução inicial por amostragem aleatória (Latin-style) + avaliação.
+    """Build an initial solution via randomised Latin-style sampling and RCL selection.
 
-    Gera N soluções aleatórias respeitando limites, avalia todas, e seleciona
-    a melhor via RCL (Restricted Candidate List). Muito mais eficiente que a
-    construção greedy coordenada-a-coordenada para espaço contínuo.
+    Generates ``num_candidates_per_step`` random solutions within the bounds,
+    evaluates them all, and selects the best one via the Restricted Candidate
+    List (RCL).  More efficient than coordinate-by-coordinate greedy
+    construction for continuous and mixed-variable spaces.
 
     Args:
-        num_vars (int): Número de variáveis.
-        lower_arr (np.ndarray): Limites inferiores.
-        upper_arr (np.ndarray): Limites superiores.
-        evaluator (Callable): Função de avaliação.
-        initial_guess (np.ndarray | None): Solução inicial sugerida.
-        alpha (float): Parâmetro de randomização para RCL.
-        seed (int, optional): Semente para aleatoriedade.
-        num_candidates_per_step (int, optional): Número de soluções candidatas a gerar.
-        cache (EvaluationCache | None): Cache de avaliações.
+        num_vars: Number of decision variables.
+        lower_arr: Lower bounds vector.
+        upper_arr: Upper bounds vector.
+        evaluator: Objective function to minimise.
+        initial_guess: Optional warm-start vector; seeded as one candidate.
+        alpha: RCL randomisation parameter (0 = greedy, 1 = uniform random).
+        seed: Optional RNG seed.
+        num_candidates_per_step: Number of candidate solutions to generate.
+        cache: Optional evaluation cache.
+        n_workers: Processes (or threads) used for parallel candidate evaluation.
+            See :func:`_evaluate_candidates_batch` for the parallelism strategy.
 
     Returns:
-        np.ndarray: Melhor solução construída.
+        Best candidate solution array found.
     """
     rng = _new_rng(seed)
     _validate_bounds_and_initial(lower_arr, upper_arr, initial_guess, num_vars)
@@ -391,6 +513,7 @@ def construct_grasp(
     costs_arr = np.array(costs)
     chosen = _select_from_rcl(costs_arr, alpha, rng)
     if chosen is None:
+        _log.warning("All candidate costs are non-finite; returning first candidate.")
         return candidates[0]
     return candidates[chosen]
 
@@ -401,12 +524,11 @@ def construct_grasp(
 
 
 def get_current_alpha(iteration: int, config) -> float:
-    """Calcula alpha adaptativo baseado no progresso das iterações."""
+    """Return the adaptive alpha value based on iteration progress."""
     if config.adaptive_alpha:
         progress = iteration / max(1, config.max_iterations - 1)
         current_alpha = (
             config.alpha_min + (config.alpha_max - config.alpha_min) * progress
         )
-        current_alpha += float(_new_rng().uniform(-0.02, 0.02))
         return float(np.clip(current_alpha, config.alpha_min, config.alpha_max))
     return float(config.alpha)

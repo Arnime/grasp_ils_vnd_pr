@@ -611,4 +611,38 @@ mod tests {
                                                   // Should not panic
         let _result = givp(sphere, &bounds, cfg);
     }
+
+    // ── n_workers parallel candidate evaluation (rayon) ──────────────
+
+    #[test]
+    fn test_n_workers_parallel_matches_sequential() {
+        // Results must be finite; exact match is not required because rayon
+        // may evaluate candidates in a different order, affecting RCL selection.
+        let make_cfg = |n: usize| GivpConfig {
+            max_iterations: 20,
+            n_workers: n,
+            num_candidates_per_step: 8,
+            use_cache: false, // cache disabled — required for parallel path
+            seed: Some(0),
+            integer_split: Some(5),
+            ..Default::default()
+        };
+        let bounds = vec![(-5.12, 5.12); 5];
+
+        let r_seq = givp(sphere, &bounds, make_cfg(1)).unwrap();
+        let r_par = givp(sphere, &bounds, make_cfg(2)).unwrap();
+
+        assert!(r_seq.success, "sequential run failed");
+        assert!(r_par.success, "parallel run failed");
+        assert!(r_par.fun.is_finite(), "parallel result is non-finite");
+    }
+
+    #[test]
+    fn test_n_workers_zero_is_invalid() {
+        let cfg = GivpConfig {
+            n_workers: 0,
+            ..Default::default()
+        };
+        assert!(matches!(cfg.validate(), Err(GivpError::InvalidConfig(_))));
+    }
 }

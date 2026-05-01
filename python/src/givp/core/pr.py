@@ -25,15 +25,15 @@ from givp.core.helpers import (
 
 
 def _find_best_move(
-    cost_fn,
-    current,
-    target,
-    indices,
-    source,
-    best_benefit,
-    diff_indices,
-    deadline=0.0,
-):
+    cost_fn: Callable,
+    current: np.ndarray,
+    target: np.ndarray,
+    indices: np.ndarray,
+    source: np.ndarray,
+    best_benefit: float,
+    diff_indices: np.ndarray,
+    deadline: float = 0.0,
+) -> tuple[int | None, float]:
     best_move_idx = None
     best_move_benefit = best_benefit
     for count, idx in enumerate(indices):
@@ -119,19 +119,19 @@ def path_relinking(
     seed: int | None = None,
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float]:
-    """
-    Executa Path Relinking entre duas soluções, modificando um bit por vez na direção da
-    solução destino.
+    """Run path relinking from *source* toward *target*, moving one variable at a time.
 
     Args:
-        cost_fn (Callable): Função de custo.
-        source (np.ndarray): Solução origem.
-        target (np.ndarray): Solução destino.
-        strategy (str): 'best' (melhor a cada passo) ou 'forward' (todos os passos).
-        seed (int, optional): Semente aleatória.
+        cost_fn: Objective function to minimise.
+        source: Starting solution vector.
+        target: Guide solution vector.
+        strategy: ``'best'`` (pick the best move at each step) or
+            ``'forward'`` (apply every step in order).
+        seed: Optional RNG seed.
+        deadline: Wall-clock deadline (``0.0`` = no limit).
 
     Returns:
-        tuple: (melhor_solução_no_caminho, melhor_benefício)
+        Tuple of (best solution found along the path, its objective value).
     """
     source = np.array(source, dtype=float)
     target = np.array(target, dtype=float)
@@ -139,7 +139,7 @@ def path_relinking(
     if len(diff_indices) == 0:
         return source.copy(), cost_fn(source)
 
-    # Limitar a top-K variáveis mais diferentes para evitar O(n²) no path relinking
+    # Restrict to the top-K most-differing variables to avoid O(n²) path relinking cost.
     max_pr_vars = 25
     if len(diff_indices) > max_pr_vars:
         diffs = np.abs(source[diff_indices] - target[diff_indices])
@@ -163,16 +163,19 @@ def bidirectional_path_relinking(
     sol2: np.ndarray,
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float]:
-    """
-    Executa Path Relinking bidirecional entre duas soluções, explorando ambos os caminhos.
+    """Run bidirectional path relinking between two solutions.
+
+    Explores both ``sol1 → sol2`` and ``sol2 → sol1`` using forward relinking
+    and returns the best solution found across both directions.
 
     Args:
-        cost_fn (Callable): Função de custo.
-        sol1 (np.ndarray): Primeira solução.
-        sol2 (np.ndarray): Segunda solução.
+        cost_fn: Objective function to minimise.
+        sol1: First solution vector.
+        sol2: Second solution vector.
+        deadline: Wall-clock deadline (``0.0`` = no limit).
 
     Returns:
-        tuple: Melhor solução encontrada e seu benefício.
+        Tuple of (best solution found, its objective value).
     """
     best1, cost1 = path_relinking(
         cost_fn, sol1, sol2, strategy="forward", deadline=deadline

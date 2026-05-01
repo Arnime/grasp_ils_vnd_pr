@@ -343,5 +343,6 @@ function grasp_ils_vnd(
         end
     end
 
-    return best_solution, best_cost, actual_nit, termination_msg
+    meta = cache !== nothing ? cache_stats(cache) : Dict{String,Any}()
+    return best_solution, best_cost, actual_nit, termination_msg, meta
 end

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """Compatibility package `givp.core` re-exporting the internal core submodules.
 
 This module provides a compatibility layer: it ensures callers can import
@@ -9,112 +11,56 @@ Design goals:
   yields a real module object.
 - Then import and re-export the canonical callables/symbols from those
   submodules so ``from givp.core import ...`` returns the expected API.
+
+Private symbols (names beginning with ``_``) are **not** re-exported here.
+Import them directly from their defining submodule when needed, e.g.::
+
+    from givp.core.grasp import _validate_bounds_and_initial
 """
 
 from __future__ import annotations
 
+from givp.config import GIVPConfig
+
 # `import givp.core.path_relinking as _pr_module` and get the module object.
-from givp.core import grasp, ils, impl, vnd
+from givp.core import grasp, ils, impl, legacy_sog2, vnd
 
 # Re-export key symbols from the canonical submodules (public API surface).
 from givp.core.cache import EvaluationCache
 from givp.core.convergence import ConvergenceMonitor
 from givp.core.elite import ElitePool
 from givp.core.grasp import (
-    _build_heuristic_candidate,
-    _build_random_candidate,
-    _evaluate_with_cache,
-    _sample_integer_from_bounds,
-    _select_from_rcl,
-    _validate_bounds_and_initial,
     construct_grasp,
-    evaluate_candidates,
     get_current_alpha,
     select_rcl,
 )
-from givp.core.helpers import (
-    _get_group_size,
-    _get_half,
-    _safe_evaluate,
-    _set_group_size,
-    _set_integer_split,
-)
 from givp.core.ils import ils_search, perturb_solution_numpy
-from givp.core.impl import (
-    _AlgorithmConfig as GIVPConfig,
-)
-from givp.core.impl import (
-    _apply_path_relinking_to_pair,
-    _check_early_stopping,
-    _evaluate_solution_with_cache,
-    _handle_convergence_monitor,
-    _initialize_optimization_components,
-    _maybe_apply_warm_start,
-    _prepare_bounds,
-    _print_cache_stats,
-    grasp_ils_vnd,
-)
+from givp.core.impl import grasp_ils_vnd
+from givp.core.legacy_sog2 import evaluate_candidates
 from givp.core.pr import bidirectional_path_relinking, path_relinking
 from givp.core.vnd import (
-    _create_cached_cost_fn,
-    _execute_neighborhood,
-    _neighborhood_block,
-    _neighborhood_group,
     local_search_vnd,
     local_search_vnd_adaptive,
 )
-from givp.core.vnd_moves import (
-    _modify_indices_for_multiflip,
-    _perturb_index,
-)
-from givp.core.vnd_neighborhoods import (
-    _group_layout,
-    _neighborhood_multiflip,
-    _sign_from_delta,
-)
 
 __all__ = [
+    # Public classes
     "ConvergenceMonitor",
     "ElitePool",
     "EvaluationCache",
     "GIVPConfig",
-    "_apply_path_relinking_to_pair",
-    "_build_heuristic_candidate",
-    "_build_random_candidate",
-    "_check_early_stopping",
-    "_create_cached_cost_fn",
-    "_evaluate_solution_with_cache",
-    "_evaluate_with_cache",
-    "_execute_neighborhood",
-    "_get_group_size",
-    "_get_half",
-    "_group_layout",
-    "_handle_convergence_monitor",
-    "_initialize_optimization_components",
-    "_maybe_apply_warm_start",
-    "_modify_indices_for_multiflip",
-    "_neighborhood_block",
-    "_neighborhood_group",
-    "_neighborhood_multiflip",
-    "_perturb_index",
-    "_prepare_bounds",
-    "_print_cache_stats",
-    "_safe_evaluate",
-    "_sample_integer_from_bounds",
-    "_select_from_rcl",
-    "_set_group_size",
-    "_set_integer_split",
-    "_sign_from_delta",
-    "_validate_bounds_and_initial",
+    # Public functions
     "bidirectional_path_relinking",
     "construct_grasp",
     "evaluate_candidates",
     "get_current_alpha",
+    # Sub-module references (for ``import givp.core.grasp`` style access)
     "grasp",
     "grasp_ils_vnd",
     "ils",
     "ils_search",
     "impl",
+    "legacy_sog2",
     "local_search_vnd",
     "local_search_vnd_adaptive",
     "path_relinking",

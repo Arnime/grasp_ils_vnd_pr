@@ -41,7 +41,7 @@ Output (stdout, JSON)
       "success": true/false,
       "message": "termination reason",
       "time_s":  wall-clock seconds,
-      "givp_version": "0.8.0"
+      "givp_version": "1.0.0"
     }
 
 Bounds format
@@ -129,6 +129,10 @@ function _load_func_from_file(path::String, name::String)::Function
 end
 
 function _load_inline_func(expr::String)::Function
+    # Security note: eval(Meta.parse(expr)) executes arbitrary Julia code
+    # supplied by the caller.  This is equivalent to running the expression
+    # directly in the REPL.  Only pass expressions from trusted sources —
+    # never from untrusted network input or user-submitted data.
     try
         f = eval(Meta.parse(expr))
         f isa Function || _die("--func expression did not evaluate to a Function")

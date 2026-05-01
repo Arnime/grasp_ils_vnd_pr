@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """Convergence monitor that recommends restarts/intensification."""
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ class ConvergenceMonitor:
     """
 
     def __init__(self, window_size: int = 20, restart_threshold: int = 50):
+        """Initialize the convergence monitor."""
         self.window_size = window_size
         self.restart_threshold = restart_threshold
         self.history: list[float] = []

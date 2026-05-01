@@ -34,6 +34,19 @@ Base.@kwdef mutable struct GIVPConfig
     group_size::Union{Int,Nothing} = nothing
 end
 
+"""
+    validate_config!(cfg::GIVPConfig) -> GIVPConfig
+
+Validate all fields of `cfg`, throwing [`InvalidConfigError`](@ref) if any value
+is out of range.  Returns `cfg` on success (for chaining).
+
+# Validated invariants
+- All iteration/size fields must be positive integers.
+- `perturbation_strength ≥ 0`.
+- `alpha`, `alpha_min`, `alpha_max` ∈ [0, 1] with `alpha_min ≤ alpha_max`.
+- `time_limit ≥ 0`.
+- `integer_split ≥ 0` (when set).
+"""
 function validate_config!(cfg::GIVPConfig)
     positive_int_fields = [
         (:max_iterations, cfg.max_iterations),

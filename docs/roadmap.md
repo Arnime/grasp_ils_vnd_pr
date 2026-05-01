@@ -32,7 +32,8 @@ Available in **Python**, **Julia**, **Rust**, and **C++** (header-only).
 > **Completed in v0.8.0:**
 > `julia/cli.jl` (✓), iteration callback (✓), warm start (✓),
 > Julia literature comparison notebook (✓), Wilcoxon + LaTeX reports (✓),
-> Julia fuzzing driver (✓), coverage gate 85% (✓), JuliaFormatter CI (✓).
+> Julia fuzzing driver (✓), coverage gate 95% (✓), JuliaFormatter CI (✓),
+> `GIVPOptimizerWrapper` class (✓), `meta` cache stats in `OptimizeResult` (✓).
 
 ## Medium-term (3–6 months)
 

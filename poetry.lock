@@ -615,6 +615,19 @@ files = [
 colorama = {version = "*", markers = "platform_system == \"Windows\""}
 
 [[package]]
+name = "cloudpickle"
+version = "3.1.2"
+description = "Pickler class to extend the standard pickle.Pickler functionality"
+optional = true
+python-versions = ">=3.8"
+groups = ["main"]
+markers = "extra == \"parallel\""
+files = [
+    {file = "cloudpickle-3.1.2-py3-none-any.whl", hash = "sha256:9acb47f6afd73f60dc1df93bb801b472f05ff42fa6c84167d25cb206be1fbf4a"},
+    {file = "cloudpickle-3.1.2.tar.gz", hash = "sha256:7fda9eb655c9c230dab534f1983763de5835249750e85fbcef43aaa30a9a2414"},
+]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -5090,8 +5103,9 @@ dev = ["black", "hypothesis", "mypy", "pre-commit", "pytest", "pytest-benchmark"
 docs = ["mkdocs", "mkdocs-material", "mkdocstrings"]
 fuzz = ["atheris"]
 notebooks = ["ipykernel", "jupyter", "matplotlib", "pandas", "scipy"]
+parallel = ["cloudpickle"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.16"
-content-hash = "d9e5680264fd5d5a9547d832482f39c1bee5bb1be86bdd4d263276f41e46b5ba"
+content-hash = "263dd087896d78a01c87dfe34ef4cbfc9da89c71aa3fcd14a43b15491e14f95b"

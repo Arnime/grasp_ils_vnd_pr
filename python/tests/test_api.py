@@ -12,7 +12,7 @@ from givp import (
     OptimizeResult,
     givp,
 )
-from givp.core import _validate_bounds_and_initial
+from givp.core.grasp import _validate_bounds_and_initial
 
 
 def sphere(x: np.ndarray) -> float:
@@ -248,6 +248,39 @@ def test_n_workers_parallel_path(fast_config):
     cfg = GIVPConfig(**{**fast_config.__dict__, "n_workers": 2})
     result = givp(sphere, [(-1.0, 1.0)] * 3, config=cfg)
     assert np.isfinite(result.fun)
+
+
+def test_n_workers_parity_serial_vs_parallel(fast_config):
+    """n_workers=2 must return a finite, valid result for the same objective.
+
+    Strict value equality is not guaranteed because thread scheduling affects
+    the order in which candidates are evaluated, which can alter the random
+    state and thus the trajectory.  The test verifies that:
+    - Both executions return finite objective values.
+    - The parallel result is within a reasonable absolute tolerance of the
+      serial result (same seed, same low-iteration budget).
+    - The parallel result respects bounds (sphere minimum is 0).
+
+    Note: speedup from n_workers>1 requires the objective to release the GIL
+    (e.g., NumPy/SciPy internals).  Pure-Python objectives run serially inside
+    ThreadPoolExecutor due to the GIL.
+    """
+    bounds = [(-1.0, 1.0)] * 4
+    cfg_serial = GIVPConfig(**{**fast_config.__dict__, "n_workers": 1})
+    cfg_parallel = GIVPConfig(**{**fast_config.__dict__, "n_workers": 2})
+
+    r_serial = givp(sphere, bounds, config=cfg_serial, seed=42)
+    r_parallel = givp(sphere, bounds, config=cfg_parallel, seed=42)
+
+    assert np.isfinite(r_serial.fun), "serial result must be finite"
+    assert np.isfinite(r_parallel.fun), "parallel result must be finite"
+    assert r_serial.fun >= 0.0, "sphere minimum is 0; serial result must be non-negative"
+    assert r_parallel.fun >= 0.0, "sphere minimum is 0; parallel result must be non-negative"
+    # Both should achieve a similar quality bound: within 10x of each other.
+    assert r_parallel.fun < r_serial.fun * 10 + 1.0, (
+        f"parallel result ({r_parallel.fun:.4f}) is unexpectedly much worse than "
+        f"serial ({r_serial.fun:.4f})"
+    )
 
 
 def test_time_limit_triggers_early_stop(fast_config):

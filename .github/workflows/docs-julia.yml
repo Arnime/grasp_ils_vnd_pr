@@ -1,0 +1,56 @@
+name: Docs Julia
+
+on:
+    push:
+        branches: [ main ]
+        paths:
+            - "julia/src/**"
+            - "julia/docs/**"
+            - ".github/workflows/docs-julia.yml"
+    pull_request:
+        paths:
+            - "julia/src/**"
+            - "julia/docs/**"
+            - ".github/workflows/docs-julia.yml"
+    workflow_dispatch:
+
+env:
+    FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions: read-all
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write # required for deploydocs push to gh-pages
+        steps:
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+            - uses: julia-actions/setup-julia@f6f565d9f7cf12f53dc8045742460d6260ad3b39 # v3.0.1
+              with:
+                  version: "1"
+
+            - uses: julia-actions/cache@9a93c5fb3e9c1c20b60fc80a478cae53e38618a4 # v3.0.2
+
+            - name: Install docs dependencies
+              run: |
+                  julia --project=julia/docs -e '
+                    using Pkg
+                    Pkg.Registry.update()
+                    Pkg.instantiate()
+                  '
+
+            - name: Build documentation
+              run: julia --project=julia/docs julia/docs/make.jl
+              env:
+                  DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Upload docs artifact (PR preview)
+              if: github.event_name == 'pull_request'
+              uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+              with:
+                  name: julia-docs-preview
+                  path: julia/docs/build/
+                  retention-days: 14

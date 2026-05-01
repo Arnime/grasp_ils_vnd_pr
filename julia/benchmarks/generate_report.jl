@@ -495,7 +495,7 @@ function print_console_summary(summary::Vector{SummaryRow}, wilcoxon::Vector{Wil
     for fn in functions
         println("  ─── $fn ───")
         @printf(
-            "  %-$(col)s %14s %14s %14s %14s %10s %5s\n",
+            "  %-16s %14s %14s %14s %14s %10s %5s\n",
             "Algorithm",
             "Mean",
             "Std",
@@ -511,7 +511,7 @@ function print_console_summary(summary::Vector{SummaryRow}, wilcoxon::Vector{Wil
                 @sprintf("%.4f", pval_idx[(fn, row.algorithm)]) : "  ref"
             sig_str = get(sig_idx, (fn, row.algorithm), false) ? "★" : "—"
             @printf(
-                "  %-$(col)s %14s %14s %14s %14s %10s %5s\n",
+                "  %-16s %14s %14s %14s %14s %10s %5s\n",
                 row.algorithm,
                 _fmt_sci(row.mean_val),
                 _fmt_sci(row.std_val),
@@ -633,10 +633,10 @@ function to_latex(
             push!(
                 lines,
                 "  $fn_cell & $(_latex_esc(row.algorithm))$sig " *
-                "& \$$(row.mean_val:.4e)\$ " *
-                "& \$$(row.std_val:.4e)\$ " *
-                "& \$$(row.best:.4e)\$ " *
-                "& \$$(row.median_val:.4e)\$ \\\\",
+                "& \$$(_fmt_sci(row.mean_val))\$ " *
+                "& \$$(_fmt_sci(row.std_val))\$ " *
+                "& \$$(_fmt_sci(row.best))\$ " *
+                "& \$$(_fmt_sci(row.median_val))\$ \\\\",
             )
         end
         push!(lines, "\\midrule")

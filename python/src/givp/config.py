@@ -7,7 +7,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from givp import core as _core
 from givp.exceptions import InvalidConfigError
 
 Direction = Literal["minimize", "maximize"]
@@ -42,7 +41,30 @@ class GIVPConfig:
         cache_size: Maximum entries kept by the LRU cache.
         early_stop_threshold: Iterations without improvement to early-stop.
         use_convergence_monitor: Enable diversification/restart heuristics.
-        n_workers: Threads used to evaluate candidates in parallel.
+        n_workers: Number of worker processes (or threads) used to evaluate
+            candidates in parallel during the GRASP construction phase.
+            Default is ``1`` (serial).
+
+            **Parallelism strategy** (applied when ``n_workers > 1`` and the
+            evaluation cache is disabled):
+
+            1. **ProcessPoolExecutor** — used when the objective is picklable
+               (module-level functions, classes defined at import time).  Runs
+               in separate processes, completely bypassing the GIL and
+               providing true multi-core speedup for *any* objective, including
+               pure-Python ones.
+            2. **cloudpickle ProcessPoolExecutor** — if the objective is a
+               closure, lambda, or locally-defined function (not picklable with
+               ``pickle``), a second attempt uses ``cloudpickle`` to serialise
+               it.  Install the optional extra to enable this path::
+
+                   pip install "givp[parallel]"
+
+            3. **ThreadPoolExecutor fallback** — used only when both
+               serialisation strategies fail (i.e. cloudpickle is not
+               installed).  Thread-based execution benefits objectives that
+               release the GIL (NumPy-heavy, Cython, Numba-compiled code) but
+               provides no speedup for pure-Python objectives due to the GIL.
         time_limit: Wall-clock budget in seconds (0 = unlimited).
         minimize: Boolean convenience flag. ``True`` (default) means
             minimization, ``False`` means maximization. When set, it overrides
@@ -154,31 +176,12 @@ class GIVPConfig:
                 f"integer_split must be >= 0 or None, got {self.integer_split!r}"
             )
 
-    def as_core_config(self):
-        """Return an internal config object compatible with ``core``.
+    def as_core_config(self) -> GIVPConfig:
+        """Return ``self``.
 
-        ``core`` defines its own ``GIVPConfig`` (without ``direction``),
-        so we copy field values across to keep the two layers decoupled.
+        ``GIVPConfig`` structurally satisfies the internal ``_CoreConfigProto``
+        used by ``givp.core`` functions, so it can be passed directly without
+        copying field values into a separate dataclass.  The ``minimize`` and
+        ``direction`` fields are ignored by core code.
         """
-        return _core.GIVPConfig(
-            max_iterations=self.max_iterations,
-            alpha=self.alpha,
-            vnd_iterations=self.vnd_iterations,
-            ils_iterations=self.ils_iterations,
-            perturbation_strength=self.perturbation_strength,
-            use_elite_pool=self.use_elite_pool,
-            elite_size=self.elite_size,
-            path_relink_frequency=self.path_relink_frequency,
-            adaptive_alpha=self.adaptive_alpha,
-            alpha_min=self.alpha_min,
-            alpha_max=self.alpha_max,
-            num_candidates_per_step=self.num_candidates_per_step,
-            use_cache=self.use_cache,
-            cache_size=self.cache_size,
-            early_stop_threshold=self.early_stop_threshold,
-            use_convergence_monitor=self.use_convergence_monitor,
-            n_workers=self.n_workers,
-            time_limit=self.time_limit,
-            integer_split=self.integer_split,
-            group_size=self.group_size,
-        )
+        return self
