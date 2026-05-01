@@ -5,29 +5,29 @@
 
 mutable struct EvaluationCache
     maxsize::Int
-    cache::Dict{UInt64,Float64}
+    cache::Dict{UInt64, Float64}
     hits::Int
     misses::Int
     insertion_order::Vector{UInt64}
 end
 
-function EvaluationCache(; maxsize::Int=10000)
-    EvaluationCache(maxsize, Dict{UInt64,Float64}(), 0, 0, UInt64[])
+function EvaluationCache(; maxsize::Int = 10000)
+    EvaluationCache(maxsize, Dict{UInt64, Float64}(), 0, 0, UInt64[])
 end
 
 function _hash_solution(ec::EvaluationCache, solution::Vector{Float64})::UInt64
     half = get_half(length(solution))
     rounded = copy(solution)
     for i in 1:half
-        rounded[i] = round(rounded[i]; digits=3)
+        rounded[i] = round(rounded[i]; digits = 3)
     end
-    for i in (half+1):length(rounded)
-        rounded[i] = round(rounded[i]; digits=0)
+    for i in (half + 1):length(rounded)
+        rounded[i] = round(rounded[i]; digits = 0)
     end
     return hash(rounded)
 end
 
-function cache_get(ec::EvaluationCache, solution::Vector{Float64})::Union{Float64,Nothing}
+function cache_get(ec::EvaluationCache, solution::Vector{Float64})::Union{Float64, Nothing}
     key = _hash_solution(ec, solution)
     if haskey(ec.cache, key)
         ec.hits += 1
@@ -56,10 +56,10 @@ function cache_clear!(ec::EvaluationCache)
     ec.misses = 0
 end
 
-function cache_stats(ec::EvaluationCache)::Dict{String,Any}
+function cache_stats(ec::EvaluationCache)::Dict{String, Any}
     total = ec.hits + ec.misses
     hit_rate = total > 0 ? (ec.hits / total * 100) : 0.0
-    Dict{String,Any}(
+    Dict{String, Any}(
         "hits" => ec.hits,
         "misses" => ec.misses,
         "hit_rate" => hit_rate,

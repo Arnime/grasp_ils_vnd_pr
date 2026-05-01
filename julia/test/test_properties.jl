@@ -1,8 +1,11 @@
 # SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
 # SPDX-License-Identifier: MIT
 #
-# Property-based tests (invariant testing across random seeds).
-# 50+ independent seeds give statistical confidence without PropCheck.jl.
+# Property-based tests.
+# Part A: Supposition.jl (true shrinking property-based testing, max_examples=50).
+# Part B: Manual seed sweep (50 seeds) for cheap invariants.
+
+using Supposition
 
 @testset "Property-based tests" begin
     sphere(x) = sum(x .^ 2)
@@ -141,5 +144,68 @@
         r = givp(sphere, [lower_4d, upper_4d]; config = cfg_fast, seed = 0)
         @test length(r.x) == 4
         @test all(lower_4d .<= r.x .<= upper_4d)
+    end
+end
+
+# ── Part A: Supposition.jl property-based tests (max_examples = 50) ───────────
+@testset "Supposition property-based tests" begin
+    sphere(x) = sum(x .^ 2)
+    cfg_sup = GIVPConfig(;
+        max_iterations = 8,
+        vnd_iterations = 10,
+        ils_iterations = 1,
+        integer_split = 0,
+        use_cache = false,
+    )
+
+    # Generator: dimension ∈ [1, 6]
+    ndim_gen = Data.Integers{Int}(1, 6)
+    # Generator: bound half-width ∈ [0.5, 5.0]
+    hw_gen = Data.Floats{Float64}(; minimum = 0.5, maximum = 5.0)
+    # Generator: seed ∈ [0, 9999]
+    seed_gen = Data.Integers{Int}(0, 9999)
+
+    @testset "SP1: solution within bounds (random dim + bounds)" begin
+        @check max_examples = 50 function sp1_bounds(
+            ndim = ndim_gen,
+            hw = hw_gen,
+            seed = seed_gen,
+        )
+            bounds = [(-hw, hw) for _ in 1:ndim]
+            r = givp(sphere, bounds; config = cfg_sup, seed = seed)
+            all(-hw .<= r.x .<= hw)
+        end
+    end
+
+    @testset "SP2: nfev > 0 (random dim)" begin
+        @check max_examples = 50 function sp2_nfev(ndim = ndim_gen, seed = seed_gen)
+            bounds = [(-5.0, 5.0) for _ in 1:ndim]
+            r = givp(sphere, bounds; config = cfg_sup, seed = seed)
+            r.nfev > 0
+        end
+    end
+
+    @testset "SP3: sphere result non-negative" begin
+        @check max_examples = 50 function sp3_nonneg(ndim = ndim_gen, seed = seed_gen)
+            bounds = [(-5.12, 5.12) for _ in 1:ndim]
+            r = givp(sphere, bounds; config = cfg_sup, seed = seed)
+            r.fun >= 0.0
+        end
+    end
+
+    @testset "SP4: nit ≤ max_iterations" begin
+        @check max_examples = 50 function sp4_nit(ndim = ndim_gen, seed = seed_gen)
+            bounds = [(-5.12, 5.12) for _ in 1:ndim]
+            r = givp(sphere, bounds; config = cfg_sup, seed = seed)
+            r.nit <= cfg_sup.max_iterations
+        end
+    end
+
+    @testset "SP5: success ↔ isfinite(fun)" begin
+        @check max_examples = 50 function sp5_success(ndim = ndim_gen, seed = seed_gen)
+            bounds = [(-5.12, 5.12) for _ in 1:ndim]
+            r = givp(sphere, bounds; config = cfg_sup, seed = seed)
+            r.success == isfinite(r.fun)
+        end
     end
 end

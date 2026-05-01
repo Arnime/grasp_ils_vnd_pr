@@ -30,8 +30,8 @@ Base.@kwdef mutable struct GIVPConfig
     n_workers::Int = 1
     time_limit::Float64 = 0.0
     direction::Direction = minimize
-    integer_split::Union{Int,Nothing} = nothing
-    group_size::Union{Int,Nothing} = nothing
+    integer_split::Union{Int, Nothing} = nothing
+    group_size::Union{Int, Nothing} = nothing
 end
 
 """
@@ -60,11 +60,15 @@ function validate_config!(cfg::GIVPConfig)
         (:n_workers, cfg.n_workers),
     ]
     for (name, value) in positive_int_fields
-        value < 1 && throw(InvalidConfigError("$name must be a positive integer, got $value"))
+        value < 1 &&
+            throw(InvalidConfigError("$name must be a positive integer, got $value"))
     end
 
-    cfg.perturbation_strength < 0 &&
-        throw(InvalidConfigError("perturbation_strength must be non-negative, got $(cfg.perturbation_strength)"))
+    cfg.perturbation_strength < 0 && throw(
+        InvalidConfigError(
+            "perturbation_strength must be non-negative, got $(cfg.perturbation_strength)",
+        ),
+    )
 
     !(0.0 <= cfg.alpha <= 1.0) &&
         throw(InvalidConfigError("alpha must be in [0, 1], got $(cfg.alpha)"))
@@ -72,14 +76,21 @@ function validate_config!(cfg::GIVPConfig)
         throw(InvalidConfigError("alpha_min must be in [0, 1], got $(cfg.alpha_min)"))
     !(0.0 <= cfg.alpha_max <= 1.0) &&
         throw(InvalidConfigError("alpha_max must be in [0, 1], got $(cfg.alpha_max)"))
-    cfg.alpha_min > cfg.alpha_max &&
-        throw(InvalidConfigError("alpha_min ($(cfg.alpha_min)) must be <= alpha_max ($(cfg.alpha_max))"))
+    cfg.alpha_min > cfg.alpha_max && throw(
+        InvalidConfigError(
+            "alpha_min ($(cfg.alpha_min)) must be <= alpha_max ($(cfg.alpha_max))",
+        ),
+    )
 
     cfg.time_limit < 0 &&
         throw(InvalidConfigError("time_limit must be >= 0, got $(cfg.time_limit)"))
 
     if cfg.integer_split !== nothing && cfg.integer_split < 0
-        throw(InvalidConfigError("integer_split must be >= 0 or nothing, got $(cfg.integer_split)"))
+        throw(
+            InvalidConfigError(
+                "integer_split must be >= 0 or nothing, got $(cfg.integer_split)",
+            ),
+        )
     end
 
     return cfg

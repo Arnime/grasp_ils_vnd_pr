@@ -13,7 +13,8 @@ Base.showerror(io::IO, e::InvalidBoundsError) = print(io, "InvalidBoundsError: "
 struct InvalidInitialGuessError <: GivpError
     msg::String
 end
-Base.showerror(io::IO, e::InvalidInitialGuessError) = print(io, "InvalidInitialGuessError: ", e.msg)
+Base.showerror(io::IO, e::InvalidInitialGuessError) =
+    print(io, "InvalidInitialGuessError: ", e.msg)
 
 struct InvalidConfigError <: GivpError
     msg::String

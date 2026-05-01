@@ -35,7 +35,7 @@ Pass `nothing` to restore non-deterministic behaviour.
 
 This function is task-local: concurrent tasks do not interfere with each other.
 """
-function set_seed!(seed::Union{Int,Nothing})
+function set_seed!(seed::Union{Int, Nothing})
     if seed === nothing
         task_local_storage(_TLS_MASTER_RNG, nothing)
     else
@@ -66,7 +66,7 @@ end
 Set the task-local integer split used by [`get_half`](@ref).
 Pass `nothing` to reset to the default `n ÷ 2` behaviour.
 """
-function set_integer_split!(split::Union{Int,Nothing})
+function set_integer_split!(split::Union{Int, Nothing})
     task_local_storage(_TLS_INTEGER_SPLIT, split)
 end
 
@@ -77,7 +77,7 @@ end
 
 Set the number of steps per group for the group/block neighbourhoods (task-local).
 """
-function set_group_size!(size::Union{Int,Nothing})
+function set_group_size!(size::Union{Int, Nothing})
     task_local_storage(_TLS_GROUP_SIZE, size)
 end
 
@@ -86,7 +86,7 @@ end
 
 Return the configured group size for the current task, or `nothing` if unset.
 """
-function get_group_size()::Union{Int,Nothing}
+function get_group_size()::Union{Int, Nothing}
     return get(task_local_storage(), _TLS_GROUP_SIZE, nothing)
 end
 
@@ -102,7 +102,7 @@ Create an independent `MersenneTwister` RNG.
   derive a child seed from it (guaranteeing reproducibility).
 - Otherwise, use entropy from the system (non-deterministic).
 """
-function new_rng(seed::Union{Int,Nothing}=nothing)::AbstractRNG
+function new_rng(seed::Union{Int, Nothing} = nothing)::AbstractRNG
     if seed !== nothing
         return MersenneTwister(seed)
     end
@@ -142,7 +142,8 @@ function safe_evaluate(evaluator::Function, candidate::Vector{Float64})::Float64
         isfinite(cost) || return Inf
         return cost
     catch e
-        @warn "evaluator raised an exception; treating candidate as infeasible" exception=(e, catch_backtrace())
+        @warn "evaluator raised an exception; treating candidate as infeasible" exception =
+            (e, catch_backtrace())
         return Inf
     end
 end

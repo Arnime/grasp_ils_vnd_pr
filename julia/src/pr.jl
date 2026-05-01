@@ -5,10 +5,13 @@
 
 const MAX_PR_VARS = 25
 
-function path_relinking_forward(cost_fn::Function,
-                                source::Vector{Float64}, target::Vector{Float64},
-                                diff_indices::Vector{Int};
-                                deadline::Float64=0.0)::Tuple{Vector{Float64},Float64}
+function path_relinking_forward(
+    cost_fn::Function,
+    source::Vector{Float64},
+    target::Vector{Float64},
+    diff_indices::Vector{Int};
+    deadline::Float64 = 0.0,
+)::Tuple{Vector{Float64}, Float64}
     current = copy(source)
     best_solution = copy(current)
     best_benefit = cost_fn(current)
@@ -25,10 +28,13 @@ function path_relinking_forward(cost_fn::Function,
     return best_solution, best_benefit
 end
 
-function path_relinking_best(cost_fn::Function,
-                             source::Vector{Float64}, target::Vector{Float64},
-                             diff_indices::Vector{Int};
-                             deadline::Float64=0.0)::Tuple{Vector{Float64},Float64}
+function path_relinking_best(
+    cost_fn::Function,
+    source::Vector{Float64},
+    target::Vector{Float64},
+    diff_indices::Vector{Int};
+    deadline::Float64 = 0.0,
+)::Tuple{Vector{Float64}, Float64}
     current = copy(source)
     best_solution = copy(current)
     best_benefit = cost_fn(current)
@@ -67,11 +73,14 @@ function path_relinking_best(cost_fn::Function,
     return best_solution, best_benefit
 end
 
-function path_relinking(cost_fn::Function,
-                        source::Vector{Float64}, target::Vector{Float64};
-                        strategy::Symbol=:best,
-                        seed::Union{Int,Nothing}=nothing,
-                        deadline::Float64=0.0)::Tuple{Vector{Float64},Float64}
+function path_relinking(
+    cost_fn::Function,
+    source::Vector{Float64},
+    target::Vector{Float64};
+    strategy::Symbol = :best,
+    seed::Union{Int, Nothing} = nothing,
+    deadline::Float64 = 0.0,
+)::Tuple{Vector{Float64}, Float64}
     src = copy(source)
     tgt = copy(target)
     diff_indices = findall(abs.(src .- tgt) .> 1e-9)
@@ -81,7 +90,7 @@ function path_relinking(cost_fn::Function,
     # Limit to top-K most different variables
     if length(diff_indices) > MAX_PR_VARS
         diffs = abs.(src[diff_indices] .- tgt[diff_indices])
-        top_k = sortperm(diffs; rev=true)[1:MAX_PR_VARS]
+        top_k = sortperm(diffs; rev = true)[1:MAX_PR_VARS]
         diff_indices = diff_indices[top_k]
     end
 
@@ -94,11 +103,14 @@ function path_relinking(cost_fn::Function,
     return path_relinking_forward(cost_fn, src, tgt, diff_indices; deadline)
 end
 
-function bidirectional_path_relinking(cost_fn::Function,
-                                     sol1::Vector{Float64}, sol2::Vector{Float64};
-                                     deadline::Float64=0.0)::Tuple{Vector{Float64},Float64}
-    best1, cost1 = path_relinking(cost_fn, sol1, sol2; strategy=:forward, deadline)
+function bidirectional_path_relinking(
+    cost_fn::Function,
+    sol1::Vector{Float64},
+    sol2::Vector{Float64};
+    deadline::Float64 = 0.0,
+)::Tuple{Vector{Float64}, Float64}
+    best1, cost1 = path_relinking(cost_fn, sol1, sol2; strategy = :forward, deadline)
     expired(deadline) && return best1, cost1
-    best2, cost2 = path_relinking(cost_fn, sol2, sol1; strategy=:forward, deadline)
+    best2, cost2 = path_relinking(cost_fn, sol2, sol1; strategy = :forward, deadline)
     return cost1 <= cost2 ? (best1, cost1) : (best2, cost2)
 end

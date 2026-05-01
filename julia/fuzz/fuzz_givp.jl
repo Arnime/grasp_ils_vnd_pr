@@ -27,6 +27,7 @@ Pkg.activate(joinpath(@__DIR__, ".."))
 Pkg.instantiate()
 
 using GIVPOptimizer
+using Printf
 using Random
 
 # ── Fuzz configuration ────────────────────────────────────────────────────────

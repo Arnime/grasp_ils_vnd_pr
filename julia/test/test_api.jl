@@ -220,7 +220,13 @@ end
 
     @testset "maximize direction tracks maximum" begin
         neg_sphere(x) = -sum(xi^2 for xi in x)
-        opt = GIVPOptimizerWrapper(neg_sphere, bounds; direction = maximize, config = fast_cfg, seed = 4)
+        opt = GIVPOptimizerWrapper(
+            neg_sphere,
+            bounds;
+            direction = maximize,
+            config = fast_cfg,
+            seed = 4,
+        )
         r = optimize!(opt)
         @test r.direction == maximize
         @test opt.best_fun == r.fun

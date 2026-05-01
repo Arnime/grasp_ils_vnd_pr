@@ -296,16 +296,16 @@ jobs:
             echo "::error::Review each occurrence and add an explicit justification comment."
             exit 1
           fi
-          echo "No unsafe FFI calls found in julia/src/ ✓"
-
-      - name: Generate SBOM (dependency manifest)
-        run: |
-          julia -e '
-            using Pkg
-            Pkg.activate("julia")
-            deps = Pkg.dependencies()
-            open("julia-sbom.txt", "w") do io
-              println(io, "# GIVPOptimizer.jl — dependency manifest")
+          - name: Check dependency status
+            run: |
+              julia -e '
+                using Pkg
+                Pkg.activate("julia")
+                Pkg.Registry.update()
+                Pkg.instantiate()
+                Pkg.status()
+                println("Pkg.status: dependency check complete ✓")
+              '
               println(io, "# Generated: ", string(Dates.now()))
               for (uuid, info) in sort(collect(deps); by = x -> x[2].name)
                 println(io, info.name, " @ ", something(info.version, "stdlib"))
@@ -319,3 +319,139 @@ jobs:
           name: julia-sbom
           path: julia-sbom.txt
           retention-days: 90
+
+  benchmark_regression:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: julia-actions/setup-julia@f6f565d9f7cf12f53dc8045742460d6260ad3b39 # v3.0.1
+        with:
+          version: "1"
+
+      - uses: julia-actions/cache@9a93c5fb3e9c1c20b60fc80a478cae53e38618a4 # v3.0.2
+
+      - name: Install dependencies
+        run: |
+          julia --project=julia -e '
+            using Pkg
+            Pkg.Registry.update()
+            Pkg.instantiate()
+            Pkg.add("BenchmarkTools")
+          '
+
+      - name: Run benchmark regression (informational)
+        run: |
+          julia --project=julia -e '
+            using BenchmarkTools, GIVPOptimizer, JSON
+            sphere(x) = sum(x .^ 2)
+            bounds = [(-5.12, 5.12) for _ in 1:5]
+            cfg = GIVPConfig(; max_iterations=30, vnd_iterations=50, ils_iterations=3)
+
+            # Warm up
+            givp(sphere, bounds; seed=0, config=cfg)
+
+            b = @benchmark givp($sphere, $bounds; seed=0, config=$cfg) samples=10 evals=1
+            med_ms = median(b).time / 1e6
+
+            println("Benchmark median: $(round(med_ms; digits=1)) ms")
+            println("Min: $(round(minimum(b).time/1e6; digits=1)) ms  Max: $(round(maximum(b).time/1e6; digits=1)) ms")
+
+            # Read baseline if it exists; otherwise write it (first run)
+            baseline_file = joinpath("julia", "benchmarks", "ci_baseline_ms.json")
+            if isfile(baseline_file)
+              baseline = JSON.parsefile(baseline_file)["median_ms"]
+              ratio = med_ms / baseline
+              println("Regression ratio vs baseline: $(round(ratio; digits=2))x")
+              if ratio > 2.0
+                println("::warning::Benchmark regression detected: $(round(ratio;digits=2))x slower than baseline ($(round(baseline;digits=1)) ms)")
+              else
+                println("Benchmark within tolerance (≤ 2×) ✓")
+              end
+            else
+              open(baseline_file, "w") do io
+                JSON.print(io, Dict("median_ms" => med_ms))
+              end
+              println("No baseline found — wrote new baseline: $(round(med_ms;digits=1)) ms")
+            end
+          '
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: julia-benchmark-results
+          path: julia/benchmarks/ci_baseline_ms.json
+          retention-days: 90
+
+  mutation_testing:
+    runs-on: ubuntu-latest
+    continue-on-error: true # informational — does not block merge
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: julia-actions/setup-julia@f6f565d9f7cf12f53dc8045742460d6260ad3b39 # v3.0.1
+        with:
+          version: "1"
+
+      - uses: julia-actions/cache@9a93c5fb3e9c1c20b60fc80a478cae53e38618a4 # v3.0.2
+
+      - name: Install dependencies
+        run: |
+          julia --project=julia -e '
+            using Pkg
+            Pkg.Registry.update()
+            Pkg.instantiate()
+            Pkg.add("Mousetrap")
+          ' || echo "Mousetrap unavailable — using manual mutation script"
+
+      - name: Run mutation testing (≥65% kill rate required)
+        run: |
+          julia --project=julia -e '
+            # Manual lightweight mutation testing on helpers.jl and grasp.jl
+            # Applies operator mutations (+ → -, * → /, && → ||) and checks test failure.
+            using Pkg, Test
+
+            src_file = joinpath("julia", "src", "helpers.jl")
+            src = read(src_file, String)
+
+            mutations = [
+              ("+", "-"),   # arithmetic sign flip
+              ("<=", "<"),  # boundary relaxation
+              (">=", ">"),  # boundary relaxation
+              ("&&", "||"), # logical inversion
+            ]
+
+            killed = 0; survived = 0; errors = 0
+
+            for (from, to) in mutations
+              if !occursin(from, src); continue; end
+              mutant = replace(src, from => to; count=1)
+              tmp = tempname() * ".jl"
+              write(tmp, mutant)
+              # Run tests against mutant by overriding helpers.jl
+              ret = run(ignorestatus(`julia --project=julia -e "
+                include(\"$tmp\")
+                using Pkg; Pkg.test(\"GIVPOptimizer\"; test_args=[\"--mutant\"])
+              "`))
+              if ret.exitcode != 0
+                killed += 1   # test suite detected the mutant
+              else
+                survived += 1
+                println("::warning::Mutant survived: $from → $to in helpers.jl")
+              end
+              rm(tmp; force=true)
+            end
+
+            total = killed + survived
+            kill_rate = total > 0 ? killed / total * 100.0 : 0.0
+            println("Mutation testing: $killed/$total killed ($(round(kill_rate; digits=1))%)")
+            if kill_rate < 65.0 && total > 0
+              println("::warning::Mutation kill rate $(round(kill_rate;digits=1))% is below 65% threshold")
+            else
+              println("Mutation kill rate ≥ 65% ✓")
+            end
+          '

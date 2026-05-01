@@ -3,11 +3,14 @@
 
 """ILS — Iterated Local Search."""
 
-function perturb_solution(solution::Vector{Float64}, num_vars::Int;
-                          strength::Int=4,
-                          seed::Union{Int,Nothing}=nothing,
-                          lower::Union{Vector{Float64},Nothing}=nothing,
-                          upper::Union{Vector{Float64},Nothing}=nothing)::Vector{Float64}
+function perturb_solution(
+    solution::Vector{Float64},
+    num_vars::Int;
+    strength::Int = 4,
+    seed::Union{Int, Nothing} = nothing,
+    lower::Union{Vector{Float64}, Nothing} = nothing,
+    upper::Union{Vector{Float64}, Nothing} = nothing,
+)::Vector{Float64}
     perturbed = copy(solution)
     rng = new_rng(seed)
     n_perturb = min(max(strength, num_vars ÷ 5), num_vars)
@@ -18,12 +21,17 @@ function perturb_solution(solution::Vector{Float64}, num_vars::Int;
     return perturbed
 end
 
-function ils_search(solution::Vector{Float64}, current_cost::Float64,
-                    num_vars::Int, cost_fn::Function, config::GIVPConfig;
-                    lower::Union{Vector{Float64},Nothing}=nothing,
-                    upper::Union{Vector{Float64},Nothing}=nothing,
-                    cache::Union{EvaluationCache,Nothing}=nothing,
-                    deadline::Float64=0.0)::Tuple{Vector{Float64},Float64}
+function ils_search(
+    solution::Vector{Float64},
+    current_cost::Float64,
+    num_vars::Int,
+    cost_fn::Function,
+    config::GIVPConfig;
+    lower::Union{Vector{Float64}, Nothing} = nothing,
+    upper::Union{Vector{Float64}, Nothing} = nothing,
+    cache::Union{EvaluationCache, Nothing} = nothing,
+    deadline::Float64 = 0.0,
+)::Tuple{Vector{Float64}, Float64}
     best_solution = copy(solution)
     best_cost = current_cost
 
@@ -34,14 +42,27 @@ function ils_search(solution::Vector{Float64}, current_cost::Float64,
         progress = ils_iter / max(1, config.ils_iterations - 1)
         adaptive_strength = max(
             config.perturbation_strength,
-            round(Int, config.perturbation_strength * (1.0 + progress)))
+            round(Int, config.perturbation_strength * (1.0 + progress)),
+        )
 
-        perturbed = perturb_solution(best_solution, num_vars;
-            strength=adaptive_strength, lower, upper)
+        perturbed = perturb_solution(
+            best_solution,
+            num_vars;
+            strength = adaptive_strength,
+            lower,
+            upper,
+        )
 
-        perturbed = local_search_vnd(cost_fn, perturbed, num_vars;
-            max_iter=config.vnd_iterations,
-            lower, upper, cache, deadline)
+        perturbed = local_search_vnd(
+            cost_fn,
+            perturbed,
+            num_vars;
+            max_iter = config.vnd_iterations,
+            lower,
+            upper,
+            cache,
+            deadline,
+        )
 
         perturbed_cost = if cache !== nothing
             cached = cache_get(cache, perturbed)
