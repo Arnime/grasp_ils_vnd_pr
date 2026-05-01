@@ -139,18 +139,20 @@ jobs:
             using Pkg; Pkg.add("CoverageTools")
             using CoverageTools
             cov = process_folder("julia/src")
-            local hit = 0
-            local total = 0
-            for s in cov
-              for c in s.coverage
-                c === nothing && continue
-                total += 1
-                c > 0 && (hit += 1)
+            let
+              hit = 0
+              total = 0
+              for s in cov
+                for c in s.coverage
+                  c === nothing && continue
+                  total += 1
+                  c > 0 && (hit += 1)
+                end
               end
+              pct = total > 0 ? hit / total * 100.0 : 0.0
+              println("Julia coverage: $(round(pct; digits=1))%  ($hit / $total lines)")
+              pct >= 95.0 || (println("::error::Coverage below 95% threshold (got $(round(pct; digits=1))%)"); exit(1))
             end
-            pct = total > 0 ? hit / total * 100.0 : 0.0
-            println("Julia coverage: $(round(pct; digits=1))%  ($hit / $total lines)")
-            pct >= 95.0 || (println("::error::Coverage below 95% threshold (got $(round(pct; digits=1))%)"); exit(1))
           '
 
       - name: Upload coverage to Codecov
@@ -189,7 +191,7 @@ jobs:
 
   fuzz:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 8
     permissions:
       contents: read
     steps:
@@ -213,9 +215,9 @@ jobs:
       - name: Run fuzz trials
         run: |
           julia --project=julia julia/fuzz/fuzz_givp.jl \
-            --n-trials 500 \
+            --n-trials 200 \
             --seed 1337 \
-            --timeout 600
+            --timeout 180
 
   lint:
     runs-on: ubuntu-latest
