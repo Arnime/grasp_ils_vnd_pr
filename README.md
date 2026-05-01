@@ -1,7 +1,7 @@
 # givp — GRASP-ILS-VND with Path Relinking
 
 **Python** &nbsp;
-[![PyPI version](https://img.shields.io/pypi/v/givp?cacheSeconds=300&logo=pypi&logoColor=white)](https://pypi.org/project/givp/)
+[![PyPI: givp v1.0.0](https://img.shields.io/badge/PyPI-givp%20v1.0.0-3775A9?logo=pypi&logoColor=white)](https://pypi.org/project/givp/)
 [![Python versions](https://img.shields.io/badge/python-3.10%E2%80%933.15-blue?logo=python&logoColor=white)](https://pypi.org/project/givp/)
 [![CI Python](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-python.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-python.yml)
 [![codecov (python)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=python)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/python)
@@ -9,13 +9,13 @@
 [![Checked with mypy](https://img.shields.io/badge/type--checked-mypy-blue?logo=python&logoColor=white)](https://mypy-lang.org/)
 
 **Julia** &nbsp;
-[![JuliaHub](https://img.shields.io/badge/JuliaHub-GIVPOptimizer-9558B2?logo=julia&logoColor=white)](https://juliahub.com/ui/Packages/General/GIVPOptimizer)
+[![JuliaHub: GIVPOptimizer v1.0.0](https://img.shields.io/badge/JuliaHub-GIVPOptimizer%20v1.0.0-9558B2?logo=julia&logoColor=white)](https://juliahub.com/ui/Packages/General/GIVPOptimizer)
 [![Julia](https://img.shields.io/badge/Julia-1.9%2B-9558B2?logo=julia&logoColor=white)](https://julialang.org/)
 [![CI Julia](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml)
 [![codecov (julia)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=julia)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/julia)
 
 **Rust** &nbsp;
-[![Crates.io](https://img.shields.io/crates/v/givp?cacheSeconds=300&logo=rust&logoColor=white)](https://crates.io/crates/givp)
+[![crates.io: givp v0.7.0](https://img.shields.io/badge/crates.io-givp%20v0.7.0-E05D44?logo=rust&logoColor=white)](https://crates.io/crates/givp)
 [![Rust](https://img.shields.io/badge/Rust-1.85%2B-000000?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![CI Rust](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml)
 [![codecov (rust)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=rust)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/rust)
