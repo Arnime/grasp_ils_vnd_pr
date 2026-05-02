@@ -95,6 +95,8 @@ function perturb_index!(
         delta = rand(rng, (-step):step)
         new_val = round(Int, old) + delta
         if lo !== nothing && hi !== nothing
+            # Guard: when no valid integer exists in [lower, upper], keep old value
+            lo > hi && (perturbed[idx] = old; return)
             new_val = clamp(new_val, lo, hi)
         end
         perturbed[idx] = Float64(new_val)
@@ -205,6 +207,11 @@ function neighborhood_swap(
             )
             lo_int = ceil(Int, lower[int_idx])
             hi_int = floor(Int, upper[int_idx])
+            # Guard: when no valid integer exists in range, restore and skip move
+            if lo_int > hi_int
+                solution[cont_idx] = old_cont
+                continue
+            end
             new_int = round(Int, old_int) + rand(rng, -1:1)
             solution[int_idx] = Float64(clamp(new_int, lo_int, hi_int))
         else
@@ -257,6 +264,8 @@ function neighborhood_multiflip(
                 if lower !== nothing && upper !== nothing
                     lo = ceil(Int, lower[idx])
                     hi = floor(Int, upper[idx])
+                    # Guard: when no valid integer exists in range, skip this variable
+                    lo > hi && continue
                     new_val = clamp(new_val, lo, hi)
                 end
                 solution[idx] = Float64(new_val)
