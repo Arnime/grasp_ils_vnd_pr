@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
 # SPDX-License-Identifier: MIT
 
+using Random
+
 @testset "VND" begin
     @testset "create_cached_cost_fn" begin
         GIVPOptimizer.set_integer_split!(2)
@@ -341,6 +343,83 @@
         # with deadline (expired)
         improved3 = GIVPOptimizer.local_search_vnd(sphere, sol, 4; deadline = time() - 1.0)
         @test improved3 == sol
+        GIVPOptimizer.set_integer_split!(nothing)
+    end
+
+    @testset "bounds guards and projection paths" begin
+        GIVPOptimizer.set_integer_split!(1) # half=1 for n=2
+
+        # try_integer_moves: no integer exists in [lower, upper] (lo > hi)
+        sol_int = [2.7]
+        noint_sol, noint_cost, noint_improved = GIVPOptimizer.try_integer_moves(
+            1,
+            copy(sol_int),
+            999.0,
+            x -> sum(x .^ 2),
+            [0.2],
+            [0.8],
+        )
+        @test !noint_improved
+        @test noint_sol[1] == 0.8
+        @test isfinite(noint_cost)
+
+        # project_to_bounds!: integer tail with no integer in bounds falls back to clamp
+        projected = [-2.0, 2.4]
+        GIVPOptimizer.project_to_bounds!(projected, 2, [0.0, 0.2], [1.0, 0.8])
+        @test projected[1] == 0.0
+        @test projected[2] == 0.8
+
+        # perturb_index!: integer branch keeps old value when lo > hi
+        rng = MersenneTwister(7)
+        pert = [0.4, 0.6]
+        old_int = pert[2]
+        GIVPOptimizer.perturb_index!(pert, 2, 5, rng, [0.0, 0.2], [1.0, 0.8])
+        @test pert[2] == old_int
+
+        # neighborhood_swap: invalid integer range should skip move and keep solution
+        swap_sol = [0.3, 0.6]
+        swap_cost = x -> sum(x .^ 2)
+        swapped, swapped_cost = GIVPOptimizer.neighborhood_swap(
+            swap_cost,
+            copy(swap_sol),
+            swap_cost(swap_sol),
+            2;
+            lower = [0.0, 0.2],
+            upper = [1.0, 0.8],
+            max_attempts = 8,
+            first_improvement = false,
+        )
+        @test swapped == swap_sol
+        @test swapped_cost == swap_cost(swap_sol)
+
+        # neighborhood_multiflip: invalid integer bounds path executes and remains finite
+        msol = [0.5, 0.6]
+        mout, mcost = GIVPOptimizer.neighborhood_multiflip(
+            x -> sum(x .^ 2),
+            copy(msol),
+            sum(msol .^ 2),
+            2;
+            k = 2,
+            max_attempts = 4,
+            seed = 13,
+            lower = [0.0, 0.2],
+            upper = [1.0, 0.8],
+        )
+        @test length(mout) == 2
+        @test isfinite(mcost)
+
+        # local_search_vnd: projection-only run (max_iter=0) still projects bounds
+        lp = GIVPOptimizer.local_search_vnd(
+            x -> sum(x .^ 2),
+            [-2.0, 4.0],
+            2;
+            max_iter = 0,
+            lower = [0.0, 0.2],
+            upper = [1.0, 0.8],
+        )
+        @test lp[1] == 0.0
+        @test lp[2] == 0.8
+
         GIVPOptimizer.set_integer_split!(nothing)
     end
 end

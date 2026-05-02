@@ -99,6 +99,40 @@
         GIVPOptimizer.set_integer_split!(nothing)
     end
 
+    @testset "do_path_relinking! respects expired deadline" begin
+        GIVPOptimizer.set_integer_split!(2)
+        sphere(x) = sum(x .^ 2)
+        cfg = GIVPConfig(;
+            use_elite_pool = true,
+            path_relink_frequency = 1,
+            vnd_iterations = 4,
+            integer_split = 2,
+        )
+        ep = GIVPOptimizer.ElitePool(;
+            max_size = 5,
+            lower = [0.0, 0.0],
+            upper = [10.0, 10.0],
+        )
+        GIVPOptimizer.add!(ep, [1.0, 1.0], 2.0)
+        GIVPOptimizer.add!(ep, [2.0, 2.0], 8.0)
+
+        bc, bs, st = GIVPOptimizer.do_path_relinking!(
+            1,
+            5.0,
+            [1.5, 1.5],
+            2,
+            cfg,
+            ep,
+            sphere,
+            2;
+            deadline = time() - 1.0,
+        )
+        @test bc == 5.0
+        @test bs == [1.5, 1.5]
+        @test st == 2
+        GIVPOptimizer.set_integer_split!(nothing)
+    end
+
     @testset "grasp_ils_vnd bounds validation" begin
         cfg = GIVPConfig(; max_iterations = 1)
         @test_throws InvalidBoundsError GIVPOptimizer.grasp_ils_vnd(x -> 0.0, 2, cfg)
@@ -291,6 +325,60 @@
             iteration_callback = bad_callback,
         )
         @test isfinite(cost)
+    end
+
+    @testset "grasp_ils_vnd convergence restart keeps top-2 elite" begin
+        GIVPOptimizer.set_seed!(42)
+        flat_cost(x) = 1.0
+        cfg = GIVPConfig(;
+            max_iterations = 6,
+            vnd_iterations = 3,
+            ils_iterations = 1,
+            early_stop_threshold = 1,
+            use_convergence_monitor = true,
+            use_elite_pool = true,
+            elite_size = 6,
+            use_cache = false,
+            integer_split = 3,
+        )
+
+        sol, cost, nit, msg = GIVPOptimizer.grasp_ils_vnd(
+            flat_cost,
+            3,
+            cfg;
+            lower = [0.0, 0.0, 0.0],
+            upper = [10.0, 10.0, 10.0],
+            initial_guess = [9.0, 1.0, 3.0],
+        )
+        @test isfinite(cost)
+        @test nit <= cfg.max_iterations
+        @test msg in ("early stop triggered", "max iterations reached")
+    end
+
+    @testset "grasp_ils_vnd stagnation restart integer fallback clamp" begin
+        GIVPOptimizer.set_seed!(123)
+        flat_cost(x) = 1.0
+        cfg = GIVPConfig(;
+            max_iterations = 8,
+            vnd_iterations = 3,
+            ils_iterations = 1,
+            use_convergence_monitor = false,
+            use_elite_pool = false,
+            use_cache = false,
+            integer_split = 1,
+        )
+
+        sol, cost, nit, msg = GIVPOptimizer.grasp_ils_vnd(
+            flat_cost,
+            2,
+            cfg;
+            # Variable 2 is integer by split, but [0.2, 0.8] has no valid integer.
+            lower = [0.0, 0.2],
+            upper = [1.0, 0.8],
+        )
+        @test isfinite(cost)
+        @test 0.2 <= sol[2] <= 0.8
+        @test nit <= cfg.max_iterations
     end
 
     @testset "grasp_ils_vnd termination tracking" begin

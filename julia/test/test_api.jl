@@ -145,6 +145,15 @@
         @test !result.success || result.fun == Inf
     end
 
+    @testset "givp callable validation warning path" begin
+        scalar_only(x::Float64) = x^2
+        bounds = [(-2.0, 2.0), (-2.0, 2.0)]
+        config = GIVPConfig(; max_iterations = 1, vnd_iterations = 3, ils_iterations = 1)
+
+        result = givp(scalar_only, bounds; config = config, seed = 5)
+        @test !result.success
+    end
+
     @testset "_normalize_bounds errors" begin
         # Pair bounds, wrong num_vars
         @test_throws ArgumentError GIVPOptimizer._normalize_bounds(
