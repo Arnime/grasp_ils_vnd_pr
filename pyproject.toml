@@ -59,6 +59,7 @@ notebooks = [
     "pandas>=2.2",
     "scipy>=1.13",
 ]
+parallel = ["cloudpickle>=3.0"]
 
 [project.scripts]
 givp = "givp.cli:main"
@@ -90,6 +91,11 @@ markers = ["slow: tests that are not run by default; use -m slow to enable"]
 
 [tool.pytest-benchmark]
 storage = "python/benchmarks/.results"
+
+[tool.mutmut]
+paths_to_mutate = "python/src/givp/"
+tests_dir = "python/tests/"
+runner = "python -m pytest python/tests/ -q --no-cov -x"
 
 [tool.coverage.run]
 branch = true

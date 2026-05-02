@@ -175,6 +175,7 @@ where
             &mut cache,
             &mut child,
             deadline,
+            config.n_workers,
         );
         best_solution = sol;
         best_cost = cost;
@@ -222,6 +223,7 @@ where
             &mut cache,
             &mut child,
             deadline,
+            config.n_workers,
         );
 
         // VND local search
@@ -318,6 +320,7 @@ where
                 &mut cache,
                 &mut child,
                 deadline,
+                config.n_workers,
             );
             let restart_cost = local_search_vnd(
                 &wrapped,

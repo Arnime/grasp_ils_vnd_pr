@@ -164,6 +164,8 @@ cd julia
 julia --project=. -e 'using Pkg; Pkg.test()'
 ```
 
+CI enforces **≥ 95 %** line coverage on `julia/src/`.
+
 ## Running benchmarks
 
 ```bash

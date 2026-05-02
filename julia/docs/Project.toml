@@ -1,0 +1,11 @@
+name = "GIVPOptimizerDocs"
+uuid = "e4e10c2d-3e89-4e3e-b3b3-000000000001"
+version = "0.1.0"
+
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+GIVPOptimizer = "52b765d9-9955-43cf-8457-2e847d316e43"
+
+[compat]
+Documenter = "1"
+julia = "1.9"

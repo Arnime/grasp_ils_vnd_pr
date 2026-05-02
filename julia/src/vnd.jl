@@ -3,7 +3,10 @@
 
 """VND — Variable Neighborhood Descent."""
 
-function create_cached_cost_fn(cost_fn::Function, cache::Union{EvaluationCache,Nothing})::Function
+function create_cached_cost_fn(
+    cost_fn::Function,
+    cache::Union{EvaluationCache, Nothing},
+)::Function
     function cached_cost_fn(sol::Vector{Float64})::Float64
         if cache !== nothing
             cached = cache_get(cache, sol)
@@ -20,15 +23,34 @@ end
 
 # --- Atomic move helpers ---
 
-function try_integer_moves(idx::Int, sol::Vector{Float64}, best_benefit::Float64,
-                           cost_fn::Function,
-                           lower::Union{Vector{Float64},Nothing},
-                           upper::Union{Vector{Float64},Nothing})
+function try_integer_moves(
+    idx::Int,
+    sol::Vector{Float64},
+    best_benefit::Float64,
+    cost_fn::Function,
+    lower::Union{Vector{Float64}, Nothing},
+    upper::Union{Vector{Float64}, Nothing},
+)
     old = sol[idx]
+    if lower !== nothing && upper !== nothing
+        lo_f = lower[idx]
+        hi_f = upper[idx]
+        if old < lo_f || old > hi_f
+            old = clamp(old, lo_f, hi_f)
+            sol[idx] = old
+        end
+    end
     base = round(Int, old)
     cand_vals = (base - 1, base, base + 1)
     lo = lower !== nothing ? ceil(Int, lower[idx]) : typemin(Int)
     hi = upper !== nothing ? floor(Int, upper[idx]) : typemax(Int)
+    if lo > hi
+        # No integer exists in [lower, upper]: keep a bounded continuous value.
+        if lower !== nothing && upper !== nothing
+            sol[idx] = clamp(old, lower[idx], upper[idx])
+        end
+        return sol, best_benefit, false
+    end
     for v in cand_vals
         (v < lo || v > hi) && continue
         sol[idx] = Float64(v)
@@ -42,10 +64,38 @@ function try_integer_moves(idx::Int, sol::Vector{Float64}, best_benefit::Float64
     return sol, best_benefit, false
 end
 
-function try_continuous_move(idx::Int, sol::Vector{Float64}, best_benefit::Float64,
-                             cost_fn::Function, rng::AbstractRNG,
-                             lower::Union{Vector{Float64},Nothing},
-                             upper::Union{Vector{Float64},Nothing})
+function project_to_bounds!(
+    sol::Vector{Float64},
+    num_vars::Int,
+    lower::Union{Vector{Float64}, Nothing},
+    upper::Union{Vector{Float64}, Nothing},
+)
+    (lower === nothing || upper === nothing) && return
+    half = get_half(num_vars)
+    for i in 1:num_vars
+        if i > half
+            lo = ceil(Int, lower[i])
+            hi = floor(Int, upper[i])
+            if lo <= hi
+                sol[i] = Float64(clamp(round(Int, sol[i]), lo, hi))
+            else
+                sol[i] = clamp(sol[i], lower[i], upper[i])
+            end
+        else
+            sol[i] = clamp(sol[i], lower[i], upper[i])
+        end
+    end
+end
+
+function try_continuous_move(
+    idx::Int,
+    sol::Vector{Float64},
+    best_benefit::Float64,
+    cost_fn::Function,
+    rng::AbstractRNG,
+    lower::Union{Vector{Float64}, Nothing},
+    upper::Union{Vector{Float64}, Nothing},
+)
     old = sol[idx]
     if lower !== nothing && upper !== nothing
         span = upper[idx] - lower[idx]
@@ -66,19 +116,25 @@ function try_continuous_move(idx::Int, sol::Vector{Float64}, best_benefit::Float
     return false, best_benefit
 end
 
-function perturb_index!(perturbed::Vector{Float64}, idx::Int, strength::Int,
-                        rng::AbstractRNG,
-                        lower::Union{Vector{Float64},Nothing},
-                        upper::Union{Vector{Float64},Nothing})
+function perturb_index!(
+    perturbed::Vector{Float64},
+    idx::Int,
+    strength::Int,
+    rng::AbstractRNG,
+    lower::Union{Vector{Float64}, Nothing},
+    upper::Union{Vector{Float64}, Nothing},
+)
     half = get_half(length(perturbed))
     old = perturbed[idx]
     if idx > half  # integer variable (1-indexed: > half means integer part)
         lo = lower !== nothing ? ceil(Int, lower[idx]) : nothing
         hi = upper !== nothing ? floor(Int, upper[idx]) : nothing
         step = max(1, round(Int, strength / 2))
-        delta = rand(rng, -step:step)
+        delta = rand(rng, (-step):step)
         new_val = round(Int, old) + delta
         if lo !== nothing && hi !== nothing
+            # Guard: when no valid integer exists in [lower, upper], keep old value
+            lo > hi && (perturbed[idx] = old; return)
             new_val = clamp(new_val, lo, hi)
         end
         perturbed[idx] = Float64(new_val)
@@ -96,21 +152,25 @@ end
 
 # --- Neighbourhood functions ---
 
-function neighborhood_flip(cost_fn::Function, solution::Vector{Float64},
-                           current_benefit::Float64, num_vars::Int;
-                           first_improvement::Bool=true,
-                           seed::Union{Int,Nothing}=nothing,
-                           lower::Union{Vector{Float64},Nothing}=nothing,
-                           upper::Union{Vector{Float64},Nothing}=nothing,
-                           sensitivity::Union{Vector{Float64},Nothing}=nothing,
-                           deadline::Float64=0.0)
+function neighborhood_flip(
+    cost_fn::Function,
+    solution::Vector{Float64},
+    current_benefit::Float64,
+    num_vars::Int;
+    first_improvement::Bool = true,
+    seed::Union{Int, Nothing} = nothing,
+    lower::Union{Vector{Float64}, Nothing} = nothing,
+    upper::Union{Vector{Float64}, Nothing} = nothing,
+    sensitivity::Union{Vector{Float64}, Nothing} = nothing,
+    deadline::Float64 = 0.0,
+)
     rng = new_rng(seed)
     half = get_half(num_vars)
 
     if sensitivity !== nothing && any(sensitivity .> 0)
         noise = rand(rng, num_vars) .* 0.1 .* maximum(sensitivity)
         priority = sensitivity .+ noise
-        indices = sortperm(priority; rev=true)
+        indices = sortperm(priority; rev = true)
     else
         indices = randperm(rng, num_vars)
     end
@@ -124,7 +184,8 @@ function neighborhood_flip(cost_fn::Function, solution::Vector{Float64},
     # Integer flip
     for (count, i) in enumerate(int_indices)
         count % 8 == 0 && expired(deadline) && break
-        new_sol, new_ben, improved = try_integer_moves(i, solution, best_benefit, cost_fn, lower, upper)
+        new_sol, new_ben, improved =
+            try_integer_moves(i, solution, best_benefit, cost_fn, lower, upper)
         if improved
             best_benefit = new_ben
             best_solution = copy(new_sol)
@@ -136,7 +197,8 @@ function neighborhood_flip(cost_fn::Function, solution::Vector{Float64},
     for (count, i) in enumerate(cont_indices)
         count % 8 == 0 && expired(deadline) && break
         old_val = solution[i]
-        changed, new_ben = try_continuous_move(i, solution, best_benefit, cost_fn, rng, lower, upper)
+        changed, new_ben =
+            try_continuous_move(i, solution, best_benefit, cost_fn, rng, lower, upper)
         if changed
             best_benefit = new_ben
             best_solution = copy(solution)
@@ -148,23 +210,28 @@ function neighborhood_flip(cost_fn::Function, solution::Vector{Float64},
     return best_solution, best_benefit
 end
 
-function neighborhood_swap(cost_fn::Function, solution::Vector{Float64},
-                           current_benefit::Float64, num_vars::Int;
-                           first_improvement::Bool=true,
-                           max_attempts::Int=50,
-                           lower::Union{Vector{Float64},Nothing}=nothing,
-                           upper::Union{Vector{Float64},Nothing}=nothing,
-                           deadline::Float64=0.0)
+function neighborhood_swap(
+    cost_fn::Function,
+    solution::Vector{Float64},
+    current_benefit::Float64,
+    num_vars::Int;
+    first_improvement::Bool = true,
+    max_attempts::Int = 50,
+    lower::Union{Vector{Float64}, Nothing} = nothing,
+    upper::Union{Vector{Float64}, Nothing} = nothing,
+    deadline::Float64 = 0.0,
+)
     best_solution = copy(solution)
     best_benefit = current_benefit
     rng = new_rng()
     half = get_half(num_vars)
     (half <= 0 || half >= num_vars) && return best_solution, best_benefit
+    n_int = num_vars - half
 
     for _ in 1:max_attempts
         expired(deadline) && break
         cont_idx = rand(rng, 1:half)
-        int_idx = cont_idx + half
+        int_idx = half + rand(rng, 1:n_int)
 
         old_cont = solution[cont_idx]
         old_int = solution[int_idx]
@@ -173,9 +240,16 @@ function neighborhood_swap(cost_fn::Function, solution::Vector{Float64},
             span_cont = upper[cont_idx] - lower[cont_idx]
             solution[cont_idx] = clamp(
                 old_cont + (rand(rng) - 0.5) * 0.16 * span_cont,
-                lower[cont_idx], upper[cont_idx])
+                lower[cont_idx],
+                upper[cont_idx],
+            )
             lo_int = ceil(Int, lower[int_idx])
             hi_int = floor(Int, upper[int_idx])
+            # Guard: when no valid integer exists in range, restore and skip move
+            if lo_int > hi_int
+                solution[cont_idx] = old_cont
+                continue
+            end
             new_int = round(Int, old_int) + rand(rng, -1:1)
             solution[int_idx] = Float64(clamp(new_int, lo_int, hi_int))
         else
@@ -197,13 +271,18 @@ function neighborhood_swap(cost_fn::Function, solution::Vector{Float64},
     return best_solution, best_benefit
 end
 
-function neighborhood_multiflip(cost_fn::Function, solution::Vector{Float64},
-                                current_benefit::Float64, num_vars::Int;
-                                k::Int=3, max_attempts::Int=50,
-                                seed::Union{Int,Nothing}=nothing,
-                                lower::Union{Vector{Float64},Nothing}=nothing,
-                                upper::Union{Vector{Float64},Nothing}=nothing,
-                                deadline::Float64=0.0)
+function neighborhood_multiflip(
+    cost_fn::Function,
+    solution::Vector{Float64},
+    current_benefit::Float64,
+    num_vars::Int;
+    k::Int = 3,
+    max_attempts::Int = 50,
+    seed::Union{Int, Nothing} = nothing,
+    lower::Union{Vector{Float64}, Nothing} = nothing,
+    upper::Union{Vector{Float64}, Nothing} = nothing,
+    deadline::Float64 = 0.0,
+)
     best_solution = copy(solution)
     best_benefit = current_benefit
     rng = new_rng(seed)
@@ -223,6 +302,8 @@ function neighborhood_multiflip(cost_fn::Function, solution::Vector{Float64},
                 if lower !== nothing && upper !== nothing
                     lo = ceil(Int, lower[idx])
                     hi = floor(Int, upper[idx])
+                    # Guard: when no valid integer exists in range, skip this variable
+                    lo > hi && continue
                     new_val = clamp(new_val, lo, hi)
                 end
                 solution[idx] = Float64(new_val)
@@ -252,47 +333,81 @@ function neighborhood_multiflip(cost_fn::Function, solution::Vector{Float64},
     return best_solution, best_benefit
 end
 
-function try_neighborhoods(cached_cost_fn::Function, solution::Vector{Float64},
-                           current_benefit::Float64, num_vars::Int;
-                           first_improvement::Bool=true,
-                           iteration::Int=1,
-                           no_improve_flip_limit::Int=3,
-                           lower::Union{Vector{Float64},Nothing}=nothing,
-                           upper::Union{Vector{Float64},Nothing}=nothing,
-                           sensitivity::Union{Vector{Float64},Nothing}=nothing,
-                           deadline::Float64=0.0)
+function try_neighborhoods(
+    cached_cost_fn::Function,
+    solution::Vector{Float64},
+    current_benefit::Float64,
+    num_vars::Int;
+    first_improvement::Bool = true,
+    iteration::Int = 1,
+    no_improve_flip_limit::Int = 3,
+    lower::Union{Vector{Float64}, Nothing} = nothing,
+    upper::Union{Vector{Float64}, Nothing} = nothing,
+    sensitivity::Union{Vector{Float64}, Nothing} = nothing,
+    deadline::Float64 = 0.0,
+)
     expired(deadline) && return solution, current_benefit, false
 
-    new_sol, new_ben = neighborhood_flip(cached_cost_fn, solution, current_benefit, num_vars;
-        first_improvement, lower, upper, sensitivity, deadline)
+    new_sol, new_ben = neighborhood_flip(
+        cached_cost_fn,
+        solution,
+        current_benefit,
+        num_vars;
+        first_improvement,
+        lower,
+        upper,
+        sensitivity,
+        deadline,
+    )
     new_ben < current_benefit && return new_sol, new_ben, true
 
     expired(deadline) && return solution, current_benefit, false
 
-    new_sol, new_ben = neighborhood_swap(cached_cost_fn, solution, current_benefit, num_vars;
-        first_improvement, lower, upper, deadline)
+    new_sol, new_ben = neighborhood_swap(
+        cached_cost_fn,
+        solution,
+        current_benefit,
+        num_vars;
+        first_improvement,
+        lower,
+        upper,
+        deadline,
+    )
     new_ben < current_benefit && return new_sol, new_ben, true
 
     if iteration % no_improve_flip_limit == 0
         expired(deadline) && return solution, current_benefit, false
-        new_sol, new_ben = neighborhood_multiflip(cached_cost_fn, solution, current_benefit, num_vars;
-            k=no_improve_flip_limit, lower, upper, deadline)
+        new_sol, new_ben = neighborhood_multiflip(
+            cached_cost_fn,
+            solution,
+            current_benefit,
+            num_vars;
+            k = no_improve_flip_limit,
+            lower,
+            upper,
+            deadline,
+        )
         new_ben < current_benefit && return new_sol, new_ben, true
     end
 
     return solution, current_benefit, false
 end
 
-function local_search_vnd(cost_fn::Function, solution::Vector{Float64}, num_vars::Int;
-                          max_iter::Int=300,
-                          first_improvement::Bool=true,
-                          no_improve_limit::Int=5,
-                          no_improve_flip_limit::Int=3,
-                          lower::Union{Vector{Float64},Nothing}=nothing,
-                          upper::Union{Vector{Float64},Nothing}=nothing,
-                          cache::Union{EvaluationCache,Nothing}=nothing,
-                          deadline::Float64=0.0)::Vector{Float64}
+function local_search_vnd(
+    cost_fn::Function,
+    solution::Vector{Float64},
+    num_vars::Int;
+    max_iter::Int = 300,
+    first_improvement::Bool = true,
+    no_improve_limit::Int = 5,
+    no_improve_flip_limit::Int = 3,
+    lower::Union{Vector{Float64}, Nothing} = nothing,
+    upper::Union{Vector{Float64}, Nothing} = nothing,
+    cache::Union{EvaluationCache, Nothing} = nothing,
+    deadline::Float64 = 0.0,
+)::Vector{Float64}
     solution = copy(solution)
+    project_to_bounds!(solution, num_vars, lower, upper)
     cached_cost_fn = create_cached_cost_fn(cost_fn, cache)
     current_benefit = cached_cost_fn(solution)
 
@@ -307,9 +422,18 @@ function local_search_vnd(cost_fn::Function, solution::Vector{Float64}, num_vars
         old_solution = copy(solution)
 
         solution, current_benefit, improved = try_neighborhoods(
-            cached_cost_fn, solution, current_benefit, num_vars;
-            first_improvement, iteration, no_improve_flip_limit,
-            lower, upper, sensitivity, deadline)
+            cached_cost_fn,
+            solution,
+            current_benefit,
+            num_vars;
+            first_improvement,
+            iteration,
+            no_improve_flip_limit,
+            lower,
+            upper,
+            sensitivity,
+            deadline,
+        )
 
         if improved
             no_improve_count = 0

@@ -13,10 +13,10 @@ existing callers importing from ``givp.core.impl`` continue to work
 without changes.
 """
 
-# pylint: disable=too-many-lines
+from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from typing import Protocol
 
 import numpy as np
 
@@ -40,63 +40,34 @@ from givp.core.vnd import _create_cached_cost_fn, local_search_vnd
 from givp.exceptions import InvalidBoundsError
 
 
-@dataclass
-class _AlgorithmConfig:
-    """Internal algorithm configuration used by core modules.
+class _CoreConfigProto(Protocol):
+    """Structural protocol satisfied by ``givp.config.GIVPConfig`` and any
+    compatible config object passed to core functions.
 
-    This is a lightweight dataclass used exclusively inside ``givp.core``.
-    The public-facing configuration class is :class:`givp.config.GIVPConfig`.
-
-    Attributes:
-        max_iterations: Maximum number of GRASP outer iterations.
-        alpha: Initial randomisation parameter for the greedy construction (RCL).
-        vnd_iterations: Maximum iterations of the VND local search.
-        ils_iterations: Maximum iterations of the ILS loop.
-        perturbation_strength: Magnitude of the ILS perturbation.
-        use_elite_pool: Whether to maintain an elite pool for path relinking.
-        elite_size: Maximum size of the elite pool.
-        path_relink_frequency: GRASP iteration period at which to run PR.
-        adaptive_alpha: If True, alpha varies between alpha_min and alpha_max.
-        alpha_min: Lower bound used by adaptive alpha.
-        alpha_max: Upper bound used by adaptive alpha.
-        num_candidates_per_step: Candidates evaluated per construction step.
-        use_cache: If True, evaluations are memoised via an LRU cache.
-        cache_size: Maximum entries kept by the LRU cache.
-        early_stop_threshold: Iterations without improvement to trigger early-stop.
-        use_convergence_monitor: Enable diversification/restart heuristics.
-        n_workers: Threads used to evaluate candidates in parallel.
-        time_limit: Wall-clock budget in seconds (0 = unlimited).
-        integer_split: Index where integer variables begin.
-        group_size: Steps per group for the group/block neighbourhoods.
+    Core functions accept any object with these attributes, so ``GIVPConfig``
+    can be passed directly without copying field values into a separate class.
     """
 
-    max_iterations: int = 100
-    alpha: float = 0.12
-    vnd_iterations: int = 200
-    ils_iterations: int = 10
-    perturbation_strength: int = 4
-    use_elite_pool: bool = True
-    elite_size: int = 7
-    path_relink_frequency: int = 8
-    adaptive_alpha: bool = True
-    alpha_min: float = 0.08
-    alpha_max: float = 0.18
-    num_candidates_per_step: int = 20
-    use_cache: bool = True
-    cache_size: int = 10000
-    early_stop_threshold: int = 80
-    use_convergence_monitor: bool = True
-    n_workers: int = 1  # P11: number of threads for parallel candidate evaluation
-    time_limit: float = 0.0  # Wall-clock budget in seconds (0 = unlimited)
-    # Index where integer variables begin. ``None`` preserves the legacy
-    # SOG2 behavior of splitting the vector in half; set it to ``num_vars``
-    # for fully continuous problems or to ``0`` for fully integer problems.
-    integer_split: int | None = None
-    # Number of steps per group for the group/block neighbourhoods.
-    # Set this when your problem has structured groups of variables, e.g.
-    # group_size=24 for 3 groups of 24 time-steps each (72 continuous vars).
-    # None disables the group and block neighbourhoods.
-    group_size: int | None = None
+    max_iterations: int
+    alpha: float
+    vnd_iterations: int
+    ils_iterations: int
+    perturbation_strength: int
+    use_elite_pool: bool
+    elite_size: int
+    path_relink_frequency: int
+    adaptive_alpha: bool
+    alpha_min: float
+    alpha_max: float
+    num_candidates_per_step: int
+    use_cache: bool
+    cache_size: int
+    early_stop_threshold: int
+    use_convergence_monitor: bool
+    n_workers: int
+    time_limit: float
+    integer_split: int | None
+    group_size: int | None
 
 
 def _safe_iteration_callback(
@@ -122,9 +93,9 @@ def _safe_iteration_callback(
 
 
 def _handle_convergence_monitor(
-    conv_monitor: "ConvergenceMonitor | None",
+    conv_monitor: ConvergenceMonitor | None,
     best_cost: float,
-    elite_pool: "ElitePool | None",
+    elite_pool: ElitePool | None,
     verbose: bool,
 ) -> int:
     """Process the convergence monitor and return updated stagnation count."""
@@ -133,19 +104,26 @@ def _handle_convergence_monitor(
 
     status = conv_monitor.update(best_cost, elite_pool)
 
-    if status["should_restart"] and verbose:
+    if status["should_restart"]:
+        # Trim elite pool to the two best solutions regardless of verbose flag.
+        # The elite pool restart is an algorithmic effect and must not be
+        # gated on verbose (which is a UI flag only).
         if elite_pool is not None and elite_pool.size() > 2:
             best_two = elite_pool.get_all()[:2]
             elite_pool.clear()
             for sol_elite, cost_elite in best_two:
                 elite_pool.add(sol_elite, cost_elite)
+        if verbose:
+            logger.info("Convergence monitor triggered partial restart of elite pool")
         return 0
 
-    return -1  # Não resetar estagnação
+    return -1  # do not reset stagnation counter
 
 
 def _evaluate_solution_with_cache(
-    sol: np.ndarray, cost_fn: Callable, cache: "EvaluationCache | None"
+    sol: np.ndarray,
+    cost_fn: Callable,
+    cache: EvaluationCache | None,
 ) -> float:
     """Evaluate a solution using the cache when available."""
     if cache is not None:
@@ -206,12 +184,12 @@ def _run_iteration_step(
     lower_arr: np.ndarray,
     upper_arr: np.ndarray,
     initial_guess: np.ndarray | None,
-    config: _AlgorithmConfig,
+    config: _CoreConfigProto,
     callbacks: tuple[
         Callable | None,
         ElitePool | None,
-        "EvaluationCache | None",
-        "ConvergenceMonitor | None",
+        EvaluationCache | None,
+        ConvergenceMonitor | None,
     ],
     verbose: bool,
     state: tuple[float, np.ndarray, int],
@@ -248,7 +226,7 @@ def _run_iteration_step(
         deadline=deadline,
     )
 
-    # ILS: perturbação + busca local para escapar de ótimos locais
+    # ILS: perturbation + local search to escape local optima
     vnd_cost = _evaluate_solution_with_cache(sol, cost_fn, cache)
     sol, vnd_cost = ils_search(
         sol,
@@ -308,20 +286,20 @@ def _run_iteration_step(
         start_time=start_time,
     )
 
-    # P15: escalonamento reativo à estagnação — restart parcial
+    # P15: reactive stagnation scaling — partial restart
     if stagnation > config.max_iterations // 4:
         if verbose:
             logger.info(
-                "Estagnação detectada (%d iter sem melhoria) — restart parcial",
+                "Stagnation detected (%d iterations without improvement) — partial restart",
                 stagnation,
             )
-        # Reiniciar de solução aleatória para diversificação real
+        # Restart from a random solution for genuine diversification
         rng = _new_rng()
         initial_arr = lower_arr + (upper_arr - lower_arr) * rng.random(size=num_vars)
-        # Arredondar variáveis inteiras (segunda metade)
+        # Round integer variables (second half of the vector)
         half = _get_half(num_vars)
         initial_arr[half:] = np.rint(initial_arr[half:])
-        # VND completo + ILS na solução aleatória para qualidade competitiva
+        # Full VND + ILS on random solution for competitive quality
         initial_arr = local_search_vnd(
             cost_fn,
             initial_arr,
@@ -333,7 +311,7 @@ def _run_iteration_step(
             deadline=deadline,
         )
         restart_cost = cost_fn(initial_arr)
-        # ILS para escapar do ótimo local da solução restart
+        # ILS to escape the local optimum of the restart solution
         initial_arr, restart_cost = ils_search(
             initial_arr,
             restart_cost,
@@ -348,7 +326,7 @@ def _run_iteration_step(
         if restart_cost < best_cost:
             best_cost = restart_cost
             best_solution = initial_arr.copy()
-        # Adicionar ao elite pool para diversificar o PR
+        # Add to elite pool to diversify path relinking
         if config.use_elite_pool and elite_pool is not None:
             elite_pool.add(initial_arr, restart_cost)
         stagnation = 0
@@ -361,8 +339,8 @@ def _apply_path_relinking_to_pair(
     target: np.ndarray,
     cached_fn: Callable,
     num_vars: int,
-    config: "_AlgorithmConfig",
-    cache: "EvaluationCache | None",
+    config: _CoreConfigProto,
+    cache: EvaluationCache | None,
     deadline: float = 0.0,
 ) -> tuple[np.ndarray, float]:
     """Apply path relinking and VND local search to a pair of elite solutions."""
@@ -382,17 +360,17 @@ def _apply_path_relinking_to_pair(
 
 
 def _process_path_relinking_pairs(
-    elite_solutions,
-    cost_fn,
-    num_vars,
-    config,
-    best_cost,
-    best_solution,
-    stagnation,
-    elite_pool,
-    cache,
-    deadline=0.0,
-):
+    elite_solutions: list[tuple[np.ndarray, float]],
+    cost_fn: Callable,
+    num_vars: int,
+    config: _CoreConfigProto,
+    best_cost: float,
+    best_solution: np.ndarray,
+    stagnation: int,
+    elite_pool: ElitePool,
+    cache: EvaluationCache | None,
+    deadline: float = 0.0,
+) -> tuple[float, np.ndarray, int]:
     """Run path relinking across pairs of elite solutions."""
     cached_fn = _create_cached_cost_fn(cost_fn, cache)
 
@@ -428,11 +406,11 @@ def do_path_relinking(
     best_cost: float,
     best_solution: np.ndarray,
     stagnation: int,
-    config: "_AlgorithmConfig",
-    elite_pool: "ElitePool | None",
+    config: _CoreConfigProto,
+    elite_pool: ElitePool | None,
     cost_fn: Callable,
     num_vars: int,
-    cache: "EvaluationCache | None" = None,
+    cache: EvaluationCache | None = None,
     deadline: float = 0.0,
 ) -> tuple[float, np.ndarray, int]:
     """Run Path Relinking between elite-pool pairs when conditions are met.
@@ -474,10 +452,10 @@ def do_path_relinking(
 
 
 def _initialize_optimization_components(
-    config: "_AlgorithmConfig",
+    config: _CoreConfigProto,
     lower_arr: np.ndarray | None = None,
     upper_arr: np.ndarray | None = None,
-) -> tuple["ElitePool | None", "EvaluationCache | None", "ConvergenceMonitor | None"]:
+) -> tuple[ElitePool | None, EvaluationCache | None, ConvergenceMonitor | None]:
     """Initialise optimisation components: elite pool, LRU cache, and convergence monitor."""
     elite_pool = (
         ElitePool(max_size=config.elite_size, lower=lower_arr, upper=upper_arr)
@@ -494,8 +472,8 @@ def _initialize_optimization_components(
 
 
 def _check_early_stopping(
-    conv_monitor: "ConvergenceMonitor | None",
-    config: "_AlgorithmConfig",
+    conv_monitor: ConvergenceMonitor | None,
+    config: _CoreConfigProto,
     verbose: bool,
 ) -> bool:
     """Return True if early stopping should be triggered."""
@@ -511,7 +489,7 @@ def _check_early_stopping(
     return False
 
 
-def _print_cache_stats(cache: "EvaluationCache | None", verbose: bool) -> None:
+def _print_cache_stats(cache: EvaluationCache | None, verbose: bool) -> None:
     """Log LRU cache statistics at INFO level when verbose."""
     if verbose and cache is not None:
         stats = cache.stats()
@@ -565,7 +543,7 @@ def _prepare_initial_array(
 
 def _maybe_apply_warm_start(
     initial_guess: list[float] | None,
-    elite_pool: "ElitePool | None",
+    elite_pool: ElitePool | None,
     cost_fn: Callable,
     initial_arr: np.ndarray,
     best_cost: float,
@@ -586,7 +564,7 @@ def _maybe_apply_warm_start(
     return best_cost, best_solution
 
 
-def _print_run_header(verbose: bool, num_vars: int, config: "_AlgorithmConfig") -> None:
+def _print_run_header(verbose: bool, num_vars: int, config: _CoreConfigProto) -> None:
     """Log a single header line summarising the run configuration."""
     if not verbose:
         return
@@ -621,19 +599,19 @@ def _print_run_footer(
 def _run_grasp_loop(
     cost_fn: Callable,
     num_vars: int,
-    config: "_AlgorithmConfig",
+    config: _CoreConfigProto,
     lower_arr: np.ndarray,
     upper_arr: np.ndarray,
     initial_arr: np.ndarray,
     callbacks: tuple[
         Callable | None,
-        "ElitePool | None",
-        "EvaluationCache | None",
-        "ConvergenceMonitor | None",
+        ElitePool | None,
+        EvaluationCache | None,
+        ConvergenceMonitor | None,
     ],
     verbose: bool,
     state: tuple[float, np.ndarray, int],
-) -> tuple[float, np.ndarray, int]:
+) -> tuple[float, np.ndarray, int, int, str]:
     """Execute main GRASP iterations until stop conditions are met."""
     iteration_callback, elite_pool, cache, conv_monitor = callbacks
     best_cost, best_solution, stagnation = state
@@ -642,6 +620,8 @@ def _run_grasp_loop(
 
     _print_run_header(verbose, num_vars, config)
 
+    actual_nit = 0
+    term_msg = "max_iterations"
     for iteration in range(config.max_iterations):
         if _expired(deadline):
             if verbose:
@@ -650,6 +630,7 @@ def _run_grasp_loop(
                     config.time_limit,
                     iteration + 1,
                 )
+            term_msg = "time limit"
             break
 
         best_cost, best_solution, stagnation = _run_iteration_step(
@@ -667,30 +648,36 @@ def _run_grasp_loop(
             start_time=start_time,
         )
 
+        actual_nit = iteration + 1
+
         if _check_early_stopping(conv_monitor, config, verbose):
+            term_msg = "early_stop"
             break
 
     _print_run_footer(verbose, best_cost, stagnation, start_time)
 
-    return best_cost, best_solution, stagnation
+    return best_cost, best_solution, stagnation, actual_nit, term_msg
 
 
 def grasp_ils_vnd(
     cost_fn: Callable,
     num_vars: int,
-    config: _AlgorithmConfig | None = None,
+    config: _CoreConfigProto | None = None,
     verbose: bool = False,
     iteration_callback: Callable | None = None,
     lower: list[float] | None = None,
     upper: list[float] | None = None,
     initial_guess: list[float] | None = None,
-) -> tuple[list[int], float]:
+) -> tuple[list[int], float, int, str]:
     """Run the GRASP-ILS-VND-PR algorithm and return the best solution found.
 
     Args:
         cost_fn: Objective function to minimise.
         num_vars: Number of decision variables.
-        config: Algorithm configuration.  Uses default ``_AlgorithmConfig`` when ``None``.
+        config: Algorithm configuration.  Accepts any object satisfying
+            ``_CoreConfigProto`` — in practice always
+            ``givp.config.GIVPConfig``.  Defaults to ``GIVPConfig()`` when
+            ``None`` is passed.
         verbose: If True, emit INFO-level progress messages.
         iteration_callback: Optional callable ``(iter, cost, solution)`` invoked after each iteration.
         lower: Lower bounds for each variable.
@@ -701,7 +688,9 @@ def grasp_ils_vnd(
         Tuple (solution_list, best_cost).
     """
     if config is None:
-        config = _AlgorithmConfig()
+        from givp.config import GIVPConfig
+
+        config = GIVPConfig()
 
     lower_arr, upper_arr = _prepare_bounds(lower, upper)
 
@@ -715,7 +704,7 @@ def grasp_ils_vnd(
         config, lower_arr, upper_arr
     )
 
-    # P14: warm start — avaliar initial_guess e inserir no elite pool
+    # P14: warm start — evaluate initial_guess and insert into elite pool
     best_solution = np.zeros(num_vars, dtype=float)
     best_cost = float("inf")
     stagnation = 0
@@ -730,7 +719,7 @@ def grasp_ils_vnd(
         verbose,
     )
 
-    best_cost, best_solution, stagnation = _run_grasp_loop(
+    best_cost, best_solution, stagnation, actual_nit, term_msg = _run_grasp_loop(
         cost_fn,
         num_vars,
         config,
@@ -744,4 +733,4 @@ def grasp_ils_vnd(
 
     _print_cache_stats(cache, verbose)
 
-    return best_solution.tolist(), best_cost
+    return best_solution.tolist(), best_cost, actual_nit, term_msg

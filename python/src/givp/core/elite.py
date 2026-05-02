@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """Diversity-aware elite pool of high-quality solutions."""
 
 from __future__ import annotations
@@ -30,6 +32,7 @@ class ElitePool:
         lower: np.ndarray | None = None,
         upper: np.ndarray | None = None,
     ):
+        """Initialize the elite pool."""
         self.max_size = max_size
         self.min_distance = min_distance
         self.pool: list[tuple[np.ndarray, float]] = []
@@ -79,9 +82,9 @@ class ElitePool:
         return self.pool.copy()
 
     def size(self) -> int:
-        """Retorna o tamanho atual do pool."""
+        """Return the current size of the pool."""
         return len(self.pool)
 
     def clear(self):
-        """Limpa o pool."""
+        """Clear the pool."""
         self.pool.clear()

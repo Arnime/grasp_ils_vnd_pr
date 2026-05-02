@@ -5,7 +5,7 @@
 GIVPOptimizer — GRASP-ILS-VND with Path Relinking optimizer (Julia port).
 
 Public API:
-    givp(func, bounds; direction=:minimize, ...) -> OptimizeResult
+    givp(func, bounds; direction=minimize, ...) -> OptimizeResult
     GIVPConfig          (algorithm hyper-parameters)
     OptimizeResult      (result struct)
 """
@@ -25,6 +25,7 @@ export GivpError,
     EvaluatorError,
     EmptyPoolError
 export validate_config!, to_dict
+export GIVPOptimizerWrapper, optimize!
 
 include("exceptions.jl")
 include("config.jl")
@@ -40,6 +41,6 @@ include("pr.jl")
 include("impl.jl")
 include("api.jl")
 
-const __version__ = "0.5.3"
+const __version__ = "1.0.0"
 
 end # module

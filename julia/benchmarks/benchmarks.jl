@@ -16,7 +16,7 @@ using Printf
 # Set up benchmark environment with its own dependencies
 using Pkg
 Pkg.activate(@__DIR__)
-Pkg.develop(path=joinpath(@__DIR__, ".."))
+Pkg.develop(path = joinpath(@__DIR__, ".."))
 Pkg.instantiate()
 
 using BenchmarkTools
@@ -31,7 +31,9 @@ end
 
 """Rosenbrock banana function: global minimum 0 at (1,…,1)."""
 function rosenbrock(x::Vector{Float64})::Float64
-    return sum(100.0 .* (x[2:end] .- x[1:end-1] .^ 2) .^ 2 .+ (1.0 .- x[1:end-1]) .^ 2)
+    return sum(
+        100.0 .* (x[2:end] .- x[1:(end - 1)] .^ 2) .^ 2 .+ (1.0 .- x[1:(end - 1)]) .^ 2,
+    )
 end
 
 """Rastrigin function: highly multimodal, global minimum 0 at origin."""
@@ -51,14 +53,14 @@ end
 # ── Benchmark configuration ────────────────────────────────────────────
 
 const FUNCS = Dict(
-    "sphere"     => (sphere,     -5.0,  5.0),
-    "rosenbrock" => (rosenbrock, -2.0,  2.0),
-    "rastrigin"  => (rastrigin,  -5.12, 5.12),
-    "ackley"     => (ackley,     -5.0,  5.0),
+    "sphere" => (sphere, -5.0, 5.0),
+    "rosenbrock" => (rosenbrock, -2.0, 2.0),
+    "rastrigin" => (rastrigin, -5.12, 5.12),
+    "ackley" => (ackley, -5.0, 5.0),
 )
 
 const DIMS = [5, 10]
-const CFG = GIVPConfig(; max_iterations=5, vnd_iterations=10)
+const CFG = GIVPConfig(; max_iterations = 5, vnd_iterations = 10)
 
 # ── Run benchmarks ─────────────────────────────────────────────────────
 
@@ -69,38 +71,43 @@ for (name, (func, lo, hi)) in FUNCS
         bounds = [(lo, hi) for _ in 1:dim]
         tag = "$(name)_dim$(dim)"
         suite[tag] = @benchmarkable begin
-            givp($func, $bounds; config=$CFG)
-        end samples=5 evals=1 seconds=120
+            givp($func, $bounds; config = $CFG)
+        end samples = 5 evals = 1 seconds = 120
     end
 end
 
-println("=" ^ 70)
+println("="^70)
 println("GIVPOptimizer Benchmarks — $(length(suite)) cases")
-println("=" ^ 70)
+println("="^70)
 
 # Warm-up: run each once to trigger compilation
 for (name, (func, lo, hi)) in FUNCS
     bounds = [(lo, hi) for _ in 1:DIMS[1]]
-    givp(func, bounds; config=CFG)
+    givp(func, bounds; config = CFG)
 end
 println("Warm-up complete.\n")
 
 results = run(suite)
 
-println("\n", "=" ^ 70)
+println("\n", "="^70)
 println("Results")
-println("=" ^ 70)
+println("="^70)
 
 for tag in sort(collect(keys(results)))
     trial = results[tag]
     med = median(trial)
-    @printf("%-25s  median=%10.2f ms  memory=%8.2f KiB  allocs=%d\n",
-            tag, med.time / 1e6, med.memory / 1024, med.allocs)
+    @printf(
+        "%-25s  median=%10.2f ms  memory=%8.2f KiB  allocs=%d\n",
+        tag,
+        med.time / 1e6,
+        med.memory / 1024,
+        med.allocs
+    )
 end
 
-println("\n", "=" ^ 70)
+println("\n", "="^70)
 println("Summary (median times)")
-println("=" ^ 70)
+println("="^70)
 display(median(results))
 println()
 
@@ -110,7 +117,7 @@ const RESULTS_FILE = joinpath(@__DIR__, "results.json")
 if isfile(RESULTS_FILE)
     println("\nComparing with previous results from $(RESULTS_FILE):")
     previous = BenchmarkTools.load(RESULTS_FILE)[1]
-    judgment = judge(median(results), median(previous); time_tolerance=0.10)
+    judgment = judge(median(results), median(previous); time_tolerance = 0.10)
     display(judgment)
     println()
 end

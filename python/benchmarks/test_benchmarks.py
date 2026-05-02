@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """Performance benchmarks for the public optimizer.
 
 Run with::
@@ -62,3 +64,13 @@ def test_benchmark_classics(benchmark, name, dim):
 
     result = benchmark(run)
     assert np.isfinite(result.fun)
+
+
+def test_sphere_quality_gate():
+    """Sphere (dim=10) should converge below 1.0 with 100 iterations."""
+    bounds = [(-5.0, 5.0)] * 10
+    cfg = GIVPConfig(max_iterations=100)
+    result = givp(sphere, bounds, config=cfg, seed=42)
+    assert result.fun < 1.0, (
+        f"Sphere quality regression: expected fun < 1.0, got {result.fun}"
+    )

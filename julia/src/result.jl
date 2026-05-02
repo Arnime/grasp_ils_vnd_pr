@@ -3,6 +3,20 @@
 
 """Result container returned by the public optimizer API."""
 
+"""
+    TerminationReason
+
+Enum describing why the optimizer stopped.
+
+| Value | Meaning |
+|---|---|
+| `converged` | Convergence criterion met |
+| `max_iterations_reached` | Hit `max_iterations` limit |
+| `time_limit_reached` | Hit `time_limit` wall-clock limit |
+| `early_stop` | No improvement for `early_stop_threshold` iterations |
+| `no_feasible` | No feasible point found |
+| `unknown` | Reason could not be determined |
+"""
 @enum TerminationReason begin
     converged
     max_iterations_reached
@@ -18,7 +32,8 @@ function termination_from_message(message::String)::TerminationReason
     occursin("time", lower) && return time_limit_reached
     (occursin("early", lower) || occursin("threshold", lower)) && return early_stop
     (occursin("feasible", lower) || occursin("no solution", lower)) && return no_feasible
-    (occursin("iteration", lower) || occursin("max", lower)) && return max_iterations_reached
+    (occursin("iteration", lower) || occursin("max", lower)) &&
+        return max_iterations_reached
     return unknown
 end
 
@@ -35,7 +50,7 @@ mutable struct OptimizeResult
     success::Bool
     message::String
     direction::Direction
-    meta::Dict{String,Any}
+    meta::Dict{String, Any}
 end
 
 function OptimizeResult(;
@@ -46,13 +61,19 @@ function OptimizeResult(;
     success::Bool = true,
     message::String = "",
     direction::Direction = minimize,
-    meta::Dict{String,Any} = Dict{String,Any}()
+    meta::Dict{String, Any} = Dict{String, Any}(),
 )
     OptimizeResult(x, fun, nit, nfev, success, message, direction, meta)
 end
 
-function to_dict(r::OptimizeResult)::Dict{String,Any}
-    Dict{String,Any}(
+"""
+    to_dict(r::OptimizeResult) -> Dict{String,Any}
+
+Serialise an [`OptimizeResult`](@ref) to a plain `Dict` suitable for JSON
+export or logging.
+"""
+function to_dict(r::OptimizeResult)::Dict{String, Any}
+    Dict{String, Any}(
         "x" => r.x,
         "fun" => r.fun,
         "nit" => r.nit,
@@ -64,7 +85,8 @@ function to_dict(r::OptimizeResult)::Dict{String,Any}
 end
 
 # Allow tuple unpacking: x, fun = result
-Base.iterate(r::OptimizeResult, state=1) = state == 1 ? (r.x, 2) : state == 2 ? (r.fun, 3) : nothing
+Base.iterate(r::OptimizeResult, state = 1) =
+    state == 1 ? (r.x, 2) : state == 2 ? (r.fun, 3) : nothing
 
 function Base.length(::OptimizeResult)
     return 2

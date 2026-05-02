@@ -1,9 +1,11 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """LRU evaluation cache used by the GRASP/ILS/VND algorithm."""
 
 from __future__ import annotations
 
 import hashlib
-from collections import deque
+from collections import OrderedDict
 
 import numpy as np
 
@@ -33,11 +35,11 @@ class EvaluationCache:
     """
 
     def __init__(self, maxsize: int = 10000):
+        """Initialize the evaluation cache."""
         self.maxsize = maxsize
-        self.cache: dict[int, float] = {}
+        self.cache: OrderedDict[int, float] = OrderedDict()
         self.hits = 0
         self.misses = 0
-        self.insertion_order: deque[int] = deque()
 
     def _hash_solution(self, solution: np.ndarray) -> int:
         """Return a deterministic integer hash of the rounded solution.
@@ -53,7 +55,7 @@ class EvaluationCache:
         rounded = np.empty_like(solution)
         rounded[:half] = np.round(solution[:half], decimals=3)
         rounded[half:] = np.round(solution[half:], decimals=0)
-        data = np.ascontiguousarray(rounded).tobytes()
+        data = rounded.tobytes()
         if _FAST_HASH:
             return int(_xxhash.xxh64_intdigest(data))  # type: ignore[union-attr]
         return int.from_bytes(
@@ -65,6 +67,7 @@ class EvaluationCache:
         key = self._hash_solution(solution)
         if key in self.cache:
             self.hits += 1
+            self.cache.move_to_end(key)
             return float(self.cache[key])
         self.misses += 1
         return None
@@ -72,17 +75,17 @@ class EvaluationCache:
     def put(self, solution: np.ndarray, cost: float) -> None:
         """Store a solution and its cost in the cache."""
         key = self._hash_solution(solution)
-        if key not in self.cache and len(self.cache) >= self.maxsize:
-            oldest = self.insertion_order.popleft()
-            self.cache.pop(oldest, None)
-        if key not in self.cache:
-            self.insertion_order.append(key)
+        if key in self.cache:
+            self.cache.move_to_end(key)
+            self.cache[key] = cost
+            return
+        if len(self.cache) >= self.maxsize:
+            self.cache.popitem(last=False)
         self.cache[key] = cost
 
     def clear(self) -> None:
         """Clear the cache and reset all counters."""
         self.cache.clear()
-        self.insertion_order = deque()
         self.hits = 0
         self.misses = 0
 

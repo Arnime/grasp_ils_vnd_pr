@@ -10,6 +10,29 @@ from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
+from typing_extensions import TypedDict
+
+
+class AlgorithmMeta(TypedDict, total=False):
+    """Algorithm-specific metadata returned inside :class:`OptimizeResult`.
+
+    All fields are optional (``total=False``).  Callers should use
+    ``.get()`` rather than direct key access.
+
+    Attributes:
+        termination_reason: Canonical termination code (see
+            :class:`TerminationReason`).
+        max_iterations: The configured ``max_iterations`` for this run.
+        n_vars: Number of decision variables.
+    """
+
+    termination_reason: str
+    max_iterations: int
+    n_vars: int
+
+
+def _empty_meta() -> AlgorithmMeta:
+    return AlgorithmMeta()
 
 
 class TerminationReason(str, Enum):
@@ -63,7 +86,7 @@ class OptimizeResult:
     success: bool = True
     message: str = ""
     direction: str = "minimize"
-    meta: dict[str, Any] = field(default_factory=dict)
+    meta: AlgorithmMeta = field(default_factory=_empty_meta)
 
     def __iter__(self):
         # Allows tuple unpacking ``x, fun = result`` for compatibility with

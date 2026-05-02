@@ -19,7 +19,7 @@ from numpy.typing import NDArray
 from givp import core
 from givp.config import GIVPConfig
 from givp.core.helpers import _set_seed
-from givp.result import OptimizeResult
+from givp.result import AlgorithmMeta, OptimizeResult, TerminationReason
 
 BoundsLike = Sequence[tuple[float, float]] | tuple[Sequence[float], Sequence[float]]
 ObjectiveFn = Callable[[NDArray[np.float64]], float]
@@ -178,10 +178,10 @@ def givp(
     nfev_counter = [0]
     wrapped = _wrap_objective(func, cfg.direction, nfev_counter)
 
-    sol_list, core_value = core.grasp_ils_vnd(
+    sol_list, core_value, actual_nit, term_msg = core.grasp_ils_vnd(
         wrapped,
         n,
-        cfg.as_core_config(),
+        cfg,
         verbose=verbose,
         iteration_callback=iteration_callback,
         lower=lower,
@@ -197,11 +197,16 @@ def givp(
     return OptimizeResult(
         x=x,
         fun=fun_value,
-        nit=cfg.max_iterations,
+        nit=actual_nit,
         nfev=nfev_counter[0],
         success=success,
-        message="ok" if success else "no finite solution found",
+        message=term_msg if success else "no finite solution found",
         direction=cfg.direction,
+        meta=AlgorithmMeta(
+            termination_reason=TerminationReason.from_message(term_msg).value,
+            max_iterations=cfg.max_iterations,
+            n_vars=n,
+        ),
     )
 
 

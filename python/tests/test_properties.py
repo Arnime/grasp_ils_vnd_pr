@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """Property-based tests using Hypothesis.
 
 These tests exercise the public API with randomly generated inputs to surface
@@ -18,7 +20,7 @@ from hypothesis import HealthCheck, assume, given, settings
 from hypothesis import strategies as st
 
 _FAST = settings(
-    max_examples=15,
+    max_examples=50,
     deadline=None,
     suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
 )

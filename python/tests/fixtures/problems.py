@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """Small problem instances and data used by tests fixtures.
 
 This module centralizes small, canonical instances for knapsack and QAP

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """Tests for ``givp.core`` internals: helpers, classes, neighborhoods, search."""
 
 from __future__ import annotations
@@ -16,29 +18,6 @@ from givp.core import (
     ConvergenceMonitor,
     ElitePool,
     EvaluationCache,
-    _apply_path_relinking_to_pair,
-    _build_heuristic_candidate,
-    _build_random_candidate,
-    _check_early_stopping,
-    _create_cached_cost_fn,
-    _evaluate_solution_with_cache,
-    _evaluate_with_cache,
-    _execute_neighborhood,
-    _get_group_size,
-    _get_half,
-    _handle_convergence_monitor,
-    _initialize_optimization_components,
-    _maybe_apply_warm_start,
-    _neighborhood_block,
-    _neighborhood_group,
-    _perturb_index,
-    _prepare_bounds,
-    _print_cache_stats,
-    _safe_evaluate,
-    _sample_integer_from_bounds,
-    _select_from_rcl,
-    _set_group_size,
-    _set_integer_split,
     bidirectional_path_relinking,
     construct_grasp,
     evaluate_candidates,
@@ -55,12 +34,42 @@ from givp.core import (
 )
 from givp.core import impl as core_impl
 from givp.core import vnd as core_vnd
+from givp.core.grasp import (
+    _build_heuristic_candidate,
+    _build_random_candidate,
+    _evaluate_with_cache,
+    _sample_integer_from_bounds,
+    _select_from_rcl,
+)
 from givp.core.helpers import (
     _VERBOSE_HANDLER_ATTACHED,
     _ensure_verbose_handler,
+    _get_group_size,
+    _get_half,
+    _safe_evaluate,
+    _set_group_size,
+    _set_integer_split,
     logger,
 )
-from givp.core.impl import _print_run_footer, _print_run_header
+from givp.core.impl import (
+    _apply_path_relinking_to_pair,
+    _check_early_stopping,
+    _evaluate_solution_with_cache,
+    _handle_convergence_monitor,
+    _initialize_optimization_components,
+    _maybe_apply_warm_start,
+    _prepare_bounds,
+    _print_cache_stats,
+    _print_run_footer,
+    _print_run_header,
+)
+from givp.core.vnd import (
+    _create_cached_cost_fn,
+    _execute_neighborhood,
+    _neighborhood_block,
+    _neighborhood_group,
+)
+from givp.core.vnd_moves import _perturb_index
 
 
 @pytest.fixture(autouse=True)
@@ -1544,7 +1553,7 @@ def test_perturb_index_continuous_no_bounds():
 def test_grasp_ils_vnd_config_none_uses_default():
     """Line 2316: grasp_ils_vnd auto-creates GIVPConfig when config=None."""
     _set_integer_split(2)
-    _, cost = core_impl.grasp_ils_vnd(
+    _, cost, _nit, _msg = core_impl.grasp_ils_vnd(
         quad,
         num_vars=4,
         config=None,
@@ -2295,7 +2304,7 @@ def test_grasp_ils_vnd_no_elite_pool_stagnation_branches():
         adaptive_alpha=False,
     )
     # Constant-cost function guarantees stagnation after iteration 1
-    _, cost = core_impl.grasp_ils_vnd(
+    _, cost, _nit, _msg = core_impl.grasp_ils_vnd(
         lambda x: 1.0,
         num_vars=4,
         config=cfg,
@@ -2341,3 +2350,67 @@ def test_path_relinking_best_move_found_but_not_better(monkeypatch):
     out, _ = path_relinking(quad, src, tgt, strategy="best", deadline=0.0)
     assert out.shape == (3,)
     assert call_count[0] == 2  # both fake calls were made
+
+
+# ----------------------------- _parallel_worker -----------------------------
+
+
+# Module-level helper — must be at top-level scope to be picklable by
+# ProcessPoolExecutor.  Do NOT move inside a test function.
+def _sphere_for_pickle(x: np.ndarray) -> float:
+    return float(np.sum(x**2))
+
+
+def test_parallel_worker_picklable_function():
+    """_parallel_worker returns correct value for a picklable module-level fn."""
+    from givp.core.grasp import _parallel_worker
+
+    x = np.array([1.0, 2.0, 3.0])
+    result = _parallel_worker((x, _sphere_for_pickle))
+    assert abs(result - 14.0) < 1e-10
+
+
+def test_parallel_worker_returns_inf_on_exception():
+    """_parallel_worker returns inf when the evaluator raises."""
+    from givp.core.grasp import _parallel_worker
+
+    def bad_eval(x: np.ndarray) -> float:
+        raise ValueError("boom")
+
+    result = _parallel_worker((np.array([1.0]), bad_eval))
+    assert result == float("inf")
+
+
+def test_parallel_worker_returns_inf_for_nonfinite():
+    """_parallel_worker coerces NaN / inf results to float('inf')."""
+    from givp.core.grasp import _parallel_worker
+
+    result = _parallel_worker((np.array([1.0]), lambda _x: float("nan")))
+    assert result == float("inf")
+
+
+def test_evaluate_candidates_batch_closure_fallback_uses_threads():
+    """Non-picklable closure must not raise — falls back to ThreadPoolExecutor."""
+    from givp.core.grasp import _evaluate_candidates_batch
+
+    counter = [0]
+
+    def closure_eval(x: np.ndarray) -> float:
+        counter[0] += 1
+        return float(np.sum(x**2))
+
+    _set_integer_split(None)
+    candidates = [np.random.default_rng(i).random(3) for i in range(4)]
+    results = _evaluate_candidates_batch(candidates, 0, closure_eval, None, n_workers=2)
+    assert len(results) == 4
+    assert all(np.isfinite(r) for r in results)
+
+
+def test_evaluate_candidates_batch_single_candidate_skips_parallel():
+    """A single unevaluated candidate must not spin up a pool."""
+    from givp.core.grasp import _evaluate_candidates_batch
+
+    results = _evaluate_candidates_batch(
+        [np.array([1.0, 2.0])], 0, lambda x: float(np.sum(x**2)), None, n_workers=4
+    )
+    assert results == pytest.approx([5.0])

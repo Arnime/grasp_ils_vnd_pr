@@ -76,3 +76,56 @@ also accepting integer/mixed bounds out of the box.
 Every comparison above used a pinned seed. `givp` honours `seed=` end-to-end:
 two runs with the same seed, bounds and objective return bit-identical
 results. Other libraries vary in seeding semantics — read each one's docs.
+
+## Experimental protocol (30-seed sweep)
+
+For publication-quality comparisons, run the full 30-seed sweep from the
+`python/` directory:
+
+```bash
+# Step 1 — run experiment (≈ 30 min on a laptop)
+python benchmarks/run_literature_comparison.py \
+    --dims 10 --n-runs 30 \
+    --algorithms GIVP-full GRASP-only DE SA \
+    --traces --verbose \
+    --output results/comparison_10d_30runs.json
+
+# Step 2 — generate Markdown + LaTeX tables with Wilcoxon tests
+python benchmarks/generate_report.py \
+    --input results/comparison_10d_30runs.json \
+    --format both \
+    --output-dir paper/tables/
+
+# Step 3 — include in paper
+#   paper/tables/comparison_10d_30runs_report.tex  → \input{tables/...}
+#   paper/tables/comparison_10d_30runs_boxplot.png → \includegraphics{...}
+```
+
+> **Seeds**: uses `[0, n_runs)` by default — byte-identical results for any
+> given seed. Use `--seed-start N` to shift the window.
+> **Resume**: add `--resume` to continue a partial run (checkpointed after
+> each function).
+
+See `python/benchmarks/README.md` for the full option reference, including
+higher-dimensional sweeps (`--dims 30`) and tuned-config runs
+(`--algorithms GIVP-tuned --tune-config best_config.json`).
+
+## Experimental results — GIVP-full vs. GRASP-only (30 seeds, 10-D)
+
+The table below summarises the Julia benchmark (`Notebooks/Julia/results_notebook_julia.json`),
+30 independent seeds per algorithm and function, 10 dimensions.
+All results are objective function values
+(lower = better, global minimum = 0 for all functions).
+
+| Function | GIVP-full mean ± std | GRASP-only mean ± std | W | p-value | Sig |
+|---|---|---|---|---|---|
+| Sphere | 2.0692e-04 ± 6.3134e-05 | 2.5144e+00 ± 5.6531e-01 | 0.0 | < 0.0001 | ★ |
+| Rosenbrock | 4.3611e-01 ± 3.1966e-01 | 1.1314e+04 ± 5.7702e+03 | 0.0 | < 0.0001 | ★ |
+| Rastrigin | 9.8794e-01 ± 6.0726e-01 | 3.9875e+01 ± 7.4324e+00 | 0.0 | < 0.0001 | ★ |
+| Ackley | 1.3495e-01 ± 2.6316e-02 | 1.0992e+01 ± 7.9834e-01 | 0.0 | < 0.0001 | ★ |
+| Griewank | 1.7085e-01 ± 3.7264e-02 | 9.5772e+00 ± 1.7650e+00 | 0.0 | < 0.0001 | ★ |
+| Schwefel | 4.9916e+01 ± — | 1.9143e+03 ± 1.6299e+02 | 0.0 | < 0.0001 | ★ |
+
+**Statistical test**: two-sided Wilcoxon signed-rank test (α = 0.05).  
+**★** = statistically significant difference (p < 0.05) in favour of GIVP-full.
+**Metadata**: Julia 1.12.6, GIVPOptimizer v1.0.0, generated 2026-04-29.

@@ -83,17 +83,42 @@ jobs:
           pip install --require-hashes -r python/requirements/ci.txt
           sh .github/scripts/install-package.sh
       - name: Test with coverage
-        run: pytest --cov=givp --cov-report=xml
+        run: pytest --cov=givp --cov-report=xml:coverage-python.xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6
         with:
-          files: coverage.xml
+          files: coverage-python.xml
           flags: python
           token: ${{ secrets.CODECOV_TOKEN }}
           version: v11.2.8
-          fail_ci_if_error: false
+          fail_ci_if_error: true
+
+  property-tests:
+    name: Property-based tests (Hypothesis max_examples=50)
+    needs: setup
+    runs-on: ubuntu-latest
+    # Run on source changes only; property tests are slow (50 examples × 5 tests)
+    if: needs.setup.outputs.source_changed == 'true'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+      - name: Install
+        run: |
+          pip install --require-hashes -r python/requirements/ci.txt
+          sh .github/scripts/install-package.sh
+      - name: Run property tests
+        # Run only test_properties.py with a generous timeout; --no-cov keeps it fast.
+        # The Hypothesis database is ephemeral in CI; this is intentional.
+        run: |
+          pytest python/tests/test_properties.py -v \
+            --no-cov \
+            --override-ini="addopts=" \
+            -p no:randomly
 
   benchmark-smoke:
+    name: Benchmark smoke tests
     runs-on: ubuntu-latest
     # Informational job: does not block merges, but surfaces regressions
     continue-on-error: true
@@ -110,6 +135,79 @@ jobs:
       - name: Benchmark smoke tests
         run: pytest -m slow python/tests/test_benchmark_scripts.py -v
           --override-ini="addopts="
+
+  benchmark-regression:
+    name: Benchmark regression (informational)
+    needs: setup
+    runs-on: ubuntu-latest
+    # Informational: surfaces performance regressions but does not block merges
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+      - name: Install
+        run: |
+          pip install --require-hashes -r python/requirements/ci.txt
+          sh .github/scripts/install-package.sh
+      - name: Run performance benchmarks
+        run: |
+          mkdir -p python/benchmarks/.results
+          pytest python/benchmarks/test_benchmarks.py \
+            --benchmark-only \
+            --benchmark-autosave \
+            --benchmark-storage=python/benchmarks/.results \
+            --override-ini="addopts="
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: python/benchmarks/.results/
+          retention-days: 90
+
+  mutation:
+    name: Mutation testing (≥ 65 % kill rate)
+    needs: setup
+    runs-on: ubuntu-latest
+    # Slow — only run on pushes to main/release branches, not on every PR
+    if: |
+      needs.setup.outputs.source_changed == 'true' &&
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release'))
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: |
+          pip install --require-hashes -r python/requirements/ci.txt
+          sh .github/scripts/install-package.sh
+          pip install mutmut
+      - name: Run mutation tests
+        run: mutmut run
+      - name: Enforce kill-rate gate (≥ 65 %)
+        # mutmut exits 0 only when all mutants are killed; we enforce a minimum
+        # kill rate so that surviving a few edge-case mutants does not block CI,
+        # but a large regression in test quality does.
+        run: |
+          KILLED=$(mutmut results 2>/dev/null | grep -cE "^[0-9]+ - [^-]+ - killed" || true)
+          TOTAL=$(mutmut results 2>/dev/null | grep -cE "^[0-9]+ - [^-]+ - (killed|survived|timeout)" || true)
+          echo "Killed: ${KILLED}  Total: ${TOTAL}"
+          if [ "${TOTAL}" -eq 0 ]; then
+            echo "No mutants generated — check mutmut configuration."
+            exit 1
+          fi
+          # Integer arithmetic: kill_rate = KILLED * 100 / TOTAL
+          KILL_RATE=$(( KILLED * 100 / TOTAL ))
+          echo "Kill rate: ${KILL_RATE}%"
+          if [ "${KILL_RATE}" -lt 65 ]; then
+            echo "ERROR: kill rate ${KILL_RATE}% is below the 65% gate."
+            exit 1
+          fi
+          echo "Kill rate gate passed: ${KILL_RATE}%"
 
   test-pre-release:
     needs: setup

@@ -12,12 +12,15 @@ mutable struct ConvergenceMonitor
     diversity_scores::Vector{Float64}
 end
 
-function ConvergenceMonitor(; window_size::Int=20, restart_threshold::Int=50)
+function ConvergenceMonitor(; window_size::Int = 20, restart_threshold::Int = 50)
     ConvergenceMonitor(window_size, restart_threshold, Float64[], 0, Inf, Float64[])
 end
 
-function update!(cm::ConvergenceMonitor, current_cost::Float64,
-                 elite_pool::Union{ElitePool,Nothing}=nothing)::Dict{String,Any}
+function update!(
+    cm::ConvergenceMonitor,
+    current_cost::Float64,
+    elite_pool::Union{ElitePool, Nothing} = nothing,
+)::Dict{String, Any}
     push!(cm.history, current_cost)
 
     if current_cost < cm.best_ever
@@ -32,7 +35,7 @@ function update!(cm::ConvergenceMonitor, current_cost::Float64,
         solutions = [sol for (sol, _) in get_all(elite_pool)]
         distances = Float64[]
         for i in 1:length(solutions)
-            for j in (i+1):length(solutions)
+            for j in (i + 1):length(solutions)
                 push!(distances, norm(solutions[i] - solutions[j]))
             end
         end
@@ -44,7 +47,7 @@ function update!(cm::ConvergenceMonitor, current_cost::Float64,
     should_restart = cm.no_improve_count >= cm.restart_threshold
     should_intensify = cm.no_improve_count >= cm.restart_threshold ÷ 2 && diversity < 0.5
 
-    Dict{String,Any}(
+    Dict{String, Any}(
         "should_restart" => should_restart,
         "should_intensify" => should_intensify,
         "diversity" => diversity,

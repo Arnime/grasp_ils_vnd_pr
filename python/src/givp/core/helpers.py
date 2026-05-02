@@ -25,6 +25,22 @@ EvaluatorFn = Callable[[np.ndarray], float]
 logger = logging.getLogger("givp.core")
 _VERBOSE_HANDLER_ATTACHED: list[bool] = [False]
 
+# Per-context runtime configuration shared across helpers.
+#
+# Stored in :class:`contextvars.ContextVar` so concurrent calls (threads /
+# asyncio tasks) cannot clobber each other's settings.
+_INTEGER_SPLIT: ContextVar[int | None] = ContextVar("givp_integer_split", default=None)
+_GROUP_SIZE: ContextVar[int | None] = ContextVar("givp_group_size", default=None)
+# Master RNG used by ``_new_rng`` to spawn child generators when a seed has
+# been pinned via :func:`_set_seed`. ``None`` means "use OS entropy", which
+# is the legacy non-deterministic behaviour. We store a :class:`SeedSequence`
+# (rather than a :class:`Generator`) so child seeds are produced via the
+# numpy-recommended :meth:`SeedSequence.spawn` API, which is the canonical
+# way to derive statistically independent streams from a single root seed.
+_MASTER_SEED_SEQ: ContextVar[np.random.SeedSequence | None] = ContextVar(
+    "givp_master_seed_seq", default=None
+)
+
 
 def _ensure_verbose_handler() -> None:
     """Attach a stdout handler to the ``givp.core`` logger so verbose=True
@@ -43,23 +59,6 @@ def _ensure_verbose_handler() -> None:
     logger.setLevel(logging.INFO)
     logger.propagate = False
     _VERBOSE_HANDLER_ATTACHED[0] = True
-
-
-# Per-context runtime configuration shared across helpers.
-#
-# Stored in :class:`contextvars.ContextVar` so concurrent calls (threads /
-# asyncio tasks) cannot clobber each other's settings.
-_INTEGER_SPLIT: ContextVar[int | None] = ContextVar("givp_integer_split", default=None)
-_GROUP_SIZE: ContextVar[int | None] = ContextVar("givp_group_size", default=None)
-# Master RNG used by ``_new_rng`` to spawn child generators when a seed has
-# been pinned via :func:`_set_seed`. ``None`` means "use OS entropy", which
-# is the legacy non-deterministic behaviour. We store a :class:`SeedSequence`
-# (rather than a :class:`Generator`) so child seeds are produced via the
-# numpy-recommended :meth:`SeedSequence.spawn` API, which is the canonical
-# way to derive statistically independent streams from a single root seed.
-_MASTER_SEED_SEQ: ContextVar[np.random.SeedSequence | None] = ContextVar(
-    "givp_master_seed_seq", default=None
-)
 
 
 def _set_seed(seed: int | None) -> None:

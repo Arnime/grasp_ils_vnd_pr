@@ -103,6 +103,57 @@ With coverage:
 julia --project=. -e 'using Pkg; Pkg.test(; coverage=true)'
 ```
 
+## CLI
+
+A command-line interface equivalent to `givp run` is available at
+`julia/cli.jl`:
+
+```bash
+# Inline lambda
+julia julia/cli.jl run \
+    --func '(x) -> sum(x .^ 2)' \
+    --bounds '[[-5.0,-5.0,-5.0],[5.0,5.0,5.0]]' \
+    --seed 42
+
+# Load function from a source file
+julia julia/cli.jl run \
+    --func-file examples/sphere.jl --func-name sphere \
+    --bounds '[[-5.12,-5.12],[5.12,5.12]]' --verbose
+
+# JSON mode (mirrors Python CLI)
+julia julia/cli.jl run --json '{"func_file":"sphere.jl","func_name":"sphere","bounds":[[-5],[5]]}'
+
+julia julia/cli.jl version
+```
+
+Output is JSON to stdout — compatible with the Python `givp run` format.
+
+## Literature comparison experiment
+
+A reproducible multi-run experiment comparing GIVP against baselines is
+provided in `julia/benchmarks/`:
+
+```bash
+# Run experiment: 30 seeds × 6 functions × GIVP-full + GRASP-only
+julia --project=julia julia/benchmarks/run_literature_comparison.jl \
+    --n-runs 30 --dims 10 --output results.json --verbose
+
+# Include BlackBoxOptim.jl baselines (DE and XNES)
+julia --project=julia julia/benchmarks/run_literature_comparison.jl \
+    --algorithms GIVP-full GRASP-only BBO-DE BBO-XNES
+
+# Generate Markdown + LaTeX tables with Wilcoxon tests
+julia --project=julia julia/benchmarks/generate_report.jl \
+    --input results.json --format both
+
+# Include per-iteration convergence curves (requires --traces in run step)
+julia --project=julia julia/benchmarks/run_literature_comparison.jl --traces
+julia --project=julia julia/benchmarks/generate_report.jl --input results.json --convergence
+```
+
+An interactive version is available as a Jupyter notebook at
+`Notebooks/Julia/benchmark_literature_comparison_julia.ipynb`.
+
 ## Running benchmarks
 
 The benchmarks use `BenchmarkTools.jl` and cover four classic test functions
@@ -115,6 +166,35 @@ julia --project=. benchmarks/benchmarks.jl
 
 Results are saved to `benchmarks/results.json` for regression tracking.
 Subsequent runs automatically compare against the previous results.
+
+## Fuzzing
+
+A crash-finder fuzzer exercises the API with random and adversarial inputs:
+
+```bash
+julia --project=julia julia/fuzz/fuzz_givp.jl --n-trials 500 --verbose
+```
+
+Phase 1 checks that invalid inputs always raise the correct `GivpError` subtype.
+Phase 2 runs random valid trials verifying six invariants per result
+(bounds containment, `nfev > 0`, `success ↔ isfinite(fun)`, etc.).
+Exit code 0 = all passed, 1 = failures found.
+
+## Coverage
+
+The CI enforces a minimum of **95 %** line coverage on `julia/src/`.
+To check locally:
+
+```bash
+julia --project=julia -e '
+  using Pkg; Pkg.add("CoverageTools")
+  using CoverageTools
+  cov = process_folder("julia/src")
+  hit   = count(c -> c !== nothing && c > 0, [c for s in cov for c in s.coverage])
+  total = count(c -> c !== nothing,          [c for s in cov for c in s.coverage])
+  println("Coverage: $(round(hit/total*100; digits=1))%")
+'
+```
 
 ## API parity with Python
 
@@ -134,5 +214,8 @@ The Julia port aims for full feature parity with the Python implementation:
 | Mixed integer/continuous   | ✓      | ✓     |
 | Warm start                 | ✓      | ✓     |
 | Reproducible (`seed=`)     | ✓      | ✓     |
-| CLI entry point            | ✓      | —     |
-| `GIVPOptimizer` class      | ✓      | —     |
+| CLI entry point            | ✓      | ✓     |
+| `GIVPOptimizer` class      | ✓      | ✓     |
+| Literature comparison      | ✓      | ✓     |
+| Wilcoxon + LaTeX reports   | ✓      | ✓     |
+| Fuzzing driver             | ✓      | ✓     |
