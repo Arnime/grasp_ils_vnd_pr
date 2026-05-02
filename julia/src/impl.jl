@@ -27,6 +27,8 @@ function do_path_relinking!(
     elite_pool::Union{ElitePool, Nothing},
     cost_fn::Function,
     num_vars::Int;
+    lower::Union{Vector{Float64}, Nothing} = nothing,
+    upper::Union{Vector{Float64}, Nothing} = nothing,
     cache::Union{EvaluationCache, Nothing} = nothing,
     deadline::Float64 = 0.0,
 )
@@ -56,6 +58,8 @@ function do_path_relinking!(
                 pr_solution,
                 num_vars;
                 max_iter = config.vnd_iterations ÷ 2,
+                lower,
+                upper,
                 cache,
                 deadline,
             )
@@ -244,6 +248,8 @@ function grasp_ils_vnd(
             elite_pool,
             cost_fn,
             num_vars;
+            lower,
+            upper,
             cache,
             deadline,
         )
@@ -276,7 +282,13 @@ function grasp_ils_vnd(
             restart_arr = lower .+ (upper .- lower) .* rand(restart_rng, num_vars)
             half = get_half(num_vars)
             for i in (half + 1):num_vars
-                restart_arr[i] = round(restart_arr[i])
+                lo = ceil(Int, lower[i])
+                hi = floor(Int, upper[i])
+                if lo <= hi
+                    restart_arr[i] = Float64(clamp(round(Int, restart_arr[i]), lo, hi))
+                else
+                    restart_arr[i] = clamp(restart_arr[i], lower[i], upper[i])
+                end
             end
             restart_arr = local_search_vnd(
                 cost_fn,

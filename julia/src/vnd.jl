@@ -32,10 +32,25 @@ function try_integer_moves(
     upper::Union{Vector{Float64}, Nothing},
 )
     old = sol[idx]
+    if lower !== nothing && upper !== nothing
+        lo_f = lower[idx]
+        hi_f = upper[idx]
+        if old < lo_f || old > hi_f
+            old = clamp(old, lo_f, hi_f)
+            sol[idx] = old
+        end
+    end
     base = round(Int, old)
     cand_vals = (base - 1, base, base + 1)
     lo = lower !== nothing ? ceil(Int, lower[idx]) : typemin(Int)
     hi = upper !== nothing ? floor(Int, upper[idx]) : typemax(Int)
+    if lo > hi
+        # No integer exists in [lower, upper]: keep a bounded continuous value.
+        if lower !== nothing && upper !== nothing
+            sol[idx] = clamp(old, lower[idx], upper[idx])
+        end
+        return sol, best_benefit, false
+    end
     for v in cand_vals
         (v < lo || v > hi) && continue
         sol[idx] = Float64(v)
@@ -47,6 +62,29 @@ function try_integer_moves(
     end
     sol[idx] = old
     return sol, best_benefit, false
+end
+
+function project_to_bounds!(
+    sol::Vector{Float64},
+    num_vars::Int,
+    lower::Union{Vector{Float64}, Nothing},
+    upper::Union{Vector{Float64}, Nothing},
+)
+    (lower === nothing || upper === nothing) && return
+    half = get_half(num_vars)
+    for i in 1:num_vars
+        if i > half
+            lo = ceil(Int, lower[i])
+            hi = floor(Int, upper[i])
+            if lo <= hi
+                sol[i] = Float64(clamp(round(Int, sol[i]), lo, hi))
+            else
+                sol[i] = clamp(sol[i], lower[i], upper[i])
+            end
+        else
+            sol[i] = clamp(sol[i], lower[i], upper[i])
+        end
+    end
 end
 
 function try_continuous_move(
@@ -369,6 +407,7 @@ function local_search_vnd(
     deadline::Float64 = 0.0,
 )::Vector{Float64}
     solution = copy(solution)
+    project_to_bounds!(solution, num_vars, lower, upper)
     cached_cost_fn = create_cached_cost_fn(cost_fn, cache)
     current_benefit = cached_cost_fn(solution)
 
