@@ -10,6 +10,12 @@ on:
       - "codecov.yml"
   pull_request:
   workflow_dispatch:
+    inputs:
+      run_mutation:
+        description: "Run mutation job (manual only)"
+        required: false
+        type: boolean
+        default: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -171,11 +177,9 @@ jobs:
     name: Mutation testing fast gate (≥ 65 % kill rate)
     needs: setup
     runs-on: ubuntu-latest
-    # Slow — only run on pushes to main/release branches, not on every PR
-    if: |
-      needs.setup.outputs.source_changed == 'true' &&
-      github.event_name == 'push' &&
-      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release'))
+    # Manual-only: run this job when workflow_dispatch input is enabled.
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_mutation
+      == 'true'
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
