@@ -186,6 +186,15 @@ jobs:
           pip install --require-hashes -r python/requirements/ci.txt
           sh .github/scripts/install-package.sh
           pip install mutmut
+      - name: Remove broken symlinks (mutmut workaround)
+        run: |
+          BROKEN_LINKS=$(find . -xtype l | wc -l)
+          if [ "$BROKEN_LINKS" -gt 0 ]; then
+            echo "Removing ${BROKEN_LINKS} broken symlink(s) before mutmut"
+            find . -xtype l -print -delete
+          else
+            echo "No broken symlinks found"
+          fi
       - name: Run mutation tests
         run: mutmut run
       - name: Enforce kill-rate gate (≥ 65 %)
