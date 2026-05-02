@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """Tests covering ``GIVPConfig`` validation and direction logic."""
 
 from __future__ import annotations

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """Property-based tests using Hypothesis.
 
 These tests exercise the public API with randomly generated inputs to surface

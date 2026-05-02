@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """Unit tests for the benchmark functions in `givp.benchmarks`.
 
 These tests assert that the classic functions return their known minima

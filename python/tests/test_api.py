@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """Tests for the public ``givp`` API (``givp`` and ``GIVPOptimizer``)."""
 
 from __future__ import annotations
@@ -274,8 +276,12 @@ def test_n_workers_parity_serial_vs_parallel(fast_config):
 
     assert np.isfinite(r_serial.fun), "serial result must be finite"
     assert np.isfinite(r_parallel.fun), "parallel result must be finite"
-    assert r_serial.fun >= 0.0, "sphere minimum is 0; serial result must be non-negative"
-    assert r_parallel.fun >= 0.0, "sphere minimum is 0; parallel result must be non-negative"
+    assert r_serial.fun >= 0.0, (
+        "sphere minimum is 0; serial result must be non-negative"
+    )
+    assert r_parallel.fun >= 0.0, (
+        "sphere minimum is 0; parallel result must be non-negative"
+    )
     # Both should achieve a similar quality bound: within 10x of each other.
     assert r_parallel.fun < r_serial.fun * 10 + 1.0, (
         f"parallel result ({r_parallel.fun:.4f}) is unexpectedly much worse than "

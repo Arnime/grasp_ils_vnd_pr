@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """Nox sessions: ``pip install nox`` then run ``nox`` locally to mirror CI."""
 
 from __future__ import annotations

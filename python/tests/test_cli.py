@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
 """Tests for the ``givp`` CLI (``givp run``)."""
 
 from __future__ import annotations
@@ -373,7 +375,7 @@ def test_optimize_result_to_dict_no_meta():
         nfev=10,
         success=True,
         message="",
-        meta={"cache_hits": 99},
+        meta={"max_iterations": 99},
     )
     d = result.to_dict()
     assert "meta" not in d
