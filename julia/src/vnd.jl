@@ -186,11 +186,12 @@ function neighborhood_swap(
     rng = new_rng()
     half = get_half(num_vars)
     (half <= 0 || half >= num_vars) && return best_solution, best_benefit
+    n_int = num_vars - half
 
     for _ in 1:max_attempts
         expired(deadline) && break
         cont_idx = rand(rng, 1:half)
-        int_idx = cont_idx + half
+        int_idx = half + rand(rng, 1:n_int)
 
         old_cont = solution[cont_idx]
         old_int = solution[int_idx]
