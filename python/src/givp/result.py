@@ -6,11 +6,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import Any, TypedDict
 
 import numpy as np
 from numpy.typing import NDArray
-from typing_extensions import TypedDict
 
 
 class AlgorithmMeta(TypedDict, total=False):
