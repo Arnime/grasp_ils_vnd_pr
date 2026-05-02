@@ -14,6 +14,7 @@ htmlcov/
 .mypy_cache/
 .hypothesis/
 .idea/
+*.log
 .benchmarks/
 python/benchmarks/.results/
 site/

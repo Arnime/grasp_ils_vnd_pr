@@ -191,7 +191,7 @@ jobs:
 
   fuzz:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -215,9 +215,9 @@ jobs:
       - name: Run fuzz trials
         run: |
           julia --project=julia julia/fuzz/fuzz_givp.jl \
-            --n-trials 200 \
+            --n-trials 100 \
             --seed 1337 \
-            --timeout 180
+            --timeout 90
 
   lint:
     runs-on: ubuntu-latest

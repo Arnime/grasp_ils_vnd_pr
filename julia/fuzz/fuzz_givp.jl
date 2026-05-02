@@ -22,9 +22,14 @@ Usage (from repo root):
     julia --project=julia julia/fuzz/fuzz_givp.jl --n-trials 200 --timeout 30
 """
 
-using Pkg
-Pkg.activate(joinpath(@__DIR__, ".."))
-Pkg.instantiate()
+# Bootstrap: only activate/instantiate when run standalone (not via --project=julia)
+let active = Base.active_project()
+    if isnothing(active) || !occursin(joinpath("julia", "Project.toml"), active)
+        import Pkg
+        Pkg.activate(joinpath(@__DIR__, ".."))
+        Pkg.instantiate()
+    end
+end
 
 using GIVPOptimizer
 using Printf
