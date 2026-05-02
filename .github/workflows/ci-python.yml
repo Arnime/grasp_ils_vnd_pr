@@ -185,7 +185,7 @@ jobs:
         run: |
           pip install --require-hashes -r python/requirements/ci.txt
           sh .github/scripts/install-package.sh
-          pip install mutmut
+          pip install mutmut==2.4.4
       - name: Remove broken symlinks (mutmut workaround)
         run: |
           BROKEN_LINKS=$(find . -xtype l | wc -l)
