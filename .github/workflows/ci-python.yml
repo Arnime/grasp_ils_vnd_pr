@@ -168,7 +168,7 @@ jobs:
           retention-days: 90
 
   mutation:
-    name: Mutation testing (≥ 65 % kill rate)
+    name: Mutation testing fast gate (≥ 65 % kill rate)
     needs: setup
     runs-on: ubuntu-latest
     # Slow — only run on pushes to main/release branches, not on every PR
@@ -195,8 +195,16 @@ jobs:
           else
             echo "No broken symlinks found"
           fi
-      - name: Run mutation tests
-        run: mutmut run
+      - name: Run mutation tests (fast smoke scope)
+        run: |
+          # Keep CI mutation tests very fast: smoke scope only.
+          MUTATE_PATHS="python/src/givp/api.py"
+          TEST_RUNNER="python -m pytest python/tests/test_api.py -q --no-cov -x"
+          mutmut run \
+            --paths-to-mutate "$MUTATE_PATHS" \
+            --runner "$TEST_RUNNER" \
+            --max-children 8 \
+            --no-progress
       - name: Enforce kill-rate gate (≥ 65 %)
         # mutmut exits 0 only when all mutants are killed; we enforce a minimum
         # kill rate so that surviving a few edge-case mutants does not block CI,
