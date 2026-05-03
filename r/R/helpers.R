@@ -29,3 +29,57 @@ normalize_bounds <- function(bounds, num_vars = NULL) {
 
   b
 }
+
+#' Clamp a numeric vector to bounds
+#' @keywords internal
+clamp_to_bounds <- function(x, bounds) {
+  pmax(bounds[, 1], pmin(bounds[, 2], x))
+}
+
+#' Normalize integer tail according to integer_split
+#' @keywords internal
+normalize_integer_tail <- function(x, integer_split = NULL) {
+  if (is.null(integer_split)) {
+    return(x)
+  }
+  n <- length(x)
+  half <- as.integer(integer_split)
+  half <- max(0L, min(half, n))
+  if (half < n) {
+    x[(half + 1L):n] <- round(x[(half + 1L):n])
+  }
+  x
+}
+
+#' Evaluate objective with finite fallback
+#' @keywords internal
+safe_eval <- function(func, x) {
+  out <- tryCatch(as.numeric(func(x)), error = function(e) Inf)
+  if (!is.finite(out)) Inf else out
+}
+
+#' Determine whether value improves current best
+#' @keywords internal
+is_improvement <- function(value, best_value, direction) {
+  if (identical(direction, "maximize")) {
+    value > best_value
+  } else {
+    value < best_value
+  }
+}
+
+#' Better of two objective values
+#' @keywords internal
+better_value <- function(a, b, direction) {
+  if (identical(direction, "maximize")) max(a, b) else min(a, b)
+}
+
+#' Set RNG seed from explicit or config seed
+#' @keywords internal
+set_seed_if_needed <- function(seed = NULL, config_seed = NULL) {
+  if (!is.null(seed)) {
+    set.seed(seed)
+  } else if (!is.null(config_seed)) {
+    set.seed(config_seed)
+  }
+}

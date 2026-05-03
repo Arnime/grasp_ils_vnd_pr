@@ -24,10 +24,11 @@ permissions: read-all
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
         r-version: ["4.1", "4.3", "release"]
 
     steps:
@@ -39,13 +40,20 @@ jobs:
 
       - name: Install dependencies
         run: |
-          Rscript -e "install.packages(c('R6','rlang','testthat'), repos='https://cloud.r-project.org')"
+          Rscript -e "install.packages(c('R6','rlang','testthat','covr','lintr'), repos='https://cloud.r-project.org')"
 
       - name: Install package
         run: R CMD INSTALL r
 
       - name: Run tests
         run: Rscript -e "testthat::test_dir('r/tests/testthat')"
+
+      - name: Run lintr
+        run: Rscript -e "lintr::lint_package('r', linters = lintr::linters_with_defaults())"
+
+      - name: Check coverage gate (>=90%)
+        run: |
+          Rscript -e "cov <- covr::package_coverage(path='r'); pct <- covr::percent_coverage(cov); cat(sprintf('R coverage: %.1f%%\\n', pct)); if (pct < 90) stop(sprintf('Coverage below 90%% threshold (got %.1f%%)', pct))"
 
       - name: Build package
         run: R CMD build r
