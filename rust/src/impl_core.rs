@@ -317,6 +317,93 @@ fn maybe_restart_from_stagnation<F>(
     *stagnation = 0;
 }
 
+#[allow(clippy::too_many_arguments)]
+fn execute_iteration<F>(
+    iteration: usize,
+    config: &GivpConfig,
+    num_vars: usize,
+    lower: &[f64],
+    upper: &[f64],
+    wrapped: &F,
+    half: usize,
+    cache: &mut Option<EvaluationCache>,
+    rng: &mut rand_chacha::ChaCha8Rng,
+    elite_pool: &mut ElitePool,
+    conv_monitor: &mut Option<ConvergenceMonitor>,
+    best_solution: &mut Vec<f64>,
+    best_cost: &mut f64,
+    stagnation: &mut usize,
+    deadline: Option<Instant>,
+) -> Option<&'static str>
+where
+    F: Fn(&[f64]) -> f64 + Send + Sync,
+{
+    let alpha = get_current_alpha(
+        iteration,
+        config.max_iterations,
+        config.alpha_min,
+        config.alpha_max,
+        config.adaptive_alpha,
+        config.alpha,
+    );
+
+    let (candidate, ils_cost) = build_and_improve_candidate(
+        iteration, num_vars, lower, upper, wrapped, config, alpha, half, cache, rng, deadline,
+    );
+
+    if update_best(best_solution, best_cost, &candidate, ils_cost) {
+        *stagnation = 0;
+    } else {
+        *stagnation += 1;
+    }
+
+    if config.use_elite_pool {
+        elite_pool.add(candidate, ils_cost);
+    }
+
+    let no_improve_count =
+        update_convergence_state(conv_monitor, elite_pool, cache, *best_cost, stagnation);
+
+    if should_path_relink(config, iteration, elite_pool) {
+        let mut child = child_rng(rng);
+        do_path_relinking(
+            wrapped,
+            elite_pool,
+            best_solution,
+            best_cost,
+            half,
+            lower,
+            upper,
+            config.vnd_iterations,
+            cache,
+            &mut child,
+            deadline,
+        );
+    }
+
+    maybe_restart_from_stagnation(
+        stagnation,
+        config,
+        num_vars,
+        lower,
+        upper,
+        wrapped,
+        alpha,
+        half,
+        cache,
+        rng,
+        deadline,
+        best_solution,
+        best_cost,
+    );
+
+    if no_improve_count.is_some_and(|count| count >= config.early_stop_threshold) {
+        return Some("early stop due to stagnation");
+    }
+
+    None
+}
+
 /// Perform path relinking on elite pool pairs.
 #[allow(clippy::too_many_arguments)]
 fn do_path_relinking<F>(
@@ -419,83 +506,30 @@ where
         }
         iterations_executed = iteration + 1;
 
-        let alpha = get_current_alpha(
+        if let Some(stop_message) = execute_iteration(
             iteration,
-            config.max_iterations,
-            config.alpha_min,
-            config.alpha_max,
-            config.adaptive_alpha,
-            config.alpha,
-        );
-
-        let (candidate, ils_cost) = build_and_improve_candidate(
-            iteration, num_vars, &lower, &upper, &wrapped, &config, alpha, half, &mut cache,
-            &mut rng, deadline,
-        );
-
-        if update_best(&mut best_solution, &mut best_cost, &candidate, ils_cost) {
-            stagnation = 0;
-        } else {
-            stagnation += 1;
-        }
-
-        // Elite pool
-        if config.use_elite_pool {
-            elite_pool.add(candidate, ils_cost);
-        }
-
-        // Convergence monitor (single update per iteration)
-        let no_improve_count = update_convergence_state(
-            &mut conv_monitor,
-            &mut elite_pool,
-            &mut cache,
-            best_cost,
-            &mut stagnation,
-        );
-
-        // Path relinking
-        if should_path_relink(&config, iteration, &elite_pool) {
-            let mut child = child_rng(&mut rng);
-            do_path_relinking(
-                &wrapped,
-                &elite_pool,
-                &mut best_solution,
-                &mut best_cost,
-                half,
-                &lower,
-                &upper,
-                config.vnd_iterations,
-                &mut cache,
-                &mut child,
-                deadline,
-            );
-        }
-
-        maybe_restart_from_stagnation(
-            &mut stagnation,
             &config,
             num_vars,
             &lower,
             &upper,
             &wrapped,
-            alpha,
             half,
             &mut cache,
             &mut rng,
-            deadline,
+            &mut elite_pool,
+            &mut conv_monitor,
             &mut best_solution,
             &mut best_cost,
-        );
-
-        // Early stop (reuses the same convergence signal from this iteration)
-        if no_improve_count.is_some_and(|count| count >= config.early_stop_threshold) {
-            message = "early stop due to stagnation".into();
+            &mut stagnation,
+            deadline,
+        ) {
+            message = stop_message.into();
             break;
         }
+    }
 
-        if iteration == config.max_iterations - 1 {
-            message = "max iterations reached".into();
-        }
+    if message.is_empty() && iterations_executed == config.max_iterations {
+        message = "max iterations reached".into();
     }
 
     // Build result

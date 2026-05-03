@@ -65,7 +65,7 @@ jobs:
                   cmake -S cpp -B build-sonar \
                     -DCMAKE_BUILD_TYPE=Release \
                     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-                    -DGIVP_BUILD_TESTS=OFF \
+                                        -DGIVP_BUILD_TESTS=ON \
                     -DGIVP_BUILD_BENCHMARKS=OFF
 
             - name: SonarQube scan

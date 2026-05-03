@@ -23,13 +23,30 @@ if command -v cmake >/dev/null 2>&1; then
   cmake -S cpp -B build-sonar \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-    -DGIVP_BUILD_TESTS=OFF \
+    -DGIVP_BUILD_TESTS=ON \
     -DGIVP_BUILD_BENCHMARKS=OFF
+  if [ ! -f build-sonar/compile_commands.json ]; then
+    echo "[sonarqube] compile_commands.json not generated; skipping C++ sources in this scan"
+    EXTRA_ARGS+=("-Dsonar.sources=python/src,julia/src,rust/src,r/R")
+    EXTRA_ARGS+=("-Dsonar.tests=python/tests,julia/test,rust/tests,r/tests/testthat")
+  fi
+elif [ -f build-sonar/compile_commands.json ]; then
+  echo "[sonarqube] Using pre-generated C++ compile database at build-sonar/compile_commands.json"
 else
   echo "[sonarqube] cmake not found in scanner image; skipping C++ compile database preparation"
   # Skip C++ in this environment because compile_commands.json cannot be generated.
   EXTRA_ARGS+=("-Dsonar.sources=python/src,julia/src,rust/src,r/R")
   EXTRA_ARGS+=("-Dsonar.tests=python/tests,julia/test,rust/tests,r/tests/testthat")
+fi
+
+if [ -f julia-lcov.info ]; then
+  echo "[sonarqube] Julia coverage artifact found: julia-lcov.info"
+else
+  echo "[sonarqube] Julia coverage artifact not found; run julia target before sonarqube for coverage"
+fi
+
+if [ -d r/R ] && [ -d r/tests/testthat ]; then
+  echo "[sonarqube] R sources/tests found and will be analyzed"
 fi
 
 echo "[sonarqube] Running scan"

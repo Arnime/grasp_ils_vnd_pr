@@ -3,9 +3,13 @@ __pycache__/
 *.egg-info/
 .eggs/
 build/
+build_bench/
+build_cov/
 dist/
 .venv/
+.venv-ci/
 .julia-env/
+.scannerwork/
 .env
 .pytest_cache/
 .coverage
