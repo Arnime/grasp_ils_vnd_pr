@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
+
+name: CI R
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "r/**"
+      - "docs/r.md"
+      - ".github/workflows/ci-r.yml"
+  pull_request:
+    paths:
+      - "r/**"
+      - "docs/r.md"
+      - ".github/workflows/ci-r.yml"
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions: read-all
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        r-version: ["4.1", "4.3", "release"]
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: r-lib/actions/setup-r@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2
+        with:
+          r-version: ${{ matrix.r-version }}
+
+      - name: Install dependencies
+        run: |
+          Rscript -e "install.packages(c('R6','rlang','testthat'), repos='https://cloud.r-project.org')"
+
+      - name: Install package
+        run: R CMD INSTALL r
+
+      - name: Run tests
+        run: Rscript -e "testthat::test_dir('r/tests/testthat')"
+
+      - name: Build package
+        run: R CMD build r

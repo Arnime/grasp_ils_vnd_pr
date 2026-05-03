@@ -5,6 +5,7 @@ __pycache__/
 build/
 dist/
 .venv/
+.julia-env/
 .env
 .pytest_cache/
 .coverage

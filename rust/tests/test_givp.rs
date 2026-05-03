@@ -4,6 +4,7 @@
 #[cfg(test)]
 mod tests {
     use givp::{givp, Direction, GivpConfig, GivpError, TerminationReason};
+    use proptest::prelude::*;
 
     // ── Test functions ──────────────────────────────────────────────
 
@@ -644,5 +645,105 @@ mod tests {
             ..Default::default()
         };
         assert!(matches!(cfg.validate(), Err(GivpError::InvalidConfig(_))));
+    }
+
+    // ── Property-based tests (proptest) ─────────────────────────────
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(64))]
+
+        #[test]
+        fn prop_result_x_within_bounds(
+            lo in -10.0f64..-0.5f64,
+            hi in 0.5f64..10.0f64,
+            ndim in 1usize..=4usize,
+            seed in 0u64..=999u64,
+        ) {
+            let bounds: Vec<(f64, f64)> = vec![(lo, hi); ndim];
+            let cfg = GivpConfig {
+                max_iterations: 5,
+                seed: Some(seed),
+                integer_split: Some(ndim),
+                ..Default::default()
+            };
+            if let Ok(r) = givp(sphere, &bounds, cfg) {
+                for (i, &xi) in r.x.iter().enumerate() {
+                    prop_assert!(
+                        xi >= bounds[i].0 - 1e-9,
+                        "x[{i}] = {xi} is below lo = {}", bounds[i].0
+                    );
+                    prop_assert!(
+                        xi <= bounds[i].1 + 1e-9,
+                        "x[{i}] = {xi} is above hi = {}", bounds[i].1
+                    );
+                }
+            }
+        }
+
+        #[test]
+        fn prop_nfev_positive_on_success(
+            lo in -5.0f64..-0.1f64,
+            hi in 0.1f64..5.0f64,
+            ndim in 1usize..=3usize,
+            seed in 0u64..=99u64,
+        ) {
+            let bounds: Vec<(f64, f64)> = vec![(lo, hi); ndim];
+            let cfg = GivpConfig {
+                max_iterations: 5,
+                seed: Some(seed),
+                integer_split: Some(ndim),
+                ..Default::default()
+            };
+            if let Ok(r) = givp(sphere, &bounds, cfg) {
+                prop_assert!(r.nfev > 0, "nfev must be > 0");
+            }
+        }
+
+        #[test]
+        fn prop_deterministic_with_seed(
+            lo in -5.0f64..-0.1f64,
+            hi in 0.1f64..5.0f64,
+            seed in 0u64..=49u64,
+        ) {
+            let make = |s: u64| GivpConfig {
+                max_iterations: 5,
+                seed: Some(s),
+                integer_split: Some(2),
+                ..Default::default()
+            };
+            let bounds = vec![(lo, hi); 2];
+            let r1 = givp(sphere, &bounds, make(seed));
+            let r2 = givp(sphere, &bounds, make(seed));
+            if let (Ok(a), Ok(b)) = (r1, r2) {
+                prop_assert!(
+                    (a.fun - b.fun).abs() < 1e-10,
+                    "same seed → different results: {} vs {}", a.fun, b.fun
+                );
+            }
+        }
+
+        #[test]
+        fn prop_success_implies_finite_fun(
+            lo in -5.0f64..-0.5f64,
+            hi in 0.5f64..5.0f64,
+            ndim in 1usize..=4usize,
+            seed in 0u64..=49u64,
+        ) {
+            let bounds: Vec<(f64, f64)> = vec![(lo, hi); ndim];
+            let cfg = GivpConfig {
+                max_iterations: 5,
+                seed: Some(seed),
+                integer_split: Some(ndim),
+                ..Default::default()
+            };
+            if let Ok(r) = givp(sphere, &bounds, cfg) {
+                if r.success {
+                    prop_assert!(
+                        r.fun.is_finite(),
+                        "success=true but fun={} is not finite", r.fun
+                    );
+                }
+            }
+        }
     }
 }

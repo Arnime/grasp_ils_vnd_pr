@@ -20,10 +20,12 @@ Import them directly from their defining submodule when needed, e.g.::
 
 from __future__ import annotations
 
+import importlib
+
 from givp.config import GIVPConfig
 
 # `import givp.core.path_relinking as _pr_module` and get the module object.
-from givp.core import grasp, ils, impl, legacy_sog2, vnd
+from givp.core import grasp, ils, impl, vnd
 
 # Re-export key symbols from the canonical submodules (public API surface).
 from givp.core.cache import EvaluationCache
@@ -36,12 +38,12 @@ from givp.core.grasp import (
 )
 from givp.core.ils import ils_search, perturb_solution_numpy
 from givp.core.impl import grasp_ils_vnd
-from givp.core.legacy_sog2 import evaluate_candidates
 from givp.core.pr import bidirectional_path_relinking, path_relinking
 from givp.core.vnd import (
     local_search_vnd,
     local_search_vnd_adaptive,
 )
+from givp.legacy.sog2 import evaluate_candidates
 
 __all__ = [
     # Public classes
@@ -68,3 +70,10 @@ __all__ = [
     "select_rcl",
     "vnd",
 ]
+
+
+def __getattr__(name: str) -> object:
+    """Provide lazy compatibility import for the deprecated legacy module."""
+    if name == "legacy_sog2":
+        return importlib.import_module("givp.core.legacy_sog2")
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

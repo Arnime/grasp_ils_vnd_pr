@@ -1,0 +1,81 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
+
+name: CI SonarQube
+
+on:
+    push:
+        branches: [ main ]
+        paths:
+            - "python/**"
+            - "julia/**"
+            - "rust/**"
+            - "cpp/**"
+            - "r/**"
+            - "sonar-project.properties"
+            - ".github/workflows/ci-sonarqube.yml"
+    pull_request:
+        paths:
+            - "python/**"
+            - "julia/**"
+            - "rust/**"
+            - "cpp/**"
+            - "r/**"
+            - "sonar-project.properties"
+            - ".github/workflows/ci-sonarqube.yml"
+    workflow_dispatch:
+
+env:
+    FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions: read-all
+
+jobs:
+    sonarqube:
+        name: SonarQube monorepo scan
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+              with:
+                  fetch-depth: 0
+
+            - id: preflight
+              name: Check SonarQube configuration
+              env:
+                  SONAR_TOKEN: ${{ secrets['SONAR_TOKEN'] }}
+                  SONAR_HOST_URL: ${{ secrets['SONAR_HOST_URL'] }}
+              run: |
+                  if [ -z "${SONAR_TOKEN}" ] || [ -z "${SONAR_HOST_URL}" ]; then
+                    echo "enabled=false" >> "$GITHUB_OUTPUT"
+                    echo "missing=true" >> "$GITHUB_OUTPUT"
+                  else
+                    echo "enabled=true" >> "$GITHUB_OUTPUT"
+                    echo "missing=false" >> "$GITHUB_OUTPUT"
+                  fi
+
+            - name: Configuration hint
+              if: steps.preflight.outputs.missing == 'true'
+              run: |
+                  echo "Skipping SonarQube scan because required secrets are missing."
+                  echo "Set SONAR_TOKEN and SONAR_HOST_URL in repository secrets to enable CI SonarQube analysis."
+
+            - name: Prepare C++ compile database
+              if: steps.preflight.outputs.enabled == 'true'
+              run: |
+                  cmake -S cpp -B build-sonar \
+                    -DCMAKE_BUILD_TYPE=Release \
+                    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+                    -DGIVP_BUILD_TESTS=OFF \
+                    -DGIVP_BUILD_BENCHMARKS=OFF
+
+            - name: SonarQube scan
+              if: steps.preflight.outputs.enabled == 'true'
+              uses: SonarSource/sonarqube-scan-action@v5.3.0
+              env:
+                  SONAR_TOKEN: ${{ secrets['SONAR_TOKEN'] }}
+                  SONAR_HOST_URL: ${{ secrets['SONAR_HOST_URL'] }}
+              with:
+                  args: >
+                      -Dsonar.projectKey=Arnime_grasp_ils_vnd_pr
+                      -Dsonar.projectName=givp -Dsonar.qualitygate.wait=true
+                      -Dsonar.qualitygate.timeout=300

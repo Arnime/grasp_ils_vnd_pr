@@ -5,33 +5,45 @@
 #include <stdexcept>
 #include <string>
 
-namespace givp {
+namespace givp
+{
 
-/// Base exception for all GIVP errors.
-class GivpError : public std::runtime_error {
-public:
-    explicit GivpError(const std::string& msg) : std::runtime_error(msg) {}
-};
+    /// Base exception for all GIVP errors.
+    class GivpError : public std::runtime_error
+    {
+    public:
+        explicit GivpError(const std::string &msg) : std::runtime_error(msg) {}
+    };
 
-class InvalidBounds : public GivpError {
-public:
-    explicit InvalidBounds(const std::string& msg) : GivpError("invalid bounds: " + msg) {}
-};
+    class InvalidBounds : public GivpError
+    {
+    public:
+        explicit InvalidBounds(const std::string &msg) : GivpError("invalid bounds: " + msg) {}
+    };
 
-class InvalidInitialGuess : public GivpError {
-public:
-    explicit InvalidInitialGuess(const std::string& msg)
-        : GivpError("invalid initial guess: " + msg) {}
-};
+    class InvalidInitialGuess : public GivpError
+    {
+    public:
+        explicit InvalidInitialGuess(const std::string &msg)
+            : GivpError("invalid initial guess: " + msg) {}
+    };
 
-class InvalidConfig : public GivpError {
-public:
-    explicit InvalidConfig(const std::string& msg) : GivpError("invalid config: " + msg) {}
-};
+    class InvalidConfig : public GivpError
+    {
+    public:
+        explicit InvalidConfig(const std::string &msg) : GivpError("invalid config: " + msg) {}
+    };
 
-class EmptyPool : public GivpError {
-public:
-    explicit EmptyPool(const std::string& msg) : GivpError("empty elite pool: " + msg) {}
-};
+    class EvaluatorError : public GivpError
+    {
+    public:
+        explicit EvaluatorError(const std::string &msg) : GivpError("evaluator error: " + msg) {}
+    };
+
+    class EmptyPool : public GivpError
+    {
+    public:
+        explicit EmptyPool(const std::string &msg) : GivpError("empty elite pool: " + msg) {}
+    };
 
 } // namespace givp

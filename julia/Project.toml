@@ -14,22 +14,28 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
+Aqua = "0.8"
 Dates = "1"
 Documenter = "1"
+JET = "0.9"
 JSON = "0.21, 1"
 JuliaFormatter = "2"
 LinearAlgebra = "1"
 Printf = "1"
 Random = "1"
 Statistics = "1"
+Supposition = "0.3"
 Test = "1"
 julia = "1.9"
 
 [extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+JET = "c3a54625-cd67-489e-a8e7-0f5a35cc5b8f"
 JuliaFormatter = "98e50ef6-434e-11e9-1051-2b60c6c9e899"
+Supposition = "5a0628fe-1738-4658-9b6d-0b7605a9755b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 format = ["JuliaFormatter"]
-test = ["Test"]
+test = ["Aqua", "JET", "Supposition", "Test"]

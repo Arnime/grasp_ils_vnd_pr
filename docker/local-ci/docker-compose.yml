@@ -1,0 +1,83 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
+
+services:
+  workflow-lint:
+    image: rhysd/actionlint:1.7.7
+    working_dir: /workspace
+    volumes:
+      - ../../:/workspace
+    command: [ "-color" ]
+
+  python:
+    build:
+      context: ../../
+      dockerfile: docker/local-ci/python.Dockerfile
+    working_dir: /workspace
+    volumes:
+      - ../../:/workspace
+      - pip-cache:/root/.cache/pip
+    environment:
+      - PIP_DISABLE_PIP_VERSION_CHECK=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - RUN_MUTATION=${RUN_MUTATION:-false}
+    command: [ "bash", "scripts/local-ci/python.sh" ]
+
+  rust:
+    build:
+      context: ../../
+      dockerfile: docker/local-ci/rust.Dockerfile
+    working_dir: /workspace
+    volumes:
+      - ../../:/workspace
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+      - rust-target:/workspace/rust/target
+    environment:
+      - CARGO_TERM_COLOR=always
+    command: [ "bash", "scripts/local-ci/rust.sh" ]
+
+  julia:
+    build:
+      context: ../../
+      dockerfile: docker/local-ci/julia.Dockerfile
+    working_dir: /workspace
+    volumes:
+      - ../../:/workspace
+      - julia-depot:/root/.julia
+    command: [ "bash", "scripts/local-ci/julia.sh" ]
+
+  cpp:
+    build:
+      context: ../../
+      dockerfile: docker/local-ci/cpp.Dockerfile
+    working_dir: /workspace
+    volumes:
+      - ../../:/workspace
+    command: [ "bash", "scripts/local-ci/cpp.sh" ]
+
+  r:
+    build:
+      context: ../../
+      dockerfile: docker/local-ci/r.Dockerfile
+    working_dir: /workspace
+    volumes:
+      - ../../:/workspace
+    command: [ "bash", "scripts/local-ci/r.sh" ]
+
+  sonarqube:
+    image: sonarsource/sonar-scanner-cli:latest
+    working_dir: /workspace
+    volumes:
+      - ../../:/workspace
+    environment:
+      - SONAR_TOKEN=${SONAR_TOKEN:-}
+      - SONAR_HOST_URL=${SONAR_HOST_URL:-}
+    command: [ "bash", "scripts/local-ci/sonarqube.sh" ]
+
+volumes:
+  pip-cache:
+  cargo-registry:
+  cargo-git:
+  rust-target:
+  julia-depot:

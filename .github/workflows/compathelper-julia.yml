@@ -28,9 +28,25 @@ jobs:
       - uses: julia-actions/setup-julia@f6f565d9f7cf12f53dc8045742460d6260ad3b39 # v3.0.1
         with:
           version: "1.12"
-      - uses: JuliaRegistries/CompatHelper.jl@5cf29123e1d355fcaa8420bb85014818fd06a84f # v3.13.1
-        with:
-          subdirs: julia
+      - name: Add General registry via Git
+        run: |
+          import Pkg
+          ENV["JULIA_PKG_SERVER"] = ""
+          Pkg.Registry.add("General")
+        shell: julia --color=yes {0}
+      - name: Install CompatHelper
+        run: |
+          import Pkg
+          name = "CompatHelper"
+          uuid = "aa819f21-2bde-4658-8897-bab36330d9b7"
+          version = "3"
+          Pkg.add(; name, uuid, version)
+        shell: julia --color=yes {0}
+      - name: Run CompatHelper
+        run: |
+          import CompatHelper
+          CompatHelper.main(; subdirs = ["julia"])
+        shell: julia --color=yes {0}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COMPATHELPER_PRIV: ${{ secrets.DOCUMENTER_KEY }}

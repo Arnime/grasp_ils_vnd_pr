@@ -103,6 +103,27 @@ With coverage:
 julia --project=. -e 'using Pkg; Pkg.test(; coverage=true)'
 ```
 
+## Experimental seed sweep API
+
+For reproducible multi-seed studies, Julia also provides the same
+`seed_sweep`/`sweep_summary` workflow as the Python port:
+
+```julia
+using GIVPOptimizer
+
+sphere(x) = sum(x .^ 2)
+bounds = [(-5.12, 5.12) for _ in 1:10]
+
+rows = seed_sweep(sphere, bounds; seeds=0:29)
+summary = sweep_summary(rows)
+
+println(summary["fun"]["mean"])
+println(summary["fun"]["std"])
+```
+
+Each row contains `seed`, `fun`, `nit`, `nfev`, `time_s`, `success`, and
+`message`.
+
 ## CLI
 
 A command-line interface equivalent to `givp run` is available at

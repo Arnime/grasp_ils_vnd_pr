@@ -25,5 +25,6 @@ using JET
     include("test_pr.jl")
     include("test_impl.jl")
     include("test_api.jl")
+    include("test_experiment.jl")
     include("test_properties.jl")
 end

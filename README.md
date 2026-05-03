@@ -15,7 +15,7 @@
 [![Codecov (julia)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=julia)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/julia)
 
 **Rust** &nbsp;
-[![crates.io: givp v0.7.0](https://img.shields.io/badge/Crates-givp%20v0.7.0-E05D44?logo=rust&logoColor=white)](https://crates.io/crates/givp)
+[![crates.io: givp v1.0.0](https://img.shields.io/badge/Crates-givp%20v1.0.0-E05D44?logo=rust&logoColor=white)](https://crates.io/crates/givp)
 [![Rust](https://img.shields.io/badge/Rust-1.85%2B-000000?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![CI Rust](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml)
 [![Codecov (rust)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=rust)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/rust)
@@ -29,19 +29,21 @@
 
 **Project** &nbsp;
 [![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/Arnime/grasp_ils_vnd_pr?cacheSeconds=300&logo=openssf&logoColor=white)](https://securityscorecards.dev/viewer/?uri=github.com/Arnime/grasp_ils_vnd_pr)
+[![CI SonarQube](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-sonarqube.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-sonarqube.yml)
 [![OpenSSF Gold](https://img.shields.io/badge/OpenSSF-best%20practices-gold?logo=openssf&logoColor=white)](https://www.bestpractices.dev/projects/12627)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?logo=open-source-initiative&logoColor=white)](https://opensource.org/licenses/MIT)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?logo=github&logoColor=white)](CONTRIBUTING.md)
 
 A direction-agnostic metaheuristic optimizer for **continuous, integer or
-mixed** black-box problems, available in four languages:
+mixed** black-box problems, available in five languages:
 
 | Language | Distribution | Requires |
 |----------|-------------|---------|
 | **Python** (NumPy-native) | [PyPI `givp`](https://pypi.org/project/givp/) | Python 3.10+, NumPy |
 | **Julia** | [JuliaHub `GIVPOptimizer`](https://juliahub.com/ui/Packages/General/GIVPOptimizer) | Julia 1.9+ |
 | **Rust** | [crates.io `givp`](https://crates.io/crates/givp) | Rust 1.85+ |
-| **C++17** | Header-only (FetchContent / copy) | C++17 compiler, CMake 3.21+ |
+| **C++17** | Header-only (vcpkg / FetchContent / copy) | C++17 compiler, CMake 3.21+ |
+| **R** | Local package (`r/`) | R 4.1+ |
 
 The library bundles:
 
@@ -51,6 +53,9 @@ The library bundles:
 - **Path Relinking** between elite solutions
 - LRU evaluation cache, convergence monitor, optional thread-parallel candidate
   evaluation, and a wall-clock time budget
+
+Code quality is enforced in CI with language-specific checks plus a monorepo
+SonarQube quality gate workflow (CI SonarQube).
 
 ---
 
@@ -153,7 +158,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-givp = "0.5"
+givp = "1.0.0"
 ```
 
 From source:
@@ -169,14 +174,29 @@ Requires Rust 1.85+ (edition 2021).
 
 ### C++ installation
 
-The C++ port is **header-only**. The recommended way is CMake `FetchContent`:
+The C++ port is **header-only**.
+
+Install with vcpkg:
+
+```bash
+vcpkg install givp
+```
+
+Then use in CMake:
+
+```cmake
+find_package(givp CONFIG REQUIRED)
+target_link_libraries(my_app PRIVATE givp::givp)
+```
+
+Alternatively, use CMake `FetchContent`:
 
 ```cmake
 include(FetchContent)
 FetchContent_Declare(
     givp
     GIT_REPOSITORY https://github.com/Arnime/grasp_ils_vnd_pr.git
-    GIT_TAG        v0.7.0
+    GIT_TAG        v1.0.0
     SOURCE_SUBDIR  cpp
 )
 FetchContent_MakeAvailable(givp)

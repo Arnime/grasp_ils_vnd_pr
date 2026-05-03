@@ -186,6 +186,7 @@ where
     }
 
     let mut stagnation: usize = 0;
+    let mut iterations_executed: usize = 0;
     let mut message = String::new();
 
     // Main loop
@@ -194,6 +195,7 @@ where
             message = "time limit reached".into();
             break;
         }
+        iterations_executed = iteration + 1;
 
         let alpha = get_current_alpha(
             iteration,
@@ -271,13 +273,16 @@ where
             elite_pool.add(candidate, ils_cost);
         }
 
-        // Convergence monitor
+        // Convergence monitor (single update per iteration)
+        let mut no_improve_count: Option<usize> = None;
         if let Some(ref mut cm) = conv_monitor {
             let signal = cm.update(best_cost, Some(&elite_pool));
+            no_improve_count = Some(signal.no_improve_count);
 
             if signal.should_restart {
                 elite_pool.keep_top(2);
                 cm.reset_no_improve();
+                no_improve_count = Some(0);
                 stagnation = 0;
                 if let Some(ref mut c) = cache {
                     c.clear();
@@ -355,13 +360,10 @@ where
             stagnation = 0;
         }
 
-        // Early stop
-        if let Some(ref mut cm) = conv_monitor {
-            let signal = cm.update(best_cost, Some(&elite_pool));
-            if signal.no_improve_count >= config.early_stop_threshold {
-                message = "early stop due to stagnation".into();
-                break;
-            }
+        // Early stop (reuses the same convergence signal from this iteration)
+        if no_improve_count.is_some_and(|count| count >= config.early_stop_threshold) {
+            message = "early stop due to stagnation".into();
+            break;
         }
 
         if iteration == config.max_iterations - 1 {
@@ -375,7 +377,7 @@ where
     let mut result = OptimizeResult::new(config.direction);
     result.x = best_solution;
     result.fun = final_cost;
-    result.nit = config.max_iterations;
+    result.nit = iterations_executed;
     result.nfev = nfev.load(Ordering::Relaxed);
     result.success = final_cost.is_finite();
     result.message = message.clone();

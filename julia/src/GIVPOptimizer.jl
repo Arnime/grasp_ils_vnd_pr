@@ -26,6 +26,7 @@ export GivpError,
     EmptyPoolError
 export validate_config!, to_dict
 export GIVPOptimizerWrapper, optimize!
+export seed_sweep, sweep_summary
 
 include("exceptions.jl")
 include("config.jl")
@@ -40,6 +41,7 @@ include("ils.jl")
 include("pr.jl")
 include("impl.jl")
 include("api.jl")
+include("experiment.jl")
 
 const __version__ = "1.0.0"
 
