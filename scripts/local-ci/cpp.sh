@@ -20,7 +20,7 @@ lcov --capture \
   --directory build_cov \
   --output-file coverage_raw.info \
   --gcov-tool gcov \
-  --ignore-errors source,gcov \
+  --ignore-errors source,gcov,negative \
   --rc geninfo_unexecuted_blocks=1
 lcov --remove coverage_raw.info \
   '*/build_cov/_deps/*' \
