@@ -30,15 +30,35 @@ grasp_construct <- function(
   n_candidates <- as.integer(config$num_candidates_per_step)
   alpha_value <- if (is.null(alpha)) config$alpha else alpha
 
+  # Pre-generate all candidate points
   candidates <- matrix(NA_real_, nrow = n_candidates, ncol = n)
-  values <- rep(NA_real_, n_candidates)
-
   for (k in seq_len(n_candidates)) {
     x <- stats::runif(n, min = bounds[, 1], max = bounds[, 2])
     x <- normalize_integer_tail(x, config$integer_split)
     x <- clamp_to_bounds(x, bounds)
     candidates[k, ] <- x
-    values[k] <- evaluate_candidate(func, x, cache, state)
+  }
+
+  # Evaluate candidates: parallel when n_workers > 1 on Unix, sequential
+  # otherwise. Parallel evaluation bypasses the cache because forked R
+  # processes cannot share mutable environments.
+  use_parallel <- isTRUE(config$n_workers > 1L) && .Platform$OS.type == "unix"
+  if (use_parallel) {
+    cand_list <- lapply(seq_len(n_candidates), function(k) candidates[k, ])
+    vals_list <- parallel::mclapply(
+      cand_list,
+      function(x) safe_eval(func, x),
+      mc.cores = config$n_workers
+    )
+    values <- vapply(vals_list, function(v) {
+      if (is.numeric(v) && length(v) == 1L) v else Inf
+    }, numeric(1))
+    state$nfev <- state$nfev + n_candidates
+  } else {
+    values <- rep(NA_real_, n_candidates)
+    for (k in seq_len(n_candidates)) {
+      values[k] <- evaluate_candidate(func, candidates[k, ], cache, state)
+    }
   }
 
   finite_idx <- which(is.finite(values))

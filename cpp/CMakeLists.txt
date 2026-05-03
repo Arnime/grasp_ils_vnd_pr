@@ -33,6 +33,7 @@ endif()
 # ── Optional subdirectories ─────────────────────────────────────────────────
 option(GIVP_BUILD_TESTS      "Build tests"      ON)
 option(GIVP_BUILD_BENCHMARKS "Build benchmarks" ON)
+option(GIVP_BUILD_FUZZ       "Build fuzz driver" ON)
 
 if(GIVP_BUILD_TESTS)
     enable_testing()
@@ -41,6 +42,10 @@ endif()
 
 if(GIVP_BUILD_BENCHMARKS)
     add_subdirectory(benchmarks)
+endif()
+
+if(GIVP_BUILD_FUZZ)
+    add_subdirectory(fuzz)
 endif()
 
 # ── Install rules ────────────────────────────────────────────────────────────

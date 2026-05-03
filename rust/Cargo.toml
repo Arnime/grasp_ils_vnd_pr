@@ -41,3 +41,7 @@ name = "run_literature_comparison"
 
 [[example]]
 name = "seed_sweep"
+
+[[example]]
+name = "fuzz_givp"
+path = "fuzz/fuzz_givp.rs"
