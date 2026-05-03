@@ -1,0 +1,7 @@
+linters: linters_with_defaults(
+  line_length_linter(120L),
+  object_name_linter(regexes = c(
+    "^[a-z][a-z0-9_]*$",
+    "^[A-Z][A-Za-z0-9]*$"
+  ))
+)

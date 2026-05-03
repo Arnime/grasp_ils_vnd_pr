@@ -116,7 +116,11 @@ namespace givp::detail
     {
         config.validate();
 
-        auto [lower, upper] = validate_bounds(bounds, config.initial_guess);
+        // C++17: structured bindings cannot be captured by lambdas; use
+        // regular named variables so the multi-worker lambda can capture them.
+        auto bounds_vecs = validate_bounds(bounds, config.initial_guess);
+        auto lower = std::move(bounds_vecs.first);
+        auto upper = std::move(bounds_vecs.second);
         std::size_t num_vars = bounds.size();
 
         // When integer_split is not set, treat all variables as continuous

@@ -37,8 +37,8 @@ jobs:
 
       - name: cargo publish --dry-run
         working-directory: rust
-        run: cargo publish --dry-run --locked
+        run: cargo publish --dry-run --locked --allow-dirty
 
       - name: cargo package (verify tarball)
         working-directory: rust
-        run: cargo package --locked --list
+        run: cargo package --locked --allow-dirty --list
