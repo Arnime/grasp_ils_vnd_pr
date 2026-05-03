@@ -3,7 +3,7 @@
 
 #[cfg(test)]
 mod tests {
-    use givp::{givp, Direction, GivpConfig, GivpError, TerminationReason};
+    use givp::{givp, seed_sweep, Direction, GivpConfig, GivpError, TerminationReason};
     use proptest::prelude::*;
 
     // ── Test functions ──────────────────────────────────────────────
@@ -645,6 +645,63 @@ mod tests {
             ..Default::default()
         };
         assert!(matches!(cfg.validate(), Err(GivpError::InvalidConfig(_))));
+    }
+
+    // ── Experimental protocol tests ─────────────────────────────────
+
+    #[test]
+    fn test_seed_sweep_basic() {
+        let sphere = |x: &[f64]| x.iter().map(|v| v * v).sum::<f64>();
+        let bounds = vec![(-5.12, 5.12); 3];
+        let cfg = GivpConfig {
+            max_iterations: 10,
+            ..Default::default()
+        };
+
+        let (results, summary) = seed_sweep(&sphere, &bounds, cfg, 5).unwrap();
+
+        assert_eq!(results.len(), 5);
+        assert!(summary.fun_mean.is_finite());
+        assert!(summary.fun_std >= 0.0);
+        assert!(summary.fun_min <= summary.fun_mean);
+        assert!(summary.fun_max >= summary.fun_mean);
+    }
+
+    #[test]
+    fn test_seed_sweep_deterministic() {
+        let sphere = |x: &[f64]| x.iter().map(|v| v * v).sum::<f64>();
+        let bounds = vec![(-5.12, 5.12); 2];
+        let cfg = GivpConfig {
+            max_iterations: 5,
+            ..Default::default()
+        };
+
+        let (_, summary1) = seed_sweep(&sphere, &bounds, cfg.clone(), 3).unwrap();
+        let (_, summary2) = seed_sweep(&sphere, &bounds, cfg, 3).unwrap();
+
+        // Same seed sweep should be deterministic
+        assert_eq!(summary1.fun_mean, summary2.fun_mean);
+    }
+
+    #[test]
+    fn test_seed_sweep_with_rosenbrock() {
+        let rosenbrock = |x: &[f64]| {
+            x.windows(2)
+                .map(|w| 100.0 * (w[1] - w[0] * w[0]).powi(2) + (1.0 - w[0]).powi(2))
+                .sum::<f64>()
+        };
+        let bounds = vec![(-5.0, 10.0); 2];
+        let cfg = GivpConfig {
+            max_iterations: 15,
+            ..Default::default()
+        };
+
+        let (results, summary) = seed_sweep(&rosenbrock, &bounds, cfg, 4).unwrap();
+
+        assert_eq!(results.len(), 4);
+        assert!(summary.fun_mean > 0.0);
+        assert!(summary.nfev_mean > 0.0);
+        assert!(summary.nit_mean > 0.0);
     }
 
     // ── Property-based tests (proptest) ─────────────────────────────
