@@ -193,6 +193,20 @@ TEST_CASE("non-adaptive alpha uses fixed alpha throughout", "[advanced]") {
     REQUIRE(result.success);
 }
 
+TEST_CASE("n_workers > 1 executes parallel candidate path", "[advanced]") {
+    std::vector<std::pair<double, double>> bounds(5, {-5.0, 5.0});
+    GivpConfig cfg;
+    cfg.seed = 42;
+    cfg.max_iterations = 10;
+    cfg.integer_split = 5;
+    cfg.n_workers = 2;
+
+    auto result = givp::givp(sphere, bounds, cfg);
+    REQUIRE(result.success);
+    REQUIRE(result.x.size() == 5);
+    REQUIRE(std::isfinite(result.fun));
+}
+
 // ── sample_integer_from_bounds: lo_i > hi_i fallback ─────────────────────────
 
 TEST_CASE("integer bounds narrower than 1 integer triggers fallback", "[advanced]") {

@@ -57,6 +57,8 @@ struct GivpConfig {
             throw InvalidConfig("elite_size must be > 0");
         if (path_relink_frequency == 0)
             throw InvalidConfig("path_relink_frequency must be > 0");
+        if (n_workers == 0)
+            throw InvalidConfig("n_workers must be > 0");
         if (alpha < 0.0 || alpha > 1.0)
             throw InvalidConfig("alpha must be in [0.0, 1.0]");
         if (alpha_min < 0.0 || alpha_min > 1.0)

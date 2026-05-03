@@ -5,6 +5,7 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <future>
 #include <string>
 #include <utility>
 #include <vector>
@@ -202,26 +203,84 @@ namespace givp::detail
                     ? &(*config.initial_guess)
                     : nullptr;
 
-            // GRASP construction
-            auto grasp_result = construct_grasp(
-                num_vars, lower, upper, wrapped, ig, alpha, half,
-                config.num_candidates_per_step, cache, child, deadline);
-            std::vector<double> candidate = std::move(grasp_result.first);
+            std::vector<double> candidate;
+            double ils_cost = std::numeric_limits<double>::infinity();
 
-            // VND local search
-            double grasp_eval =
-                evaluate_with_cache(candidate, wrapped, cache, half);
-            double vnd_cost =
-                local_search_vnd(wrapped, candidate, grasp_eval, half,
-                                 lower, upper, config.vnd_iterations,
-                                 cache, child, deadline);
+            if (config.n_workers <= 1)
+            {
+                // Single-worker path keeps cache behavior identical to prior releases.
+                auto grasp_result = construct_grasp(
+                    num_vars, lower, upper, wrapped, ig, alpha, half,
+                    config.num_candidates_per_step, cache, child, deadline);
+                candidate = std::move(grasp_result.first);
 
-            // ILS
-            double ils_cost =
-                ils_search(wrapped, candidate, vnd_cost, half,
-                           lower, upper, config.ils_iterations,
-                           config.vnd_iterations, config.perturbation_strength,
-                           cache, child, deadline);
+                double grasp_eval =
+                    evaluate_with_cache(candidate, wrapped, cache, half);
+                double vnd_cost =
+                    local_search_vnd(wrapped, candidate, grasp_eval, half,
+                                     lower, upper, config.vnd_iterations,
+                                     cache, child, deadline);
+
+                ils_cost =
+                    ils_search(wrapped, candidate, vnd_cost, half,
+                               lower, upper, config.ils_iterations,
+                               config.vnd_iterations, config.perturbation_strength,
+                               cache, child, deadline);
+            }
+            else
+            {
+                struct WorkerResult
+                {
+                    std::vector<double> candidate;
+                    double cost;
+                };
+
+                std::vector<std::future<WorkerResult>> futures;
+                futures.reserve(config.n_workers);
+
+                for (std::size_t worker = 0; worker < config.n_workers; ++worker)
+                {
+                    auto worker_rng = rng.child();
+                    const std::vector<double> *worker_ig = (worker == 0) ? ig : nullptr;
+
+                    futures.push_back(std::async(
+                        std::launch::async,
+                        [&, worker_rng = std::move(worker_rng), worker_ig]() mutable -> WorkerResult
+                        {
+                            // Keep per-worker cache local to avoid shared mutable state.
+                            std::optional<EvaluationCache> local_cache;
+
+                            auto grasp_result = construct_grasp(
+                                num_vars, lower, upper, wrapped, worker_ig, alpha, half,
+                                config.num_candidates_per_step, local_cache, worker_rng, deadline);
+                            std::vector<double> local_candidate = std::move(grasp_result.first);
+
+                            double grasp_eval =
+                                evaluate_with_cache(local_candidate, wrapped, local_cache, half);
+                            double vnd_cost =
+                                local_search_vnd(wrapped, local_candidate, grasp_eval, half,
+                                                 lower, upper, config.vnd_iterations,
+                                                 local_cache, worker_rng, deadline);
+                            double local_cost =
+                                ils_search(wrapped, local_candidate, vnd_cost, half,
+                                           lower, upper, config.ils_iterations,
+                                           config.vnd_iterations, config.perturbation_strength,
+                                           local_cache, worker_rng, deadline);
+
+                            return WorkerResult{std::move(local_candidate), local_cost};
+                        }));
+                }
+
+                for (auto &f : futures)
+                {
+                    auto wr = f.get();
+                    if (wr.cost < ils_cost)
+                    {
+                        ils_cost = wr.cost;
+                        candidate = std::move(wr.candidate);
+                    }
+                }
+            }
 
             // Update best
             if (ils_cost < best_cost)

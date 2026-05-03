@@ -43,6 +43,12 @@ TEST_CASE("path_relink_frequency == 0 throws", "[config]") {
     REQUIRE_THROWS_AS(cfg.validate(), InvalidConfig);
 }
 
+TEST_CASE("n_workers == 0 throws", "[config]") {
+    GivpConfig cfg;
+    cfg.n_workers = 0;
+    REQUIRE_THROWS_AS(cfg.validate(), InvalidConfig);
+}
+
 TEST_CASE("alpha out of range throws", "[config]") {
     GivpConfig cfg;
     cfg.alpha = -0.1;

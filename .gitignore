@@ -2,9 +2,7 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .eggs/
-build/
-build_bench/
-build_cov/
+build*/
 dist/
 .venv/
 .venv-ci/
