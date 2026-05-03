@@ -112,10 +112,7 @@ fn main() {
                 success: result.success,
                 message: result.message,
             };
-            println!(
-                "{}",
-                to_json(&payload)
-            );
+            println!("{}", to_json(&payload));
         }
         Err(e) => {
             let payload = CliResult {
@@ -128,10 +125,7 @@ fn main() {
                 success: false,
                 message: e.to_string(),
             };
-            eprintln!(
-                "{}",
-                to_json(&payload)
-            );
+            eprintln!("{}", to_json(&payload));
             std::process::exit(1);
         }
     }

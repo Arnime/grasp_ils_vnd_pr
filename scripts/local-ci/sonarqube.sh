@@ -6,9 +6,14 @@ set -euo pipefail
 
 cd /workspace
 
-if [ -z "${SONAR_TOKEN:-}" ] || [ -z "${SONAR_HOST_URL:-}" ]; then
+MISSING_VARS=()
+[ -z "${SONAR_TOKEN:-}" ] && MISSING_VARS+=("SONAR_TOKEN")
+[ -z "${SONAR_HOST_URL:-}" ] && MISSING_VARS+=("SONAR_HOST_URL")
+
+if [ "${#MISSING_VARS[@]}" -gt 0 ]; then
   echo "Missing required environment variables for SonarQube scan."
-  echo "Set SONAR_TOKEN and SONAR_HOST_URL in .env (repo root) or shell env."
+  echo "Missing: ${MISSING_VARS[*]}"
+  echo "Set these keys in .env (repo root) or export them in the shell."
   exit 1
 fi
 

@@ -8,7 +8,7 @@ cd /workspace/rust
 
 echo "[rust] Toolchain components"
 rustup component add clippy rustfmt llvm-tools-preview
-cargo install cargo-llvm-cov --locked
+cargo install cargo-llvm-cov --version 0.6.21 --locked
 
 echo "[rust] Build"
 cargo build --verbose

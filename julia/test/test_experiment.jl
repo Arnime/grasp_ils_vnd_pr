@@ -47,6 +47,16 @@ using GIVPOptimizer
 
     summary_a = sweep_summary(rows_a)
     summary_b = sweep_summary(rows_b)
-    @test isapprox(summary_a["fun"]["mean"], summary_b["fun"]["mean"]; atol = 1e-12, rtol = 0.0)
-    @test isapprox(summary_a["nfev"]["mean"], summary_b["nfev"]["mean"]; atol = 1e-12, rtol = 0.0)
+    @test isapprox(
+        summary_a["fun"]["mean"],
+        summary_b["fun"]["mean"];
+        atol = 1e-12,
+        rtol = 0.0,
+    )
+    @test isapprox(
+        summary_a["nfev"]["mean"],
+        summary_b["nfev"]["mean"];
+        atol = 1e-12,
+        rtol = 0.0,
+    )
 end

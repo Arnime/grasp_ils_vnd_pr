@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
+
+# Default: LF everywhere
+* text=auto eol=lf
+
+# Rust — always LF
+*.rs text eol=lf
+
+# Python — always LF
+*.py text eol=lf
+
+# Julia — always LF
+*.jl text eol=lf
+
+# R — always LF
+*.R text eol=lf
+
+# Shell scripts — always LF
+*.sh text eol=lf
+
+# Windows-specific scripts keep CRLF
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files — no line-ending conversion
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.gz binary
+*.zip binary
+*.tar binary
+*.pdf binary

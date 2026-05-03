@@ -66,7 +66,9 @@ let
     for s in 0:4
         r = givp(sphere, bounds; direction = minimize, config = cfg, seed = s)
         push!(fvals, r.fun)
-        println("  seed=$s  fun=$(round(r.fun; digits=6))  nit=$(r.nit)  success=$(r.success)")
+        println(
+            "  seed=$s  fun=$(round(r.fun; digits=6))  nit=$(r.nit)  success=$(r.success)",
+        )
     end
     med = median(fvals)
     println("  median fun = $(round(med; digits=6))")
@@ -85,7 +87,9 @@ let
     for s in 0:4
         r = givp(rosenbrock, bounds; direction = minimize, config = cfg, seed = s)
         push!(fvals, r.fun)
-        println("  seed=$s  fun=$(round(r.fun; digits=4))  nit=$(r.nit)  success=$(r.success)")
+        println(
+            "  seed=$s  fun=$(round(r.fun; digits=4))  nit=$(r.nit)  success=$(r.success)",
+        )
     end
     med = median(fvals)
     println("  median fun = $(round(med; digits=4))")

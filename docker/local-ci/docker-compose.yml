@@ -70,9 +70,8 @@ services:
     working_dir: /workspace
     volumes:
       - ../../:/workspace
-    environment:
-      - SONAR_TOKEN=${SONAR_TOKEN:-}
-      - SONAR_HOST_URL=${SONAR_HOST_URL:-}
+    env_file:
+      - ../../.env
     command: [ "bash", "scripts/local-ci/sonarqube.sh" ]
 
 volumes:

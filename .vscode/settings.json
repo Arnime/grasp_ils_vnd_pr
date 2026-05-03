@@ -119,7 +119,7 @@
         "titleBar.inactiveBackground": "#16213e",
         "titleBar.border": "#0f3460"
     },
-    "cmake.sourceDirectory": "D:/Projetos/Projeto_SOG2/grasp_ils_vnd_pr/cpp",
+    "cmake.sourceDirectory": "D:/Projetos Pessoais/grasp_ils_vnd_pr/cpp",
     "python-envs.defaultEnvManager": "ms-python.python:poetry",
     "python-envs.defaultPackageManager": "ms-python.python:poetry"
 }
