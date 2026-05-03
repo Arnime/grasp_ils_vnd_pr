@@ -20,7 +20,9 @@ cache_key <- function(x) {
 #' Get cached value
 #' @keywords internal
 cache_get <- function(cache, x) {
-  if (is.null(cache)) return(NULL)
+  if (is.null(cache)) {
+    return(NULL)
+  }
   key <- cache_key(x)
   if (exists(key, envir = cache$store, inherits = FALSE)) {
     value <- get(key, envir = cache$store, inherits = FALSE)
@@ -33,7 +35,9 @@ cache_get <- function(cache, x) {
 #' Set cache value with LRU eviction
 #' @keywords internal
 cache_set <- function(cache, x, value) {
-  if (is.null(cache)) return(invisible(NULL))
+  if (is.null(cache)) {
+    return(invisible(NULL))
+  }
   key <- cache_key(x)
   assign(key, value, envir = cache$store)
   cache$order <- c(cache$order[cache$order != key], key)

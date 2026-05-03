@@ -3,7 +3,16 @@
 
 #' VND local search phase
 #' @keywords internal
-vnd_search <- function(func, x0, value0, bounds, config, direction, cache, state) {
+vnd_search <- function(
+  func,
+  x0,
+  value0,
+  bounds,
+  config,
+  direction,
+  cache,
+  state
+) {
   x_best <- x0
   v_best <- value0
   n <- length(x_best)

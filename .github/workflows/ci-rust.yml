@@ -93,7 +93,7 @@ jobs:
 
       - name: Clippy
         working-directory: rust
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --all-targets --all-features -- -D warnings
 
   fmt:
     runs-on: ubuntu-latest

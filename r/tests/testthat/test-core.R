@@ -34,7 +34,12 @@ test_that("seed_sweep runs n_runs experiments", {
     ils_iterations = 2L,
     num_candidates_per_step = 8L
   )
-  runs <- seed_sweep(sphere, bounds = list(c(-3, 3), c(-3, 3)), n_runs = 5L, config = cfg)
+  runs <- seed_sweep(
+    sphere,
+    bounds = list(c(-3, 3), c(-3, 3)),
+    n_runs = 5L,
+    config = cfg
+  )
   expect_length(runs, 5L)
   expect_true(all(vapply(runs, inherits, logical(1), "givp_result")))
 })
@@ -46,8 +51,16 @@ test_that("sweep_summary returns expected keys", {
     ils_iterations = 2L,
     num_candidates_per_step = 8L
   )
-  runs <- seed_sweep(sphere, bounds = list(c(-3, 3), c(-3, 3)), n_runs = 4L, config = cfg)
+  runs <- seed_sweep(
+    sphere,
+    bounds = list(c(-3, 3), c(-3, 3)),
+    n_runs = 4L,
+    config = cfg
+  )
   sm <- sweep_summary(runs)
-  expect_true(all(c("fun_mean", "fun_std", "fun_min", "fun_max", "nfev_mean", "nit_mean") %in% names(sm)))
+  expect_true(all(
+    c("fun_mean", "fun_std", "fun_min", "fun_max", "nfev_mean", "nit_mean") %in%
+      names(sm)
+  ))
   expect_true(is.finite(sm$fun_mean))
 })

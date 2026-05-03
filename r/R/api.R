@@ -5,7 +5,8 @@
 #'
 #' Functional entry point for the R port, mirroring the Python API.
 #'
-#' @param func Objective function receiving a numeric vector and returning scalar.
+#' @param func Objective function receiving a numeric vector and
+#'   returning scalar.
 #' @param bounds Variable bounds.
 #' @param num_vars Optional number of variables.
 #' @param minimize Optional boolean for optimization direction.
@@ -18,6 +19,7 @@
 #' @return A `givp_result` object.
 #' @export
 #'
+# nolint start: object_usage_linter
 givp <- function(func,
                  bounds,
                  num_vars = NULL,
@@ -36,7 +38,10 @@ givp <- function(func,
     config <- givp_config()
   }
   if (!inherits(config, "GIVPConfig")) {
-    givp_abort("config must be a GIVPConfig object", "givp_error_invalid_config")
+    givp_abort(
+      "config must be a GIVPConfig object",
+      "givp_error_invalid_config"
+    )
   }
 
   resolved_direction <- config$direction
@@ -47,17 +52,24 @@ givp <- function(func,
     resolved_direction <- direction
   }
   if (!resolved_direction %in% c("minimize", "maximize")) {
-    givp_abort("direction must be 'minimize' or 'maximize'", "givp_error_invalid_config")
+    givp_abort(
+      "direction must be 'minimize' or 'maximize'",
+      "givp_error_invalid_config"
+    )
   }
 
   b <- normalize_bounds(bounds, num_vars)
 
   if (!is.null(initial_guess)) {
     if (length(initial_guess) != nrow(b)) {
-      abort_invalid_initial_guess("initial_guess length does not match number of variables")
+      abort_invalid_initial_guess(
+        "initial_guess length does not match number of variables"
+      )
     }
     if (any(initial_guess <= b[, 1] | initial_guess >= b[, 2])) {
-      abort_invalid_initial_guess("initial_guess must be strictly inside bounds")
+      abort_invalid_initial_guess(
+        "initial_guess must be strictly inside bounds"
+      )
     }
     config$initial_guess <- as.numeric(initial_guess)
   }
@@ -74,9 +86,11 @@ givp <- function(func,
 
   result
 }
+# nolint end
 
 #' Object-oriented optimizer wrapper
 #' @export
+# nolint nextline object_name_linter
 GIVPOptimizer <- R6::R6Class(
   "GIVPOptimizer",
   public = list(
@@ -90,7 +104,6 @@ GIVPOptimizer <- R6::R6Class(
     iteration_callback = NULL,
     seed = NULL,
     verbose = FALSE,
-
     initialize = function(func,
                           bounds,
                           num_vars = NULL,
@@ -112,7 +125,6 @@ GIVPOptimizer <- R6::R6Class(
       self$seed <- seed
       self$verbose <- verbose
     },
-
     optimize = function() {
       givp(
         func = self$func,

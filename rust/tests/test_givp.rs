@@ -658,7 +658,7 @@ mod tests {
             ..Default::default()
         };
 
-        let (results, summary) = seed_sweep(&sphere, &bounds, cfg, 5).unwrap();
+        let (results, summary) = seed_sweep(sphere, &bounds, cfg, 5).unwrap();
 
         assert_eq!(results.len(), 5);
         assert!(summary.fun_mean.is_finite());
@@ -676,8 +676,8 @@ mod tests {
             ..Default::default()
         };
 
-        let (_, summary1) = seed_sweep(&sphere, &bounds, cfg.clone(), 3).unwrap();
-        let (_, summary2) = seed_sweep(&sphere, &bounds, cfg, 3).unwrap();
+        let (_, summary1) = seed_sweep(sphere, &bounds, cfg.clone(), 3).unwrap();
+        let (_, summary2) = seed_sweep(sphere, &bounds, cfg, 3).unwrap();
 
         // Same seed sweep should be deterministic
         assert_eq!(summary1.fun_mean, summary2.fun_mean);
@@ -696,7 +696,7 @@ mod tests {
             ..Default::default()
         };
 
-        let (results, summary) = seed_sweep(&rosenbrock, &bounds, cfg, 4).unwrap();
+        let (results, summary) = seed_sweep(rosenbrock, &bounds, cfg, 4).unwrap();
 
         assert_eq!(results.len(), 4);
         assert!(summary.fun_mean > 0.0);

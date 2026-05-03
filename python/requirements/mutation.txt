@@ -1,0 +1,2 @@
+mutmut==2.4.4 \
+    --hash=sha256:babd1ac579a817f94d5b944af70f1c5fee5ed117775be0a13c99b96b96841b23

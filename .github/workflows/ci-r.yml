@@ -49,7 +49,8 @@ jobs:
         run: Rscript -e "testthat::test_dir('r/tests/testthat')"
 
       - name: Run lintr
-        run: Rscript -e "lintr::lint_package('r', linters = lintr::linters_with_defaults())"
+        run: |
+          Rscript -e "lints <- lintr::lint_package('r', linters = lintr::linters_with_defaults()); n <- length(lints); cat(sprintf('lintr found %d lint(s)\n', n)); if (n > 0) stop(sprintf('lintr quality gate failed: %d lint(s) found', n))"
 
       - name: Check coverage gate (>=90%)
         run: |

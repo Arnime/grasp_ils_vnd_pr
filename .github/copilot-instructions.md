@@ -82,7 +82,7 @@ givp(func, bounds, *, num_vars=None, minimize=None, direction=None,
 - Target Julia **≥ 1.9**. Package name: `GIVPOptimizer`.
 - Follow standard Julia style: `CamelCase` for types, `snake_case` for functions, 4-space indentation.
 - Format with **JuliaFormatter** (`style = "default"`).
-- Tests are in `julia/test/runtests.jl`; minimum coverage gate: **85 %**.
+- Tests are in `julia/test/runtests.jl`; minimum coverage gate: **95 %**.
 - Fuzzing driver: `julia/fuzz/fuzz_givp.jl`.
 - CLI entry point: `julia/cli.jl`.
 - Use `@kwdef` structs for configuration to allow keyword construction.

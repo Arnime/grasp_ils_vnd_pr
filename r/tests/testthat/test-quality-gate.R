@@ -35,14 +35,16 @@ test_that("givp on sphere beats random baseline in median across seeds", {
 
   baseline_vals <- vapply(
     seeds,
-    function(s) random_baseline_min(sphere, bounds, n_samples = 80L, seed = s),
+    function(s) {
+      random_baseline_min(sphere, bounds, n_samples = 80L, seed = s)
+    },
     FUN.VALUE = numeric(1)
   )
 
   expect_lt(stats::median(givp_vals), stats::median(baseline_vals))
 })
 
-test_that("givp on rosenbrock stays finite and beats random baseline on most seeds", {
+test_that("givp on rosenbrock stays finite and beats baseline on most seeds", {
   bounds <- list(c(-2, 2), c(-2, 2), c(-2, 2), c(-2, 2))
   seeds <- 1:9
   cfg <- givp_config(
@@ -65,7 +67,9 @@ test_that("givp on rosenbrock stays finite and beats random baseline on most see
 
   baseline_vals <- vapply(
     seeds,
-    function(s) random_baseline_min(rosenbrock, bounds, n_samples = 120L, seed = s),
+    function(s) {
+      random_baseline_min(rosenbrock, bounds, n_samples = 120L, seed = s)
+    },
     FUN.VALUE = numeric(1)
   )
 

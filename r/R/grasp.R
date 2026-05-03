@@ -5,7 +5,9 @@
 #' @keywords internal
 evaluate_candidate <- function(func, x, cache, state) {
   cached <- cache_get(cache, x)
-  if (!is.null(cached)) return(cached)
+  if (!is.null(cached)) {
+    return(cached)
+  }
 
   value <- safe_eval(func, x)
   state$nfev <- state$nfev + 1L
@@ -15,7 +17,15 @@ evaluate_candidate <- function(func, x, cache, state) {
 
 #' GRASP construction phase
 #' @keywords internal
-grasp_construct <- function(func, bounds, config, direction, cache, state, alpha = NULL) {
+grasp_construct <- function(
+  func,
+  bounds,
+  config,
+  direction,
+  cache,
+  state,
+  alpha = NULL
+) {
   n <- nrow(bounds)
   n_candidates <- as.integer(config$num_candidates_per_step)
   alpha_value <- if (is.null(alpha)) config$alpha else alpha
@@ -49,7 +59,11 @@ grasp_construct <- function(func, bounds, config, direction, cache, state, alpha
     cutoff <- lo + alpha_value * (hi - lo)
     rcl_rel <- which(vals <= cutoff)
   }
-  rcl_rel <- if (length(rcl_rel) == 0L) which(vals == if (identical(direction, "maximize")) hi else lo) else rcl_rel
+  rcl_rel <- if (length(rcl_rel) == 0L) {
+    which(vals == if (identical(direction, "maximize")) hi else lo)
+  } else {
+    rcl_rel
+  }
 
   pick <- sample(finite_idx[rcl_rel], 1L)
   list(x = as.numeric(candidates[pick, ]), value = values[pick])

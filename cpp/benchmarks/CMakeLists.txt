@@ -12,6 +12,9 @@ FetchContent_MakeAvailable(nanobench)
 
 add_executable(givp_benchmarks benchmarks.cpp)
 target_link_libraries(givp_benchmarks PRIVATE givp::givp nanobench)
+target_include_directories(givp_benchmarks PRIVATE
+    ${nanobench_SOURCE_DIR}/src/include
+)
 target_compile_features(givp_benchmarks PRIVATE cxx_std_17)
 
 add_executable(givp_literature_comparison run_literature_comparison.cpp)
@@ -19,8 +22,16 @@ target_link_libraries(givp_literature_comparison PRIVATE givp::givp)
 target_compile_features(givp_literature_comparison PRIVATE cxx_std_17)
 
 if(MSVC)
-    target_compile_options(givp_benchmarks PRIVATE /O2)
-    target_compile_options(givp_literature_comparison PRIVATE /O2)
+    target_compile_options(givp_benchmarks PRIVATE
+        $<$<CONFIG:Release>:/O2>
+        $<$<CONFIG:RelWithDebInfo>:/O2>
+        $<$<CONFIG:MinSizeRel>:/O1>
+    )
+    target_compile_options(givp_literature_comparison PRIVATE
+        $<$<CONFIG:Release>:/O2>
+        $<$<CONFIG:RelWithDebInfo>:/O2>
+        $<$<CONFIG:MinSizeRel>:/O1>
+    )
 else()
     target_compile_options(givp_benchmarks PRIVATE -O3)
     target_compile_options(givp_literature_comparison PRIVATE -O3)

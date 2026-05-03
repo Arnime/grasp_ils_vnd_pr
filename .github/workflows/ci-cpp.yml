@@ -47,6 +47,38 @@ jobs:
             echo 'toolchains=[{"os":"ubuntu-latest","compiler":"gcc","cc":"gcc","cxx":"g++"},{"os":"ubuntu-latest","compiler":"clang","cc":"clang","cxx":"clang++"},{"os":"windows-latest","compiler":"msvc","cc":"cl","cxx":"cl"},{"os":"macos-latest","compiler":"clang","cc":"clang","cxx":"clang++"}]' >> "$GITHUB_OUTPUT"
           fi
 
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install clang tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format clang-tidy
+
+      - name: Check formatting (clang-format)
+        run: |
+          {
+            find cpp/include -type f \( -name '*.hpp' -o -name '*.h' \) -print0
+            find cpp/tests -type f \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -print0
+            find cpp/benchmarks -type f \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -print0
+          } | xargs -0 -r clang-format --dry-run --Werror
+
+      - name: Configure compile database
+        run: |
+          cmake -S cpp -B build_tidy \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DGIVP_BUILD_TESTS=ON \
+            -DGIVP_BUILD_BENCHMARKS=ON \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Run clang-tidy
+        run: |
+          find cpp/tests cpp/benchmarks -type f -name '*.cpp' -print0 \
+            | xargs -0 -r -n 1 clang-tidy -p build_tidy --warnings-as-errors='*'
+
   test:
     needs: setup
     runs-on: ${{ matrix.os }}

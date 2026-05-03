@@ -3,6 +3,7 @@
 
 #' GIVP configuration R6 class
 #' @export
+# nolint nextline object_name_linter
 GIVPConfig <- R6::R6Class(
   "GIVPConfig",
   public = list(
@@ -30,7 +31,6 @@ GIVPConfig <- R6::R6Class(
     initial_guess = NULL,
     seed = NULL,
     verbose = FALSE,
-
     initialize = function(...) {
       dots <- list(...)
       if (length(dots) > 0L) {
@@ -43,7 +43,6 @@ GIVPConfig <- R6::R6Class(
       }
       private$validate()
     },
-
     as_list = function() {
       out <- list()
       for (nm in names(self)) {
@@ -56,19 +55,39 @@ GIVPConfig <- R6::R6Class(
   ),
   private = list(
     validate = function() {
-      if (self$max_iterations < 1L) abort_invalid_config("max_iterations must be >= 1")
-      if (self$vnd_iterations < 1L) abort_invalid_config("vnd_iterations must be >= 1")
-      if (self$ils_iterations < 1L) abort_invalid_config("ils_iterations must be >= 1")
+      if (self$max_iterations < 1L) {
+        abort_invalid_config("max_iterations must be >= 1")
+      }
+      if (self$vnd_iterations < 1L) {
+        abort_invalid_config("vnd_iterations must be >= 1")
+      }
+      if (self$ils_iterations < 1L) {
+        abort_invalid_config("ils_iterations must be >= 1")
+      }
       if (self$elite_size < 1L) abort_invalid_config("elite_size must be >= 1")
-      if (self$path_relink_frequency < 1L) abort_invalid_config("path_relink_frequency must be >= 1")
-      if (self$num_candidates_per_step < 1L) abort_invalid_config("num_candidates_per_step must be >= 1")
+      if (self$path_relink_frequency < 1L) {
+        abort_invalid_config("path_relink_frequency must be >= 1")
+      }
+      if (self$num_candidates_per_step < 1L) {
+        abort_invalid_config("num_candidates_per_step must be >= 1")
+      }
       if (self$cache_size < 1L) abort_invalid_config("cache_size must be >= 1")
-      if (self$early_stop_threshold < 1L) abort_invalid_config("early_stop_threshold must be >= 1")
+      if (self$early_stop_threshold < 1L) {
+        abort_invalid_config("early_stop_threshold must be >= 1")
+      }
       if (self$n_workers < 1L) abort_invalid_config("n_workers must be >= 1")
-      if (self$alpha < 0 || self$alpha > 1) abort_invalid_config("alpha must be in [0, 1]")
-      if (self$alpha_min < 0 || self$alpha_min > 1) abort_invalid_config("alpha_min must be in [0, 1]")
-      if (self$alpha_max < 0 || self$alpha_max > 1) abort_invalid_config("alpha_max must be in [0, 1]")
-      if (self$alpha_min > self$alpha_max) abort_invalid_config("alpha_min must be <= alpha_max")
+      if (self$alpha < 0 || self$alpha > 1) {
+        abort_invalid_config("alpha must be in [0, 1]")
+      }
+      if (self$alpha_min < 0 || self$alpha_min > 1) {
+        abort_invalid_config("alpha_min must be in [0, 1]")
+      }
+      if (self$alpha_max < 0 || self$alpha_max > 1) {
+        abort_invalid_config("alpha_max must be in [0, 1]")
+      }
+      if (self$alpha_min > self$alpha_max) {
+        abort_invalid_config("alpha_min must be <= alpha_max")
+      }
       if (!self$direction %in% c("minimize", "maximize")) {
         abort_invalid_config("direction must be 'minimize' or 'maximize'")
       }

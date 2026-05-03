@@ -4,7 +4,7 @@
 #' Native fallback implementation for R port
 #' @keywords internal
 run_givp_native <- function(func, bounds, config, direction, seed = NULL) {
-  b <- normalize_bounds(bounds)
+  b <- normalize_bounds(bounds) # nolint: object_usage_linter
   n <- nrow(b)
   set_seed_if_needed(seed, config$seed)
 
@@ -12,12 +12,27 @@ run_givp_native <- function(func, bounds, config, direction, seed = NULL) {
   state$nfev <- 0L
   state$nit <- 0L
 
-  cache <- if (isTRUE(config$use_cache)) make_eval_cache(config$cache_size) else NULL
-  elite <- if (isTRUE(config$use_elite_pool)) make_elite_pool(config$elite_size, direction) else NULL
-  conv <- if (isTRUE(config$use_convergence_monitor)) make_convergence_monitor() else NULL
+  cache <- if (isTRUE(config$use_cache)) {
+    make_eval_cache(config$cache_size)
+  } else {
+    NULL
+  }
+  elite <- if (isTRUE(config$use_elite_pool)) {
+    make_elite_pool(config$elite_size, direction)
+  } else {
+    NULL
+  }
+  conv <- if (isTRUE(config$use_convergence_monitor)) {
+    make_convergence_monitor()
+  } else {
+    NULL
+  }
 
   if (!is.null(config$initial_guess)) {
-    best_x <- normalize_integer_tail(as.numeric(config$initial_guess), config$integer_split)
+    best_x <- normalize_integer_tail(
+      as.numeric(config$initial_guess),
+      config$integer_split
+    )
     best_x <- clamp_to_bounds(best_x, b)
     best_value <- evaluate_candidate(func, best_x, cache, state)
   } else {
@@ -37,7 +52,9 @@ run_givp_native <- function(func, bounds, config, direction, seed = NULL) {
   for (iter in seq_len(config$max_iterations)) {
     state$nit <- iter
 
-    if (config$time_limit > 0 && (proc.time()[[3L]] - t0) >= config$time_limit) {
+    reached_time_limit <- config$time_limit > 0 &&
+      (proc.time()[[3L]] - t0) >= config$time_limit
+    if (reached_time_limit) {
       message <- "time limit reached"
       break
     }
@@ -49,11 +66,39 @@ run_givp_native <- function(func, bounds, config, direction, seed = NULL) {
       config$alpha
     }
 
-    candidate <- grasp_construct(func, b, config, direction, cache, state, alpha)
-    candidate <- vnd_search(func, candidate$x, candidate$value, b, config, direction, cache, state)
-    candidate <- ils_search(func, candidate$x, candidate$value, b, config, direction, cache, state)
+    candidate <- grasp_construct(
+      func,
+      b,
+      config,
+      direction,
+      cache,
+      state,
+      alpha
+    )
+    candidate <- vnd_search(
+      func,
+      candidate$x,
+      candidate$value,
+      b,
+      config,
+      direction,
+      cache,
+      state
+    )
+    candidate <- ils_search(
+      func,
+      candidate$x,
+      candidate$value,
+      b,
+      config,
+      direction,
+      cache,
+      state
+    )
 
-    if (is.finite(candidate$value) && is_improvement(candidate$value, best_value, direction)) {
+    candidate_improved <- is.finite(candidate$value) &&
+      is_improvement(candidate$value, best_value, direction)
+    if (candidate_improved) {
       best_x <- candidate$x
       best_value <- candidate$value
       stagnation <- 0L
@@ -65,8 +110,9 @@ run_givp_native <- function(func, bounds, config, direction, seed = NULL) {
       elite <- elite_add(elite, candidate$x, candidate$value)
     }
 
-    if (!is.null(elite) && length(elite$items) >= 2L &&
-        (iter %% as.integer(config$path_relink_frequency) == 0L)) {
+    should_relink <- !is.null(elite) && length(elite$items) >= 2L &&
+      (iter %% as.integer(config$path_relink_frequency) == 0L)
+    if (should_relink) {
       pr <- path_relink(
         func,
         elite$items[[1L]]$x,
@@ -77,7 +123,9 @@ run_givp_native <- function(func, bounds, config, direction, seed = NULL) {
         cache,
         state
       )
-      if (is.finite(pr$value) && is_improvement(pr$value, best_value, direction)) {
+      pr_improved <- is.finite(pr$value) &&
+        is_improvement(pr$value, best_value, direction)
+      if (pr_improved) {
         best_x <- pr$x
         best_value <- pr$value
         stagnation <- 0L
@@ -94,7 +142,9 @@ run_givp_native <- function(func, bounds, config, direction, seed = NULL) {
 
     if (stagnation > max(5L, as.integer(config$max_iterations %/% 4L))) {
       restart <- grasp_construct(func, b, config, direction, cache, state)
-      if (is.finite(restart$value) && is_improvement(restart$value, best_value, direction)) {
+      restart_improved <- is.finite(restart$value) &&
+        is_improvement(restart$value, best_value, direction)
+      if (restart_improved) {
         best_x <- restart$x
         best_value <- restart$value
       }
@@ -105,10 +155,14 @@ run_givp_native <- function(func, bounds, config, direction, seed = NULL) {
   success <- all(is.finite(best_x)) && is.finite(best_value)
   if (!success) {
     message <- "no feasible solution found"
-    best_x <- if (exists("best_x", inherits = FALSE)) best_x else rep(NA_real_, n)
+    best_x <- if (exists("best_x", inherits = FALSE)) {
+      best_x
+    } else {
+      rep(NA_real_, n)
+    }
   }
 
-  make_result(
+  make_result( # nolint: object_usage_linter
     x = best_x,
     fun = best_value,
     nit = as.integer(state$nit),

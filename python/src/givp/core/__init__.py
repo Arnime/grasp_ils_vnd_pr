@@ -21,6 +21,7 @@ Import them directly from their defining submodule when needed, e.g.::
 from __future__ import annotations
 
 import importlib
+from typing import TYPE_CHECKING
 
 from givp.config import GIVPConfig
 
@@ -44,6 +45,10 @@ from givp.core.vnd import (
     local_search_vnd_adaptive,
 )
 from givp.legacy.sog2 import evaluate_candidates
+
+if TYPE_CHECKING:
+    # Declare for static analyzers; runtime access remains lazy via __getattr__.
+    import givp.core.legacy_sog2 as legacy_sog2
 
 __all__ = [
     # Public classes

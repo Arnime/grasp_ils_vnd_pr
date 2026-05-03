@@ -112,7 +112,7 @@ mod tests {
             ..Default::default()
         };
 
-        let (results, summary) = seed_sweep(&sphere, &bounds, cfg, 5).unwrap();
+        let (results, summary) = seed_sweep(sphere, &bounds, cfg, 5).unwrap();
 
         assert_eq!(results.len(), 5);
         assert!(summary.fun_mean.is_finite());
@@ -131,8 +131,8 @@ mod tests {
             ..Default::default()
         };
 
-        let (_, summary1) = seed_sweep(&sphere, &bounds, cfg.clone(), 3).unwrap();
-        let (_, summary2) = seed_sweep(&sphere, &bounds, cfg, 3).unwrap();
+        let (_, summary1) = seed_sweep(sphere, &bounds, cfg.clone(), 3).unwrap();
+        let (_, summary2) = seed_sweep(sphere, &bounds, cfg, 3).unwrap();
 
         // Same number of runs should produce deterministic seed assignment
         assert_eq!(summary1.fun_mean, summary2.fun_mean);
