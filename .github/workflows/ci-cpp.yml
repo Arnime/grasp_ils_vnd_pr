@@ -116,7 +116,7 @@ jobs:
                --ignore-errors source
           lcov --list coverage.info
 
-      - name: Check coverage gate (≥85%)
+      - name: Check coverage gate (≥90%)
         run: |
           hit=$(grep '^LH:' coverage.info | awk -F: '{s+=$2} END {print s+0}')
           total=$(grep '^LF:' coverage.info | awk -F: '{s+=$2} END {print s+0}')
@@ -126,7 +126,7 @@ jobs:
           fi
           pct=$(awk "BEGIN {printf \"%.1f\", $hit / $total * 100}")
           echo "C++ coverage: ${pct}%  ($hit / $total lines)"
-          awk "BEGIN { if ($hit / $total * 100 < 85.0) { print \"::error::Coverage below 85% threshold (got ${pct}%)\"; exit 1 } }"
+          awk "BEGIN { if ($hit / $total * 100 < 90.0) { print \"::error::Coverage below 90% threshold (got ${pct}%)\"; exit 1 } }"
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6

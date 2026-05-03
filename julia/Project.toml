@@ -1,16 +1,18 @@
 name = "GIVPOptimizer"
 uuid = "52b765d9-9955-43cf-8457-2e847d316e43"
+keywords = ["optimization", "metaheuristic", "grasp", "vnd", "path-relinking"]
 license = "MIT"
-version = "1.0.0"
 authors = ["Arnaldo Mendes Pires Junior <arnaldo_200@live.com>"]
 description = "GRASP-ILS-VND with Path Relinking metaheuristic for continuous black-box optimization"
+documentation = "https://github.com/Arnime/grasp_ils_vnd_pr#readme"
 homepage = "https://github.com/Arnime/grasp_ils_vnd_pr"
 repository = "https://github.com/Arnime/grasp_ils_vnd_pr"
-documentation = "https://github.com/Arnime/grasp_ils_vnd_pr#readme"
-keywords = ["optimization", "metaheuristic", "grasp", "vnd", "path-relinking"]
+version = "1.0.0"
 
 [deps]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
