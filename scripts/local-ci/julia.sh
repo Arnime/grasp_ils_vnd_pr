@@ -18,7 +18,7 @@ echo "[julia] Run tests"
 JULIA_NUM_THREADS=auto julia --project=julia -e 'using Pkg; Pkg.test()'
 
 echo "[julia] Coverage"
-JULIA_NUM_THREADS=auto julia --project=julia -e 'using Pkg; Pkg.test(; coverage=true)'
+JULIA_NUM_THREADS=2 julia --project=julia -e 'using Pkg; Pkg.test(; coverage=true)'
 
 julia -e '
   using Pkg
