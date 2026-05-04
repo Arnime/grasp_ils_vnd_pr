@@ -1,10 +1,14 @@
 // SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
 // SPDX-License-Identifier: MIT
 
-#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <givp/config.hpp>
 #include <givp/givp.hpp>
+#include <givp/result.hpp>
+
+#include <cmath>
+#include <cstddef>
 
 using namespace givp;
 

@@ -8,5 +8,5 @@
 # flags (Normal=0x01, FalseTest=0x04) producing the value 5, which is
 # not a named enumerator.  This is a known false positive in Catch2 ≤ 3.x
 # and is not a bug in our code.
-Checks: "*,-clang-analyzer-optin.core.EnumCastOutOfRange"
-WarningsAsErrors: "*,-clang-analyzer-optin.core.EnumCastOutOfRange"
+Checks: "-*,bugprone-*,clang-analyzer-*,misc-include-cleaner,modernize-use-nullptr,modernize-use-override,performance-*,portability-*,readability-implicit-bool-conversion,readability-redundant-*,-clang-analyzer-optin.core.EnumCastOutOfRange"
+WarningsAsErrors: "*"

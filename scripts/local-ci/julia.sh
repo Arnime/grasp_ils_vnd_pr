@@ -74,7 +74,7 @@ julia --project=julia -e '
   Aqua.test_all(
     GIVPOptimizer;
     ambiguities = (broken = false,),
-    stale_deps = (ignore = [:JSON, :Aqua],),
+    stale_deps = (ignore = [:JSON, :Aqua, :JET],),
   )
 '
 

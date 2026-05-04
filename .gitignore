@@ -12,6 +12,11 @@ dist/
 .pytest_cache/
 .coverage
 coverage.xml
+coverage-python.xml
+coverage.info
+coverage_raw.info
+julia-lcov.info
+rust/lcov.info
 htmlcov/
 .ruff_cache/
 .mypy_cache/

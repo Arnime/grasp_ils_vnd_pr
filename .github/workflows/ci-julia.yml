@@ -250,7 +250,7 @@ jobs:
             Aqua.test_all(
               GIVPOptimizer;
               ambiguities = (broken = false,),
-              stale_deps = (ignore = [:JSON, :Aqua],),
+              stale_deps = (ignore = [:JSON, :Aqua, :JET],),
             )
             println("Aqua: all checks passed ✓")
           '

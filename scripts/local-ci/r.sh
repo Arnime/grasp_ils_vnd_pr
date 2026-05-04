@@ -7,7 +7,8 @@ set -euo pipefail
 cd /workspace
 
 echo "[r] Install dependencies"
-Rscript -e "install.packages(c('R6','rlang','testthat'), repos='https://cloud.r-project.org')"
+Rscript -e "deps <- c('R6','rlang','testthat'); missing <- deps[!vapply(deps, requireNamespace, logical(1), quietly = TRUE)]; if (length(missing)) install.packages(missing, repos='https://cloud.r-project.org', dependencies=NA)"
+Rscript -e "if (!requireNamespace('testthat', quietly=TRUE)) stop('testthat installation failed')"
 
 echo "[r] Install package"
 R CMD INSTALL r
