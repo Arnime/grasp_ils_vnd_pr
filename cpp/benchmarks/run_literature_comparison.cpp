@@ -3,9 +3,12 @@
 
 #include <givp/givp.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -14,6 +17,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <givp/config.hpp>
 
 namespace {
 
@@ -150,7 +155,7 @@ void write_json(const std::string &path, const std::vector<TrialResult> &rows) {
 
 } // namespace
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv) try {
     std::size_t n_runs = 30;
     std::size_t dims = 10;
     std::string output = "cpp/benchmarks/literature_comparison.json";
@@ -228,4 +233,10 @@ int main(int argc, char **argv) {
     write_json(output, rows);
     std::cout << "\nResults written to " << output << "\n";
     return 0;
+} catch (const std::exception &e) {
+    std::cerr << "literature comparison fatal error: " << e.what() << "\n";
+    return 1;
+} catch (...) {
+    std::cerr << "literature comparison fatal error: unknown exception\n";
+    return 1;
 }

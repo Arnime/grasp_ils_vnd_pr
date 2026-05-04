@@ -3,7 +3,14 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <limits>
+#include <utility>
+#include <vector>
+
+#include <givp/config.hpp>
+#include <givp/exceptions.hpp>
 #include <givp/givp.hpp>
+#include <givp/result.hpp>
 
 using namespace givp;
 

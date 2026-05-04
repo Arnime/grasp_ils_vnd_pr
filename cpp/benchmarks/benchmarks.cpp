@@ -21,10 +21,15 @@
 
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
+#include <exception>
+#include <iostream>
 #include <optional>
 #include <utility>
 #include <vector>
+
+#include <givp/config.hpp>
 
 // ── Objective functions
 // ───────────────────────────────────────────────────────
@@ -73,7 +78,7 @@ static givp::GivpConfig fast_config(std::uint64_t seed = 42) {
 // ── Benchmarks
 // ────────────────────────────────────────────────────────────────
 
-int main() {
+int main() try {
     ankerl::nanobench::Bench bench;
     // CI smoke run: 1 warm-up + at most 3 measured iterations per benchmark.
     // Each optimizer call finishes in ~50-150 ms with the lean config above,
@@ -126,4 +131,10 @@ int main() {
             ankerl::nanobench::doNotOptimizeAway(r.fun);
         });
     }
+} catch (const std::exception &e) {
+    std::cerr << "benchmark fatal error: " << e.what() << "\n";
+    return 1;
+} catch (...) {
+    std::cerr << "benchmark fatal error: unknown exception\n";
+    return 1;
 }

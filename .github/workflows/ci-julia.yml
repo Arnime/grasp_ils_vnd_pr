@@ -82,6 +82,7 @@ jobs:
           julia --project=julia -e '
             using Pkg
             Pkg.Registry.update()
+            rm(joinpath("julia", "Manifest.toml"); force=true)
             Pkg.instantiate()
           '
 
@@ -117,6 +118,7 @@ jobs:
           julia --project=julia -e '
             using Pkg
             Pkg.Registry.update()
+            rm(joinpath("julia", "Manifest.toml"); force=true)
             Pkg.instantiate()
           '
 
@@ -210,6 +212,7 @@ jobs:
           julia --project=julia -e '
             using Pkg
             Pkg.Registry.update()
+            rm(joinpath("julia", "Manifest.toml"); force=true)
             Pkg.instantiate()
           '
 
@@ -238,6 +241,7 @@ jobs:
           julia --project=julia -e '
             using Pkg
             Pkg.Registry.update()
+            rm(joinpath("julia", "Manifest.toml"); force=true)
             Pkg.instantiate()
           '
 
@@ -290,6 +294,7 @@ jobs:
             using Pkg
             Pkg.activate("julia")
             Pkg.Registry.update()
+            rm(joinpath("julia", "Manifest.toml"); force=true)
             Pkg.instantiate()
             Pkg.status()
             println("Pkg.status: dependency check complete ✓")

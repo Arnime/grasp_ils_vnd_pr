@@ -5,16 +5,20 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
+#include <limits>
 #include <optional>
+#include <utility>
 #include <vector>
 
+#include <givp/config.hpp>
 #include <givp/detail/cache.hpp>
 #include <givp/detail/convergence.hpp>
 #include <givp/detail/elite.hpp>
 #include <givp/detail/helpers.hpp>
 #include <givp/detail/pr.hpp>
-#include <givp/detail/vnd.hpp>
+#include <givp/exceptions.hpp>
 #include <givp/givp.hpp>
+
 
 using namespace givp;
 using namespace givp::detail;
@@ -42,7 +46,7 @@ TEST_CASE("cache put and get round-trip", "[cache]") {
     c.put(sol, 2, 42.0);
     auto v = c.get(sol, 2);
     REQUIRE(v.has_value());
-    REQUIRE(*v == Catch::Approx(42.0));
+    REQUIRE(v.value_or(std::numeric_limits<double>::quiet_NaN()) == Catch::Approx(42.0));
 }
 
 TEST_CASE("cache duplicate put is a no-op", "[cache]") {
@@ -54,7 +58,7 @@ TEST_CASE("cache duplicate put is a no-op", "[cache]") {
     c.put(sol, 2, 99.0); // duplicate — should be ignored
     auto v = c.get(sol, 2);
     REQUIRE(v.has_value());
-    REQUIRE(*v == Catch::Approx(42.0));
+    REQUIRE(v.value_or(std::numeric_limits<double>::quiet_NaN()) == Catch::Approx(42.0));
 }
 
 TEST_CASE("cache hit rate is tracked", "[cache]") {
