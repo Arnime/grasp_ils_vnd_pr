@@ -42,7 +42,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          Rscript -e "install.packages(c('R6','rlang','testthat','covr','lintr','lazyeval'), dependencies = TRUE)"
+          Rscript -e "install.packages(c('R6','rlang','testthat','covr','lintr','lazyeval'), dependencies = TRUE, repos = 'https://cloud.r-project.org')"
 
       - name: Install package
         shell: bash
