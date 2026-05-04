@@ -37,12 +37,12 @@ jobs:
       - uses: r-lib/actions/setup-r@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2
         with:
           r-version: ${{ matrix.r-version }}
-          use-public-rspm: false
+          use-public-rspm: true
 
       - name: Install dependencies
         shell: bash
         run: |
-          Rscript -e "pkgs <- c('R6','rlang','testthat','covr','lintr','lazyeval'); install.packages(pkgs, dependencies = TRUE, repos = 'https://cloud.r-project.org', type = 'source'); missing <- pkgs[!vapply(pkgs, requireNamespace, quietly = TRUE, FUN.VALUE = logical(1))]; if (length(missing) > 0) stop(sprintf('Missing required R packages after install: %s', paste(missing, collapse = ', ')))"
+          Rscript -e "options(repos = c(CRAN = 'https://cloud.r-project.org')); pkgs <- c('R6','rlang','testthat','covr','lintr','lazyeval'); install.packages(pkgs, dependencies = TRUE); missing <- pkgs[!vapply(pkgs, requireNamespace, quietly = TRUE, FUN.VALUE = logical(1))]; if (length(missing) > 0) { install.packages(missing, dependencies = TRUE); missing <- missing[!vapply(missing, requireNamespace, quietly = TRUE, FUN.VALUE = logical(1))] }; if (length(missing) > 0) stop(sprintf('Missing required R packages after install: %s', paste(missing, collapse = ', ')))"
 
       - name: Install package
         shell: bash
@@ -50,7 +50,7 @@ jobs:
 
       - name: Run tests
         shell: bash
-        run: Rscript -e "testthat::test_dir('r/tests/testthat')"
+        run: Rscript -e "library(testthat); testthat::test_dir('r/tests/testthat')"
 
       - name: Run lintr
         shell: bash

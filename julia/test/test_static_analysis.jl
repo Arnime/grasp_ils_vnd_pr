@@ -13,7 +13,7 @@ using Aqua
             GIVPOptimizer;
             ambiguities = (broken = false,),
             # Stale deps check: JSON is used in CLI/benchmarks, JET in tests only
-            stale_deps = (ignore = [:JSON, :JET],),
+            stale_deps = (ignore = [:JSON, :JET, :JuliaFormatter],),
         )
     end
 
