@@ -37,7 +37,7 @@ function givp(
     # Validate callable — must accept a Vector{Float64}
     applicable(func, Vector{Float64}(undef, 0)) ||
         !hasmethod(func, Tuple{Vector{Float64}}) &&
-            @warn "func may not accept Vector{Float64}; ensure it is callable with a vector argument"
+        @warn "func may not accept Vector{Float64}; ensure it is callable with a vector argument"
 
     cfg = config !== nothing ? config : GIVPConfig()
     validate_config!(cfg)

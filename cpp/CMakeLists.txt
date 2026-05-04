@@ -34,6 +34,12 @@ endif()
 option(GIVP_BUILD_TESTS      "Build tests"      ON)
 option(GIVP_BUILD_BENCHMARKS "Build benchmarks" ON)
 option(GIVP_BUILD_FUZZ       "Build fuzz driver" ON)
+option(GIVP_BUILD_SONAR_TU   "Build Sonar analysis TU" OFF)
+
+if(GIVP_BUILD_SONAR_TU)
+    add_executable(givp_sonar_tu EXCLUDE_FROM_ALL sonar/analysis_tu.cpp)
+    target_link_libraries(givp_sonar_tu PRIVATE givp::givp)
+endif()
 
 if(GIVP_BUILD_TESTS)
     enable_testing()

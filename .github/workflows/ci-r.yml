@@ -37,12 +37,12 @@ jobs:
       - uses: r-lib/actions/setup-r@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2
         with:
           r-version: ${{ matrix.r-version }}
-          use-public-rspm: true
+          use-public-rspm: false
 
       - name: Install dependencies
         shell: bash
         run: |
-          Rscript -e "install.packages(c('R6','rlang','testthat','covr','lintr','lazyeval'), dependencies = TRUE, repos = 'https://cloud.r-project.org')"
+          Rscript -e "pkgs <- c('R6','rlang','testthat','covr','lintr','lazyeval'); install.packages(pkgs, dependencies = TRUE, repos = 'https://cloud.r-project.org', type = 'source'); missing <- pkgs[!vapply(pkgs, requireNamespace, quietly = TRUE, FUN.VALUE = logical(1))]; if (length(missing) > 0) stop(sprintf('Missing required R packages after install: %s', paste(missing, collapse = ', ')))"
 
       - name: Install package
         shell: bash

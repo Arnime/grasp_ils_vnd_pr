@@ -19,7 +19,6 @@
 #include <givp/exceptions.hpp>
 #include <givp/givp.hpp>
 
-
 using namespace givp;
 using namespace givp::detail;
 

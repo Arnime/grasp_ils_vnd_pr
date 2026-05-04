@@ -65,9 +65,10 @@ jobs:
                   cmake -S cpp -B build-sonar \
                     -DCMAKE_BUILD_TYPE=Release \
                     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-                    -DGIVP_BUILD_TESTS=ON \
+                    -DGIVP_BUILD_TESTS=OFF \
                     -DGIVP_BUILD_BENCHMARKS=OFF \
-                    -DGIVP_BUILD_FUZZ=OFF
+                    -DGIVP_BUILD_FUZZ=OFF \
+                    -DGIVP_BUILD_SONAR_TU=ON
                   # Remove FetchContent (_deps) compilation units from the database.
                   # They are not indexed by Sonar (not in sonar.sources/sonar.tests)
                   # and would cause CFamily to abort with "0 files analyzed".
