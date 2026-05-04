@@ -39,10 +39,10 @@ jobs:
           r-version: ${{ matrix.r-version }}
           use-public-rspm: true
 
-      - name: Install dependencies
-        shell: bash
-        run: |
-          Rscript -e "options(repos = c(CRAN = 'https://cloud.r-project.org')); pkgs <- c('R6','rlang','testthat','covr','lintr','lazyeval'); install.packages(pkgs, dependencies = TRUE); missing <- pkgs[!vapply(pkgs, requireNamespace, quietly = TRUE, FUN.VALUE = logical(1))]; if (length(missing) > 0) { install.packages(missing, dependencies = TRUE); missing <- missing[!vapply(missing, requireNamespace, quietly = TRUE, FUN.VALUE = logical(1))] }; if (length(missing) > 0) stop(sprintf('Missing required R packages after install: %s', paste(missing, collapse = ', ')))"
+      - uses: r-lib/actions/setup-r-dependencies@e4dd30c02c9c31fb1edec7f0fb22cc0e2b84de34 # v2
+        with:
+          working-directory: r
+          extra-packages: any::covr, any::lintr, any::lazyeval
 
       - name: Install package
         shell: bash

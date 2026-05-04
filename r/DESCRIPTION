@@ -15,5 +15,7 @@ Imports:
     rlang
 Suggests:
     testthat (>= 3.0.0),
+    covr,
+    lintr,
     parallel
 Config/testthat/edition: 3
