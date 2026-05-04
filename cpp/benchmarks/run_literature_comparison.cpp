@@ -22,7 +22,7 @@ using Bounds = std::vector<std::pair<double, double>>;
 
 struct BenchFunc {
     std::string name;
-    double (*func)(const Vec&);
+    double (*func)(const Vec &);
     Bounds (*bounds_fn)(std::size_t);
     double optimum;
 };
@@ -36,13 +36,14 @@ struct TrialResult {
     double elapsed_s;
 };
 
-double sphere(const Vec& x) {
+double sphere(const Vec &x) {
     double s = 0.0;
-    for (double v : x) s += v * v;
+    for (double v : x)
+        s += v * v;
     return s;
 }
 
-double rosenbrock(const Vec& x) {
+double rosenbrock(const Vec &x) {
     double s = 0.0;
     for (std::size_t i = 0; i + 1 < x.size(); ++i) {
         const double a = x[i + 1] - x[i] * x[i];
@@ -52,14 +53,15 @@ double rosenbrock(const Vec& x) {
     return s;
 }
 
-double rastrigin(const Vec& x) {
+double rastrigin(const Vec &x) {
     constexpr double pi = 3.14159265358979323846;
     double s = 10.0 * static_cast<double>(x.size());
-    for (double v : x) s += v * v - 10.0 * std::cos(2.0 * pi * v);
+    for (double v : x)
+        s += v * v - 10.0 * std::cos(2.0 * pi * v);
     return s;
 }
 
-double ackley(const Vec& x) {
+double ackley(const Vec &x) {
     constexpr double pi = 3.14159265358979323846;
     const double n = static_cast<double>(x.size());
     double sum_sq = 0.0;
@@ -73,7 +75,7 @@ double ackley(const Vec& x) {
     return -20.0 * std::exp(-0.2 * std::sqrt(sum_sq)) - std::exp(sum_cos) + 20.0 + std::exp(1.0);
 }
 
-double griewank(const Vec& x) {
+double griewank(const Vec &x) {
     double sum_sq = 0.0;
     double prod = 1.0;
     for (std::size_t i = 0; i < x.size(); ++i) {
@@ -84,10 +86,11 @@ double griewank(const Vec& x) {
     return 1.0 + sum_sq / 4000.0 - prod;
 }
 
-double schwefel(const Vec& x) {
+double schwefel(const Vec &x) {
     const double n = static_cast<double>(x.size());
     double s = 0.0;
-    for (double v : x) s += v * std::sin(std::sqrt(std::abs(v)));
+    for (double v : x)
+        s += v * std::sin(std::sqrt(std::abs(v)));
     return 418.9829 * n - s;
 }
 
@@ -98,15 +101,19 @@ Bounds repeated_bounds(std::size_t d, double lo, double hi) {
 std::vector<BenchFunc> get_functions() {
     return {
         {"sphere", sphere, [](std::size_t d) { return repeated_bounds(d, -5.12, 5.12); }, 0.0},
-        {"rosenbrock", rosenbrock, [](std::size_t d) { return repeated_bounds(d, -5.0, 10.0); }, 0.0},
-        {"rastrigin", rastrigin, [](std::size_t d) { return repeated_bounds(d, -5.12, 5.12); }, 0.0},
+        {"rosenbrock", rosenbrock, [](std::size_t d) { return repeated_bounds(d, -5.0, 10.0); },
+         0.0},
+        {"rastrigin", rastrigin, [](std::size_t d) { return repeated_bounds(d, -5.12, 5.12); },
+         0.0},
         {"ackley", ackley, [](std::size_t d) { return repeated_bounds(d, -32.768, 32.768); }, 0.0},
-        {"griewank", griewank, [](std::size_t d) { return repeated_bounds(d, -600.0, 600.0); }, 0.0},
-        {"schwefel", schwefel, [](std::size_t d) { return repeated_bounds(d, -500.0, 500.0); }, 0.0},
+        {"griewank", griewank, [](std::size_t d) { return repeated_bounds(d, -600.0, 600.0); },
+         0.0},
+        {"schwefel", schwefel, [](std::size_t d) { return repeated_bounds(d, -500.0, 500.0); },
+         0.0},
     };
 }
 
-std::string json_escape(const std::string& input) {
+std::string json_escape(const std::string &input) {
     std::string out;
     out.reserve(input.size() + 8);
     for (char c : input) {
@@ -121,7 +128,7 @@ std::string json_escape(const std::string& input) {
     return out;
 }
 
-void write_json(const std::string& path, const std::vector<TrialResult>& rows) {
+void write_json(const std::string &path, const std::vector<TrialResult> &rows) {
     std::filesystem::path out_path(path);
     if (!out_path.parent_path().empty()) {
         std::filesystem::create_directories(out_path.parent_path());
@@ -131,14 +138,11 @@ void write_json(const std::string& path, const std::vector<TrialResult>& rows) {
     out << "[\n";
     out << std::scientific << std::setprecision(10);
     for (std::size_t i = 0; i < rows.size(); ++i) {
-        const auto& r = rows[i];
-        out << "  {\"algorithm\":\"" << json_escape(r.algorithm)
-            << "\",\"function\":\"" << json_escape(r.function)
-            << "\",\"seed\":" << r.seed
-            << ",\"best\":" << r.best
-            << ",\"nfev\":" << r.nfev
-            << ",\"elapsed_s\":" << std::fixed << std::setprecision(4) << r.elapsed_s
-            << "}" << (i + 1 < rows.size() ? "," : "") << "\n";
+        const auto &r = rows[i];
+        out << "  {\"algorithm\":\"" << json_escape(r.algorithm) << "\",\"function\":\""
+            << json_escape(r.function) << "\",\"seed\":" << r.seed << ",\"best\":" << r.best
+            << ",\"nfev\":" << r.nfev << ",\"elapsed_s\":" << std::fixed << std::setprecision(4)
+            << r.elapsed_s << "}" << (i + 1 < rows.size() ? "," : "") << "\n";
         out << std::scientific << std::setprecision(10);
     }
     out << "]\n";
@@ -146,7 +150,7 @@ void write_json(const std::string& path, const std::vector<TrialResult>& rows) {
 
 } // namespace
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     std::size_t n_runs = 30;
     std::size_t dims = 10;
     std::string output = "cpp/benchmarks/literature_comparison.json";
@@ -173,7 +177,7 @@ int main(int argc, char** argv) {
     std::vector<TrialResult> rows;
     rows.reserve(funcs.size() * n_runs);
 
-    for (const auto& bf : funcs) {
+    for (const auto &bf : funcs) {
         const Bounds bounds = bf.bounds_fn(dims);
         std::vector<double> best_values;
         best_values.reserve(n_runs);
@@ -189,19 +193,20 @@ int main(int argc, char** argv) {
             const auto t1 = std::chrono::steady_clock::now();
             const double elapsed = std::chrono::duration<double>(t1 - t0).count();
 
-            rows.push_back({"GIVP-full", bf.name, static_cast<std::uint64_t>(s), result.fun, result.nfev, elapsed});
+            rows.push_back({"GIVP-full", bf.name, static_cast<std::uint64_t>(s), result.fun,
+                            result.nfev, elapsed});
             best_values.push_back(result.fun);
 
             if (verbose) {
-                std::cout << "  " << bf.name << " seed=" << s
-                          << " best=" << std::scientific << result.fun
-                          << " nfev=" << result.nfev
-                          << " " << std::fixed << std::setprecision(2) << elapsed << "s\n";
+                std::cout << "  " << bf.name << " seed=" << s << " best=" << std::scientific
+                          << result.fun << " nfev=" << result.nfev << " " << std::fixed
+                          << std::setprecision(2) << elapsed << "s\n";
             }
         }
 
         double mean = 0.0;
-        for (double v : best_values) mean += v;
+        for (double v : best_values)
+            mean += v;
         mean /= static_cast<double>(best_values.size());
 
         double var = 0.0;
@@ -213,13 +218,11 @@ int main(int argc, char** argv) {
         const double stddev = std::sqrt(var);
 
         double best = std::numeric_limits<double>::infinity();
-        for (double v : best_values) best = std::min(best, v);
+        for (double v : best_values)
+            best = std::min(best, v);
 
-        std::cout << "  " << bf.name
-                  << " mean=" << std::scientific << mean
-                  << " std=" << stddev
-                  << " best=" << best
-                  << " gap=" << std::abs(best - bf.optimum) << "\n";
+        std::cout << "  " << bf.name << " mean=" << std::scientific << mean << " std=" << stddev
+                  << " best=" << best << " gap=" << std::abs(best - bf.optimum) << "\n";
     }
 
     write_json(output, rows);

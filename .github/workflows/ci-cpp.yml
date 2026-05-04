@@ -55,7 +55,8 @@ jobs:
       - name: Install clang tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-format clang-tidy
+          sudo apt-get install -y clang-tidy
+          pip install "clang-format==18.1.8"
 
       - name: Check formatting (clang-format)
         run: |

@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
 // SPDX-License-Identifier: MIT
 
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
+#include <catch2/catch_test_macros.hpp>
 
 #include <givp/givp.hpp>
 
@@ -10,16 +10,14 @@ using namespace givp;
 
 // ── Objective functions ───────────────────────────────────────────────────────
 
-static double sphere(const std::vector<double> &x)
-{
+static double sphere(const std::vector<double> &x) {
     double s = 0.0;
     for (auto v : x)
         s += v * v;
     return s;
 }
 
-static double rosenbrock(const std::vector<double> &x)
-{
+static double rosenbrock(const std::vector<double> &x) {
     double s = 0.0;
     for (std::size_t i = 0; i + 1 < x.size(); ++i)
         s += 100.0 * (x[i + 1] - x[i] * x[i]) * (x[i + 1] - x[i] * x[i]) +
@@ -27,8 +25,7 @@ static double rosenbrock(const std::vector<double> &x)
     return s;
 }
 
-static double rastrigin(const std::vector<double> &x)
-{
+static double rastrigin(const std::vector<double> &x) {
     constexpr double pi = 3.14159265358979323846;
     double n = static_cast<double>(x.size());
     double s = 10.0 * n;
@@ -39,8 +36,7 @@ static double rastrigin(const std::vector<double> &x)
 
 // ── Smoke tests ───────────────────────────────────────────────────────────────
 
-TEST_CASE("sphere 5D finds near-zero minimum", "[basic]")
-{
+TEST_CASE("sphere 5D finds near-zero minimum", "[basic]") {
     std::vector<std::pair<double, double>> bounds(5, {-5.12, 5.12});
     GivpConfig cfg;
     cfg.seed = 42;
@@ -55,8 +51,7 @@ TEST_CASE("sphere 5D finds near-zero minimum", "[basic]")
     REQUIRE(result.nfev > 0);
 }
 
-TEST_CASE("rosenbrock 5D converges", "[basic]")
-{
+TEST_CASE("rosenbrock 5D converges", "[basic]") {
     std::vector<std::pair<double, double>> bounds(5, {-5.0, 10.0});
     GivpConfig cfg;
     cfg.seed = 7;
@@ -69,8 +64,7 @@ TEST_CASE("rosenbrock 5D converges", "[basic]")
     REQUIRE(result.fun < 500.0);
 }
 
-TEST_CASE("rastrigin 3D does not crash", "[basic]")
-{
+TEST_CASE("rastrigin 3D does not crash", "[basic]") {
     std::vector<std::pair<double, double>> bounds(3, {-5.12, 5.12});
     GivpConfig cfg;
     cfg.seed = 99;
@@ -83,8 +77,7 @@ TEST_CASE("rastrigin 3D does not crash", "[basic]")
     REQUIRE(result.x.size() == 3);
 }
 
-TEST_CASE("maximize direction negates correctly", "[basic]")
-{
+TEST_CASE("maximize direction negates correctly", "[basic]") {
     // Maximizing sphere means driving x toward bounds, fun > 0
     std::vector<std::pair<double, double>> bounds(3, {-5.12, 5.12});
     GivpConfig cfg;
@@ -100,8 +93,7 @@ TEST_CASE("maximize direction negates correctly", "[basic]")
     REQUIRE(result.direction == Direction::Maximize);
 }
 
-TEST_CASE("initial guess is accepted", "[basic]")
-{
+TEST_CASE("initial guess is accepted", "[basic]") {
     std::vector<std::pair<double, double>> bounds(3, {-5.0, 5.0});
     GivpConfig cfg;
     cfg.seed = 5;
@@ -112,8 +104,7 @@ TEST_CASE("initial guess is accepted", "[basic]")
     REQUIRE_NOTHROW(givp::givp(sphere, bounds, cfg));
 }
 
-TEST_CASE("time limit stops the run early", "[basic]")
-{
+TEST_CASE("time limit stops the run early", "[basic]") {
     std::vector<std::pair<double, double>> bounds(10, {-5.12, 5.12});
     GivpConfig cfg;
     cfg.seed = 3;
@@ -128,8 +119,7 @@ TEST_CASE("time limit stops the run early", "[basic]")
     REQUIRE(result.termination == TerminationReason::TimeLimitReached);
 }
 
-TEST_CASE("result nfev matches evaluations roughly", "[basic]")
-{
+TEST_CASE("result nfev matches evaluations roughly", "[basic]") {
     std::vector<std::pair<double, double>> bounds(2, {-1.0, 1.0});
     GivpConfig cfg;
     cfg.seed = 0;
@@ -143,10 +133,8 @@ TEST_CASE("result nfev matches evaluations roughly", "[basic]")
     REQUIRE(result.nit <= cfg.max_iterations);
 }
 
-TEST_CASE("objective returning infinity is handled", "[basic]")
-{
-    auto bad_func = [](const std::vector<double> &x) -> double
-    {
+TEST_CASE("objective returning infinity is handled", "[basic]") {
+    auto bad_func = [](const std::vector<double> &x) -> double {
         if (x[0] > 0)
             return std::numeric_limits<double>::infinity();
         return x[0] * x[0];
@@ -160,10 +148,8 @@ TEST_CASE("objective returning infinity is handled", "[basic]")
     REQUIRE_NOTHROW(givp::givp(bad_func, bounds, cfg));
 }
 
-TEST_CASE("objective throwing exception is handled", "[basic]")
-{
-    auto throwing_func = [](const std::vector<double> &x) -> double
-    {
+TEST_CASE("objective throwing exception is handled", "[basic]") {
+    auto throwing_func = [](const std::vector<double> &x) -> double {
         if (x[0] > 3.0)
             throw std::runtime_error("deliberate");
         return x[0] * x[0];

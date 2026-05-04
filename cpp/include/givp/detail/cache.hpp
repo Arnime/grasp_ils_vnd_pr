@@ -16,19 +16,17 @@ class EvaluationCache {
     std::size_t maxsize_;
     std::unordered_map<std::uint64_t, double> cache_;
     std::vector<std::uint64_t> insertion_order_;
-    std::size_t hits_   = 0;
+    std::size_t hits_ = 0;
     std::size_t misses_ = 0;
 
-    static std::uint64_t hash_solution(const std::vector<double>& solution,
-                                        std::size_t half) {
+    static std::uint64_t hash_solution(const std::vector<double> &solution, std::size_t half) {
         // FNV-1a over the integer-rounded representation
         std::uint64_t h = 14695981039346656037ULL;
         for (std::size_t i = 0; i < solution.size(); ++i) {
-            std::int64_t rounded =
-                (i < half)
-                    ? static_cast<std::int64_t>(std::round(solution[i] * 1000.0))
-                    : static_cast<std::int64_t>(std::round(solution[i]));
-            const auto* bytes = reinterpret_cast<const std::uint8_t*>(&rounded);
+            std::int64_t rounded = (i < half)
+                                       ? static_cast<std::int64_t>(std::round(solution[i] * 1000.0))
+                                       : static_cast<std::int64_t>(std::round(solution[i]));
+            const auto *bytes = reinterpret_cast<const std::uint8_t *>(&rounded);
             for (std::size_t b = 0; b < sizeof(std::int64_t); ++b) {
                 h ^= bytes[b];
                 h *= 1099511628211ULL;
@@ -37,16 +35,15 @@ class EvaluationCache {
         return h;
     }
 
-public:
+  public:
     explicit EvaluationCache(std::size_t maxsize) : maxsize_(maxsize) {
         cache_.reserve(maxsize);
         insertion_order_.reserve(maxsize);
     }
 
-    std::optional<double> get(const std::vector<double>& solution,
-                               std::size_t half) {
+    std::optional<double> get(const std::vector<double> &solution, std::size_t half) {
         auto key = hash_solution(solution, half);
-        auto it  = cache_.find(key);
+        auto it = cache_.find(key);
         if (it != cache_.end()) {
             ++hits_;
             return it->second;
@@ -55,9 +52,10 @@ public:
         return std::nullopt;
     }
 
-    void put(const std::vector<double>& solution, std::size_t half, double cost) {
+    void put(const std::vector<double> &solution, std::size_t half, double cost) {
         auto key = hash_solution(solution, half);
-        if (cache_.count(key)) return;
+        if (cache_.count(key))
+            return;
         if (cache_.size() >= maxsize_ && !insertion_order_.empty()) {
             cache_.erase(insertion_order_.front());
             insertion_order_.erase(insertion_order_.begin());
@@ -73,7 +71,7 @@ public:
 
     struct Stats {
         std::size_t hits, misses;
-        double      hit_rate;
+        double hit_rate;
         std::size_t size;
     };
 

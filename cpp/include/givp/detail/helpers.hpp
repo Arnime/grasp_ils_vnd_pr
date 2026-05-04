@@ -20,14 +20,15 @@ using Deadline = std::optional<std::chrono::steady_clock::time_point>;
 class Rng {
     std::mt19937_64 engine_;
 
-public:
+  public:
     explicit Rng(std::uint64_t seed) : engine_(seed) {}
 
     static Rng from_seed(std::optional<std::uint64_t> seed) {
-        if (seed) return Rng(*seed);
+        if (seed)
+            return Rng(*seed);
         std::random_device rd;
-        std::uint64_t s = (static_cast<std::uint64_t>(rd()) << 32) |
-                          static_cast<std::uint64_t>(rd());
+        std::uint64_t s =
+            (static_cast<std::uint64_t>(rd()) << 32) | static_cast<std::uint64_t>(rd());
         return Rng(s);
     }
 
@@ -57,18 +58,17 @@ public:
 
 // ── Pure helpers ──────────────────────────────────────────────────────────────
 
-inline std::size_t get_half(std::size_t num_vars,
-                             std::optional<std::size_t> integer_split) {
+inline std::size_t get_half(std::size_t num_vars, std::optional<std::size_t> integer_split) {
     return integer_split.value_or(num_vars / 2);
 }
 
-inline bool expired(const Deadline& deadline) {
-    if (!deadline) return false;
+inline bool expired(const Deadline &deadline) {
+    if (!deadline)
+        return false;
     return std::chrono::steady_clock::now() >= *deadline;
 }
 
-template <typename F>
-double safe_evaluate(const F& func, const std::vector<double>& candidate) {
+template <typename F> double safe_evaluate(const F &func, const std::vector<double> &candidate) {
     try {
         double v = func(candidate);
         return std::isfinite(v) ? v : std::numeric_limits<double>::infinity();
@@ -77,14 +77,11 @@ double safe_evaluate(const F& func, const std::vector<double>& candidate) {
     }
 }
 
-inline void normalize_integer_tail(std::vector<double>& solution,
-                                    std::size_t half) {
+inline void normalize_integer_tail(std::vector<double> &solution, std::size_t half) {
     for (std::size_t i = half; i < solution.size(); ++i)
         solution[i] = std::round(solution[i]);
 }
 
-inline double clamp_val(double v, double lo, double hi) {
-    return std::max(lo, std::min(hi, v));
-}
+inline double clamp_val(double v, double lo, double hi) { return std::max(lo, std::min(hi, v)); }
 
 } // namespace givp::detail

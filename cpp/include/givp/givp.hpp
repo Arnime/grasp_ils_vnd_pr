@@ -20,7 +20,6 @@
 #include "detail/impl_core.hpp"
 #include "result.hpp"
 
-
 namespace givp {
 
 /// Run the GRASP-ILS-VND with Path Relinking optimizer.
@@ -33,10 +32,9 @@ namespace givp {
 /// stats.
 /// @throws InvalidBounds, InvalidInitialGuess, InvalidConfig on bad input.
 template <typename F>
-OptimizeResult givp(F &&func,
-                    const std::vector<std::pair<double, double>> &bounds,
+OptimizeResult givp(F &&func, const std::vector<std::pair<double, double>> &bounds,
                     GivpConfig config = {}) {
-  return detail::run(std::forward<F>(func), bounds, std::move(config));
+    return detail::run(std::forward<F>(func), bounds, std::move(config));
 }
 
 } // namespace givp
