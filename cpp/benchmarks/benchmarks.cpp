@@ -2,22 +2,46 @@
 // SPDX-License-Identifier: MIT
 
 #define ANKERL_NANOBENCH_IMPLEMENT
+
+#if __has_include(<nanobench.h>)
 #include <nanobench.h>
+#elif __has_include("../../build/_deps/nanobench-src/src/include/nanobench.h")
+#include "../../build/_deps/nanobench-src/src/include/nanobench.h"
+#else
+#error "nanobench.h not found. Configure CMake to fetch nanobench first."
+#endif
 
+#if __has_include(<givp/givp.hpp>)
 #include <givp/givp.hpp>
+#elif __has_include("../include/givp/givp.hpp")
+#include "../include/givp/givp.hpp"
+#else
+#error "givp/givp.hpp not found. Open the project through CMake."
+#endif
 
+#include <chrono>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <iostream>
+#include <optional>
+#include <utility>
 #include <vector>
 
-// ── Objective functions ───────────────────────────────────────────────────────
+#include <givp/config.hpp>
 
-static double sphere(const std::vector<double>& x) {
+// ── Objective functions
+// ───────────────────────────────────────────────────────
+
+static double sphere(const std::vector<double> &x) {
     double s = 0.0;
-    for (auto v : x) s += v * v;
+    for (auto v : x)
+        s += v * v;
     return s;
 }
 
-static double rosenbrock(const std::vector<double>& x) {
+static double rosenbrock(const std::vector<double> &x) {
     double s = 0.0;
     for (std::size_t i = 0; i + 1 < x.size(); ++i)
         s += 100.0 * (x[i + 1] - x[i] * x[i]) * (x[i + 1] - x[i] * x[i]) +
@@ -25,7 +49,7 @@ static double rosenbrock(const std::vector<double>& x) {
     return s;
 }
 
-static double rastrigin(const std::vector<double>& x) {
+static double rastrigin(const std::vector<double> &x) {
     constexpr double pi = 3.14159265358979323846;
     double n = static_cast<double>(x.size());
     double s = 10.0 * n;
@@ -34,33 +58,35 @@ static double rastrigin(const std::vector<double>& x) {
     return s;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers
+// ───────────────────────────────────────────────────────────────────
 
 // Deliberately lean config for CI smoke benchmarks.
 // These values prioritise speed, not solution quality.
 static givp::GivpConfig fast_config(std::uint64_t seed = 42) {
     givp::GivpConfig cfg;
-    cfg.seed                    = seed;
-    cfg.max_iterations          = 8;
-    cfg.vnd_iterations          = 15;
-    cfg.ils_iterations          = 2;
-    cfg.use_convergence_monitor = false;  // skip overhead
-    cfg.path_relink_frequency   = 4;
-    cfg.integer_split           = std::nullopt; // set per call
+    cfg.seed = seed;
+    cfg.max_iterations = 8;
+    cfg.vnd_iterations = 15;
+    cfg.ils_iterations = 2;
+    cfg.use_convergence_monitor = false; // skip overhead
+    cfg.path_relink_frequency = 4;
+    cfg.integer_split = std::nullopt; // set per call
     return cfg;
 }
 
-// ── Benchmarks ────────────────────────────────────────────────────────────────
+// ── Benchmarks
+// ────────────────────────────────────────────────────────────────
 
-int main() {
+int main() try {
     ankerl::nanobench::Bench bench;
     // CI smoke run: 1 warm-up + at most 3 measured iterations per benchmark.
     // Each optimizer call finishes in ~50-150 ms with the lean config above,
     // so the entire benchmark binary completes in well under 30 seconds.
     bench.timeUnit(std::chrono::milliseconds{1}, "ms")
-         .warmup(1)
-         .minEpochIterations(3)
-         .maxEpochTime(std::chrono::milliseconds{5'000});
+        .warmup(1)
+        .minEpochIterations(3)
+        .maxEpochTime(std::chrono::milliseconds{5'000});
 
     // sphere 5D
     {
@@ -99,10 +125,16 @@ int main() {
     {
         std::vector<std::pair<double, double>> bounds(30, {-5.12, 5.12});
         bench.run("rastrigin_30d", [&] {
-            auto cfg          = fast_config(42);
+            auto cfg = fast_config(42);
             cfg.integer_split = 30;
             auto r = givp::givp(rastrigin, bounds, cfg);
             ankerl::nanobench::doNotOptimizeAway(r.fun);
         });
     }
+} catch (const std::exception &e) {
+    std::cerr << "benchmark fatal error: " << e.what() << "\n";
+    return 1;
+} catch (...) {
+    std::cerr << "benchmark fatal error: unknown exception\n";
+    return 1;
 }

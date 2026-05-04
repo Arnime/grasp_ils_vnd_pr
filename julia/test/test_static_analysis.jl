@@ -12,8 +12,8 @@ using Aqua
         Aqua.test_all(
             GIVPOptimizer;
             ambiguities = (broken = false,),
-            # Stale deps check: JSON is used in CLI/benchmarks so allow it
-            stale_deps = (ignore = [:JSON],),
+            # Stale deps check: JSON is used in CLI/benchmarks, JET in tests only
+            stale_deps = (ignore = [:JSON, :JET, :JuliaFormatter],),
         )
     end
 

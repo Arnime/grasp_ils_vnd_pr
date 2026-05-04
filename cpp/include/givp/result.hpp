@@ -22,24 +22,20 @@ enum class TerminationReason {
     Unknown,
 };
 
-inline TerminationReason termination_from_message(const std::string& msg) {
+inline TerminationReason termination_from_message(const std::string &msg) {
     std::string lo(msg.size(), '\0');
     for (std::size_t i = 0; i < msg.size(); ++i)
-        lo[i] = static_cast<char>(
-            std::tolower(static_cast<unsigned char>(msg[i])));
+        lo[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(msg[i])));
 
     if (lo.find("converged") != std::string::npos)
         return TerminationReason::Converged;
-    if (lo.find("max") != std::string::npos &&
-        lo.find("iteration") != std::string::npos)
+    if (lo.find("max") != std::string::npos && lo.find("iteration") != std::string::npos)
         return TerminationReason::MaxIterationsReached;
     if (lo.find("time") != std::string::npos)
         return TerminationReason::TimeLimitReached;
-    if (lo.find("early") != std::string::npos ||
-        lo.find("stagnation") != std::string::npos)
+    if (lo.find("early") != std::string::npos || lo.find("stagnation") != std::string::npos)
         return TerminationReason::EarlyStop;
-    if (lo.find("no feasible") != std::string::npos ||
-        lo.find("no_feasible") != std::string::npos)
+    if (lo.find("no feasible") != std::string::npos || lo.find("no_feasible") != std::string::npos)
         return TerminationReason::NoFeasible;
     return TerminationReason::Unknown;
 }

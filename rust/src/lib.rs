@@ -23,6 +23,7 @@ mod config;
 mod convergence;
 mod elite;
 mod error;
+mod experiment;
 mod grasp;
 mod helpers;
 mod ils;
@@ -33,6 +34,7 @@ mod vnd;
 
 pub use config::{Direction, GivpConfig};
 pub use error::{GivpError, Result};
+pub use experiment::{seed_sweep, SweepSummary};
 pub use result::{OptimizeResult, TerminationReason};
 
 /// Run the GRASP-ILS-VND with Path Relinking optimizer.

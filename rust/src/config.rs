@@ -74,69 +74,41 @@ impl Default for GivpConfig {
 }
 
 impl GivpConfig {
+    fn validate_positive(value: usize, field: &str) -> Result<()> {
+        if value == 0 {
+            return Err(GivpError::InvalidConfig(format!("{field} must be > 0")));
+        }
+        Ok(())
+    }
+
+    fn validate_unit_interval(value: f64, field: &str) -> Result<()> {
+        if !(0.0..=1.0).contains(&value) {
+            return Err(GivpError::InvalidConfig(format!(
+                "{field} must be in [0.0, 1.0]"
+            )));
+        }
+        Ok(())
+    }
+
     /// Validate all numeric ranges.
     pub fn validate(&self) -> Result<()> {
-        if self.max_iterations == 0 {
-            return Err(GivpError::InvalidConfig(
-                "max_iterations must be > 0".into(),
-            ));
-        }
-        if self.vnd_iterations == 0 {
-            return Err(GivpError::InvalidConfig(
-                "vnd_iterations must be > 0".into(),
-            ));
-        }
-        if self.ils_iterations == 0 {
-            return Err(GivpError::InvalidConfig(
-                "ils_iterations must be > 0".into(),
-            ));
-        }
-        if self.elite_size == 0 {
-            return Err(GivpError::InvalidConfig("elite_size must be > 0".into()));
-        }
-        if self.path_relink_frequency == 0 {
-            return Err(GivpError::InvalidConfig(
-                "path_relink_frequency must be > 0".into(),
-            ));
-        }
-        if self.alpha < 0.0 || self.alpha > 1.0 {
-            return Err(GivpError::InvalidConfig(
-                "alpha must be in [0.0, 1.0]".into(),
-            ));
-        }
-        if self.alpha_min < 0.0 || self.alpha_min > 1.0 {
-            return Err(GivpError::InvalidConfig(
-                "alpha_min must be in [0.0, 1.0]".into(),
-            ));
-        }
-        if self.alpha_max < 0.0 || self.alpha_max > 1.0 {
-            return Err(GivpError::InvalidConfig(
-                "alpha_max must be in [0.0, 1.0]".into(),
-            ));
-        }
+        Self::validate_positive(self.max_iterations, "max_iterations")?;
+        Self::validate_positive(self.vnd_iterations, "vnd_iterations")?;
+        Self::validate_positive(self.ils_iterations, "ils_iterations")?;
+        Self::validate_positive(self.elite_size, "elite_size")?;
+        Self::validate_positive(self.path_relink_frequency, "path_relink_frequency")?;
+        Self::validate_unit_interval(self.alpha, "alpha")?;
+        Self::validate_unit_interval(self.alpha_min, "alpha_min")?;
+        Self::validate_unit_interval(self.alpha_max, "alpha_max")?;
         if self.alpha_min > self.alpha_max {
             return Err(GivpError::InvalidConfig(
                 "alpha_min must be <= alpha_max".into(),
             ));
         }
-        if self.perturbation_strength == 0 {
-            return Err(GivpError::InvalidConfig(
-                "perturbation_strength must be > 0".into(),
-            ));
-        }
-        if self.cache_size == 0 {
-            return Err(GivpError::InvalidConfig("cache_size must be > 0".into()));
-        }
-        if self.early_stop_threshold == 0 {
-            return Err(GivpError::InvalidConfig(
-                "early_stop_threshold must be > 0".into(),
-            ));
-        }
-        if self.num_candidates_per_step == 0 {
-            return Err(GivpError::InvalidConfig(
-                "num_candidates_per_step must be > 0".into(),
-            ));
-        }
+        Self::validate_positive(self.perturbation_strength, "perturbation_strength")?;
+        Self::validate_positive(self.cache_size, "cache_size")?;
+        Self::validate_positive(self.early_stop_threshold, "early_stop_threshold")?;
+        Self::validate_positive(self.num_candidates_per_step, "num_candidates_per_step")?;
         if self.n_workers == 0 {
             return Err(GivpError::InvalidConfig("n_workers must be >= 1".into()));
         }

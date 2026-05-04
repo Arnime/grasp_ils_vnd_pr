@@ -60,6 +60,8 @@ nav:
   - Quickstart: quickstart.md
   - Python: python.md
   - Julia: julia.md
+  - C++: cpp.md
+  - R: r.md
   - CLI Reference: cli.md
   - Algorithm: algorithm.md
   - Examples: examples.md

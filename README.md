@@ -13,35 +13,44 @@
 [![Julia](https://img.shields.io/badge/Julia-1.9%2B-9558B2?logo=julia&logoColor=white)](https://julialang.org/)
 [![CI Julia](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-julia.yml)
 [![Codecov (julia)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=julia)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/julia)
+[![JuliaFormatter](https://img.shields.io/badge/Formatter-JuliaFormatter-9558B2?logo=julia&logoColor=white)](https://github.com/domluna/JuliaFormatter.jl)
+[![JET](https://img.shields.io/badge/Type--Checked-JET.jl-9558B2?logo=julia&logoColor=white)](https://github.com/aviatesk/JET.jl)
+[![Aqua](https://img.shields.io/badge/Quality-Aqua.jl-9558B2?logo=julia&logoColor=white)](https://github.com/JuliaTesting/Aqua.jl)
 
 **Rust** &nbsp;
-[![crates.io: givp v0.7.0](https://img.shields.io/badge/Crates-givp%20v0.7.0-E05D44?logo=rust&logoColor=white)](https://crates.io/crates/givp)
+[![crates.io: givp v1.0.0](https://img.shields.io/badge/Crates-givp%20v1.0.0-E05D44?logo=rust&logoColor=white)](https://crates.io/crates/givp)
 [![Rust](https://img.shields.io/badge/Rust-1.85%2B-000000?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![CI Rust](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-rust.yml)
 [![Codecov (rust)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=rust)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/rust)
 [![docs.rs](https://img.shields.io/docsrs/givp?cacheSeconds=300&logo=docs.rs&logoColor=white)](https://docs.rs/givp)
+[![Clippy](https://img.shields.io/badge/Linter-Clippy-E05D44?logo=rust&logoColor=white)](https://doc.rust-lang.org/clippy/)
+[![rustfmt](https://img.shields.io/badge/Formatter-rustfmt-E05D44?logo=rust&logoColor=white)](https://github.com/rust-lang/rustfmt)
 
 **C++** &nbsp;
 [![header-only](https://img.shields.io/badge/header--only-yes-brightgreen?logo=cplusplus&logoColor=white)](cpp/include/givp/)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue?logo=cplusplus&logoColor=white)](https://en.cppreference.com/w/cpp/17)
 [![CI C++](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-cpp.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-cpp.yml)
 [![Codecov (cpp)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/graph/badge.svg?flag=cpp)](https://codecov.io/gh/Arnime/grasp_ils_vnd_pr/flags/cpp)
+[![clang-format](https://img.shields.io/badge/Formatter-clang--format-blue?logo=llvm&logoColor=white)](https://clang.llvm.org/docs/ClangFormat.html)
+[![clang-tidy](https://img.shields.io/badge/Linter-clang--tidy-blue?logo=llvm&logoColor=white)](https://clang.llvm.org/extra/clang-tidy/)
 
 **Project** &nbsp;
 [![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/Arnime/grasp_ils_vnd_pr?cacheSeconds=300&logo=openssf&logoColor=white)](https://securityscorecards.dev/viewer/?uri=github.com/Arnime/grasp_ils_vnd_pr)
+[![CI SonarQube](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-sonarqube.yml/badge.svg)](https://github.com/Arnime/grasp_ils_vnd_pr/actions/workflows/ci-sonarqube.yml)
 [![OpenSSF Gold](https://img.shields.io/badge/OpenSSF-best%20practices-gold?logo=openssf&logoColor=white)](https://www.bestpractices.dev/projects/12627)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?logo=open-source-initiative&logoColor=white)](https://opensource.org/licenses/MIT)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?logo=github&logoColor=white)](CONTRIBUTING.md)
 
 A direction-agnostic metaheuristic optimizer for **continuous, integer or
-mixed** black-box problems, available in four languages:
+mixed** black-box problems, available in five languages:
 
 | Language | Distribution | Requires |
 |----------|-------------|---------|
 | **Python** (NumPy-native) | [PyPI `givp`](https://pypi.org/project/givp/) | Python 3.10+, NumPy |
 | **Julia** | [JuliaHub `GIVPOptimizer`](https://juliahub.com/ui/Packages/General/GIVPOptimizer) | Julia 1.9+ |
 | **Rust** | [crates.io `givp`](https://crates.io/crates/givp) | Rust 1.85+ |
-| **C++17** | Header-only (FetchContent / copy) | C++17 compiler, CMake 3.21+ |
+| **C++17** | Header-only (vcpkg / FetchContent / copy) | C++17 compiler, CMake 3.21+ |
+| **R** | Local package (`r/`) | R 4.1+ |
 
 The library bundles:
 
@@ -51,6 +60,20 @@ The library bundles:
 - **Path Relinking** between elite solutions
 - LRU evaluation cache, convergence monitor, optional thread-parallel candidate
   evaluation, and a wall-clock time budget
+
+Code quality is enforced in CI with language-specific static analysis and
+formatting checks — analogous to mypy + ruff in Python — across all ports:
+
+| Language | Linter / static analysis | Formatter | Type checker |
+|----------|--------------------------|-----------|-------------|
+| **Python** | [ruff](https://github.com/astral-sh/ruff) | ruff | [mypy](https://mypy-lang.org/) (strict) |
+| **Julia** | [Aqua.jl](https://github.com/JuliaTesting/Aqua.jl) | [JuliaFormatter](https://github.com/domluna/JuliaFormatter.jl) | [JET.jl](https://github.com/aviatesk/JET.jl) |
+| **Rust** | [Clippy](https://doc.rust-lang.org/clippy/) (`-D warnings`, all targets) | [rustfmt](https://github.com/rust-lang/rustfmt) | rustc (type system) |
+| **C++** | [clang-tidy](https://clang.llvm.org/extra/clang-tidy/) (`--warnings-as-errors`) | [clang-format](https://clang.llvm.org/docs/ClangFormat.html) (LLVM style) | compiler (`-Wall -Wextra -Wpedantic -Werror`) |
+| **R** | [lintr](https://lintr.r-lib.org/) (`linters_with_defaults()`) | — | — |
+
+All checks run as mandatory CI gates. A monorepo SonarQube quality gate
+workflow runs in addition (CI SonarQube).
 
 ---
 
@@ -153,7 +176,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-givp = "0.5"
+givp = "1.0.0"
 ```
 
 From source:
@@ -169,14 +192,29 @@ Requires Rust 1.85+ (edition 2021).
 
 ### C++ installation
 
-The C++ port is **header-only**. The recommended way is CMake `FetchContent`:
+The C++ port is **header-only**.
+
+Install with vcpkg:
+
+```bash
+vcpkg install givp
+```
+
+Then use in CMake:
+
+```cmake
+find_package(givp CONFIG REQUIRED)
+target_link_libraries(my_app PRIVATE givp::givp)
+```
+
+Alternatively, use CMake `FetchContent`:
 
 ```cmake
 include(FetchContent)
 FetchContent_Declare(
     givp
     GIT_REPOSITORY https://github.com/Arnime/grasp_ils_vnd_pr.git
-    GIT_TAG        v0.7.0
+    GIT_TAG        v1.0.0
     SOURCE_SUBDIR  cpp
 )
 FetchContent_MakeAvailable(givp)

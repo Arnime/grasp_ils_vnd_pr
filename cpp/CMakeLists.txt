@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: MIT
 
 cmake_minimum_required(VERSION 3.21)
-project(givp VERSION 0.7.0 LANGUAGES CXX)
+project(givp VERSION 1.0.0 LANGUAGES CXX)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -31,6 +33,13 @@ endif()
 # ── Optional subdirectories ─────────────────────────────────────────────────
 option(GIVP_BUILD_TESTS      "Build tests"      ON)
 option(GIVP_BUILD_BENCHMARKS "Build benchmarks" ON)
+option(GIVP_BUILD_FUZZ       "Build fuzz driver" ON)
+option(GIVP_BUILD_SONAR_TU   "Build Sonar analysis TU" OFF)
+
+if(GIVP_BUILD_SONAR_TU)
+    add_executable(givp_sonar_tu EXCLUDE_FROM_ALL sonar/analysis_tu.cpp)
+    target_link_libraries(givp_sonar_tu PRIVATE givp::givp)
+endif()
 
 if(GIVP_BUILD_TESTS)
     enable_testing()
@@ -39,6 +48,10 @@ endif()
 
 if(GIVP_BUILD_BENCHMARKS)
     add_subdirectory(benchmarks)
+endif()
+
+if(GIVP_BUILD_FUZZ)
+    add_subdirectory(fuzz)
 endif()
 
 # ── Install rules ────────────────────────────────────────────────────────────

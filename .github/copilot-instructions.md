@@ -6,13 +6,13 @@ This repository is a multi-language implementation of the **GRASP-ILS-VND with P
 
 ## Project overview
 
-| Language | Location      | Distribution      | Min version |
-|----------|---------------|-------------------|-------------|
-| Python   | `python/`     | PyPI (`givp`)     | 3.10        |
-| Julia    | `julia/`      | JuliaHub          | 1.9         |
-| Rust     | `rust/`       | crates.io         | 1.85        |
-| C++      | `cpp/`        | header-only       | C++17       |
-| R        | `r/`          | CRAN / r-universe | 4.1         |
+| Language | Location  | Distribution      | Min version |
+| -------- | --------- | ----------------- | ----------- |
+| Python   | `python/` | PyPI (`givp`)     | 3.10        |
+| Julia    | `julia/`  | JuliaHub          | 1.9         |
+| Rust     | `rust/`   | crates.io         | 1.85        |
+| C++      | `cpp/`    | header-only       | C++17       |
+| R        | `r/`      | CRAN / r-universe | 4.1         |
 
 ---
 
@@ -36,7 +36,7 @@ This repository is a multi-language implementation of the **GRASP-ILS-VND with P
 Every port exposes the same logical modules:
 
 | Module        | Responsibility                                      |
-|---------------|-----------------------------------------------------|
+| ------------- | --------------------------------------------------- |
 | `config`      | Algorithm hyper-parameters / configuration object   |
 | `result`      | Result container + `TerminationReason` enum         |
 | `exceptions`  | Custom exception hierarchy rooted at `GivpError`    |
@@ -61,11 +61,14 @@ Every port exposes the same logical modules:
 - **ruff** is the linter and formatter (`line-length = 88`, `target-version = "py310"`).
   Enabled rule sets: `E, F, I, UP, B, SIM, S, RUF, PERF, PT, RET`.
 - Tests live in `python/tests/` and use **pytest** with `--cov-fail-under=95`.
-  Use **Hypothesis** for property-based tests (`max_examples=15`).
+  Use **Hypothesis** for property-based tests:
+  - **Default:** `max_examples=15` for lightweight smoke tests
+  - **Exception:** `max_examples=50` for comprehensive API surface coverage (e.g., `test_properties.py` testing the public givp API)
 - Conftest fixtures: `sphere`, `knapsack`, `qap`.
 - Source layout: `python/src/givp/` (hatchling, `src` layout).
 
 ### Public API shape (Python)
+
 ```python
 givp(func, bounds, *, num_vars=None, minimize=None, direction=None,
      config=None, initial_guess=None, iteration_callback=None,
@@ -79,7 +82,7 @@ givp(func, bounds, *, num_vars=None, minimize=None, direction=None,
 - Target Julia **≥ 1.9**. Package name: `GIVPOptimizer`.
 - Follow standard Julia style: `CamelCase` for types, `snake_case` for functions, 4-space indentation.
 - Format with **JuliaFormatter** (`style = "default"`).
-- Tests are in `julia/test/runtests.jl`; minimum coverage gate: **85 %**.
+- Tests are in `julia/test/runtests.jl`; minimum coverage gate: **95 %**.
 - Fuzzing driver: `julia/fuzz/fuzz_givp.jl`.
 - CLI entry point: `julia/cli.jl`.
 - Use `@kwdef` structs for configuration to allow keyword construction.

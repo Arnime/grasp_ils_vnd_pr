@@ -62,3 +62,44 @@ julia --project=. -e 'using Pkg; Pkg.test()'
 ```bash
 julia --project=. benchmarks/benchmarks.jl
 ```
+
+## Local PR preflight with Docker
+
+Use the local CI stack to run CI-equivalent checks for workflows and all
+language ports before opening a pull request.
+
+### Requirements
+
+- Docker Desktop with WSL integration enabled (Windows)
+- `docker compose` available in WSL
+
+### Run all local CI targets
+
+```bash
+bash scripts/local-ci/run.sh
+```
+
+### Run specific targets
+
+```bash
+bash scripts/local-ci/run.sh workflow-lint python rust julia cpp r
+```
+
+### Include mutation testing for Python
+
+```bash
+RUN_MUTATION=true bash scripts/local-ci/run.sh python
+```
+
+### Windows helper (runs in WSL automatically)
+
+```powershell
+./scripts/local-ci/run.ps1
+./scripts/local-ci/run.ps1 python rust
+```
+
+### Docker stack location
+
+- Compose file: `docker/local-ci/docker-compose.yml`
+- Service scripts: `scripts/local-ci/*.sh`
+- PR automation agent: `.github/agents/pr-local-ci-guardian.agent.md`

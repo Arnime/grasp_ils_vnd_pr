@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
+Package: givp
+Type: Package
+Title: GRASP-ILS-VND with Path Relinking Optimizer
+Version: 1.0.0
+Authors@R: person("Arnaldo Mendes Pires Junior", role = c("aut", "cre"), email = "arnaldo_200@live.com")
+Description: Direction-agnostic metaheuristic optimizer for continuous and mixed-integer black-box optimization.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports:
+    R6,
+    rlang
+Suggests:
+    testthat (>= 3.0.0),
+    covr,
+    lintr,
+    parallel
+Config/testthat/edition: 3

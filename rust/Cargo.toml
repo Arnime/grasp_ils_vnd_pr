@@ -1,6 +1,6 @@
 [package]
 name = "givp"
-version = "0.7.0"
+version = "1.0.0"
 edition = "2021"
 authors = ["Arnaldo Mendes Pires Junior <arnaldo_200@live.com>"]
 description = "GRASP-ILS-VND with Path Relinking metaheuristic for continuous black-box optimization"
@@ -22,6 +22,7 @@ serde_json = { version = "1", optional = true }
 [dev-dependencies]
 approx = "0.5"
 criterion = { version = "0.5", features = ["html_reports"] }
+proptest = "1"
 
 [features]
 default = []
@@ -30,3 +31,17 @@ serde = ["dep:serde", "dep:serde_json"]
 [[bench]]
 name = "benchmarks"
 harness = false
+
+[[bin]]
+name = "givp"
+path = "src/bin/givp.rs"
+
+[[example]]
+name = "run_literature_comparison"
+
+[[example]]
+name = "seed_sweep"
+
+[[example]]
+name = "fuzz_givp"
+path = "fuzz/fuzz_givp.rs"

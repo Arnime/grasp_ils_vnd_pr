@@ -20,6 +20,10 @@ from hypothesis import HealthCheck, assume, given, settings
 from hypothesis import strategies as st
 
 _FAST = settings(
+    # 50 examples (not the repo-wide default of 15) because property-based
+    # tests are the primary stochastic-input coverage layer for the public API.
+    # The copilot-instructions guideline of 15 applies to lightweight smoke
+    # properties; here we intentionally use a higher budget for better coverage.
     max_examples=50,
     deadline=None,
     suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture],

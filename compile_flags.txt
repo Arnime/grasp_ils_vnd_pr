@@ -1,0 +1,5 @@
+-std=c++17
+-Icpp/include
+-Ibuild/_deps/catch2-src/src
+-Ibuild/_deps/catch2-build/generated-includes
+-Ibuild/_deps/nanobench-src/src/include

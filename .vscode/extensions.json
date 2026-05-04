@@ -13,6 +13,14 @@
         "tamasfe.even-better-toml", // Cargo.toml com schema e validação
         // ── Julia ──────────────────────────────────────────────────────────
         "julialang.language-julia",
+        // ── R ───────────────────────────────────────────────────────────────
+        "reditorsupport.r", // suporte principal de linguagem + diagnostics
+        "rdebugger.r-debugger", // depuração para scripts e testes em R
+        // ── C/C++ ───────────────────────────────────────────────────────────
+        "ms-vscode.cpptools",
+        "llvm-vs-code-extensions.vscode-clangd", // melhor integração com clang-tidy
+        "alesiong.clang-tidy-linter", // diagnósticos do clang-tidy no editor
+        "cppchecksolutionsab.cppcheck-official", // diagnósticos do cppcheck no editor
         // ── Notebooks / Jupyter ────────────────────────────────────────────
         "ms-toolsai.jupyter",
         "ms-toolsai.jupyter-renderers",
@@ -27,6 +35,8 @@
         // ── Utilitários ────────────────────────────────────────────────────
         "usernamehw.errorlens",
         "christian-kohler.path-intellisense",
-        "aaron-bond.better-comments"
+        "aaron-bond.better-comments",
+        // ── Qualidade / Segurança ──────────────────────────────────────────
+        "sonarsource.sonarlint-vscode"
     ]
 }

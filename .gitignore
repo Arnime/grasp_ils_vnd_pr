@@ -2,13 +2,21 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .eggs/
-build/
+build*/
 dist/
 .venv/
+.venv-ci/
+.julia-env/
+.scannerwork/
 .env
 .pytest_cache/
 .coverage
 coverage.xml
+coverage-python.xml
+coverage.info
+coverage_raw.info
+julia-lcov.info
+rust/lcov.info
 htmlcov/
 .ruff_cache/
 .mypy_cache/
@@ -30,6 +38,11 @@ rust/target/
 
 Notebooks/Resultados_Dissertacao/
 Notebooks/*/*.png
+
+# R build artifacts
+*.tar.gz
+r/*.Rcheck/
+r/man/*.Rd
 
 # github copilot
 .github/agents/

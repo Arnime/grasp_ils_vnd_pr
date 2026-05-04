@@ -394,18 +394,20 @@ def _evaluate_candidates_batch(
             return cloudpickle_results
 
         if isinstance(cloudpickle_exc, ImportError):
-            _log.info(
+            _log.warning(
                 "Objective is not picklable with standard pickle (%s). "
                 "Install cloudpickle for process-based parallelism with closures: "
                 'pip install "givp[parallel]". '
-                "Falling back to ThreadPoolExecutor (GIL-limited).",
+                "Falling back to ThreadPoolExecutor (GIL-limited, n_workers=%d ignored).",
                 process_exc,
+                n_workers,
             )
         elif cloudpickle_exc is not None:
-            _log.info(
+            _log.warning(
                 "cloudpickle serialisation failed (%s). "
-                "Falling back to ThreadPoolExecutor (GIL-limited).",
+                "Falling back to ThreadPoolExecutor (GIL-limited, n_workers=%d ignored).",
                 cloudpickle_exc,
+                n_workers,
             )
 
     # Thread fallback: shared in-process state; benefits GIL-releasing objectives.

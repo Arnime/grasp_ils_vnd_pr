@@ -3,6 +3,8 @@
 
 """Public API for the GIVPOptimizer library."""
 
+const _OBJECTIVE_EXCEPTION_WARNED = Ref(false)
+
 """
     givp(func, bounds; kwargs...) -> OptimizeResult
 
@@ -63,8 +65,11 @@ function givp(
             isfinite(value) || return Inf
             return sign * value
         catch e
-            @warn "objective raised an exception; treating as infeasible" exception =
-                (e, catch_backtrace())
+            if !_OBJECTIVE_EXCEPTION_WARNED[]
+                _OBJECTIVE_EXCEPTION_WARNED[] = true
+                @warn "objective raised an exception; treating as infeasible (warning shown once per process)" exception =
+                    (e, catch_backtrace())
+            end
             return Inf
         end
     end

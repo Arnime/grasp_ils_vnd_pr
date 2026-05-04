@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2026 Arnaldo Mendes Pires Junior
+# SPDX-License-Identifier: MIT
+export(givp)
+export(givp_config)
+export(GIVPConfig)
+export(GIVPOptimizer)
+export(seed_sweep)
+export(sweep_summary)
+export(sphere)
+export(rosenbrock)
+export(rastrigin)
+importFrom(R6,R6Class)
+importFrom(rlang,abort)
+S3method(print,givp_result)

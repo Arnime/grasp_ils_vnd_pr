@@ -4,141 +4,185 @@
 name: CI C++
 
 on:
-    push:
-        branches: [ main ]
-        paths:
-            - "cpp/**"
-            - "!cpp/**/*.md"
-            - ".github/workflows/ci-cpp.yml"
-    pull_request:
-        paths:
-            - "cpp/**"
-            - "!cpp/**/*.md"
-            - ".github/workflows/ci-cpp.yml"
-    workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - "cpp/**"
+      - "!cpp/**/*.md"
+      - ".github/workflows/ci-cpp.yml"
+  pull_request:
+    paths:
+      - "cpp/**"
+      - "!cpp/**/*.md"
+      - ".github/workflows/ci-cpp.yml"
+  workflow_dispatch:
 
 env:
-    FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-    CMAKE_BUILD_PARALLEL_LEVEL: "4"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  CMAKE_BUILD_PARALLEL_LEVEL: "4"
 
 permissions: read-all
 
 jobs:
-    setup:
-        runs-on: ubuntu-latest
-        outputs:
-            toolchains: ${{ steps.pick.outputs.toolchains }}
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-              with:
-                  fetch-depth: 0
-            - id: pick
-              env:
-                  EVENT_NAME: ${{ github.event_name }}
-                  PR_BASE: ${{ github.event.pull_request.base.sha }}
-              run: |
-                  if [ "$EVENT_NAME" = "pull_request" ]; then
-                    if git diff --name-only "$PR_BASE" HEAD -- cpp/include cpp/tests cpp/benchmarks | grep -q .; then
-                      echo 'toolchains=[{"os":"ubuntu-latest","compiler":"gcc","cc":"gcc","cxx":"g++"},{"os":"ubuntu-latest","compiler":"clang","cc":"clang","cxx":"clang++"},{"os":"windows-latest","compiler":"msvc","cc":"cl","cxx":"cl"},{"os":"macos-latest","compiler":"clang","cc":"clang","cxx":"clang++"}]' >> "$GITHUB_OUTPUT"
-                    else
-                      echo 'toolchains=[{"os":"ubuntu-latest","compiler":"gcc","cc":"gcc","cxx":"g++"}]' >> "$GITHUB_OUTPUT"
-                    fi
-                  else
-                    echo 'toolchains=[{"os":"ubuntu-latest","compiler":"gcc","cc":"gcc","cxx":"g++"},{"os":"ubuntu-latest","compiler":"clang","cc":"clang","cxx":"clang++"},{"os":"windows-latest","compiler":"msvc","cc":"cl","cxx":"cl"},{"os":"macos-latest","compiler":"clang","cc":"clang","cxx":"clang++"}]' >> "$GITHUB_OUTPUT"
-                  fi
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      toolchains: ${{ steps.pick.outputs.toolchains }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - id: pick
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            if git diff --name-only "$PR_BASE" HEAD -- cpp/include cpp/tests cpp/benchmarks | grep -q .; then
+              echo 'toolchains=[{"os":"ubuntu-latest","compiler":"gcc","cc":"gcc","cxx":"g++"},{"os":"ubuntu-latest","compiler":"clang","cc":"clang","cxx":"clang++"},{"os":"windows-latest","compiler":"msvc","cc":"cl","cxx":"cl"},{"os":"macos-latest","compiler":"clang","cc":"clang","cxx":"clang++"}]' >> "$GITHUB_OUTPUT"
+            else
+              echo 'toolchains=[{"os":"ubuntu-latest","compiler":"gcc","cc":"gcc","cxx":"g++"}]' >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo 'toolchains=[{"os":"ubuntu-latest","compiler":"gcc","cc":"gcc","cxx":"g++"},{"os":"ubuntu-latest","compiler":"clang","cc":"clang","cxx":"clang++"},{"os":"windows-latest","compiler":"msvc","cc":"cl","cxx":"cl"},{"os":"macos-latest","compiler":"clang","cc":"clang","cxx":"clang++"}]' >> "$GITHUB_OUTPUT"
+          fi
 
-    test:
-        needs: setup
-        runs-on: ${{ matrix.os }}
-        strategy:
-            fail-fast: false
-            matrix:
-                include: ${{ fromJson(needs.setup.outputs.toolchains) }}
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Set compiler (non-Windows)
-              if: matrix.compiler != 'msvc'
-              run: |
-                  echo "CC=${{ matrix.cc }}"   >> "$GITHUB_ENV"
-                  echo "CXX=${{ matrix.cxx }}" >> "$GITHUB_ENV"
+      - name: Install clang tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-tidy
+          pip install "clang-format==18.1.8"
 
-            # Single-config generators (Makefile/Ninja on Linux/macOS) use
-            # CMAKE_BUILD_TYPE at configure time; multi-config (MSVC) needs
-            # --config at build/test time.
-            - name: Configure
-              run: >
-                  cmake -S cpp -B build ${{ matrix.compiler == 'msvc' && '' ||
-                  '-DCMAKE_BUILD_TYPE=Release' }} -DGIVP_BUILD_TESTS=ON
-                  -DGIVP_BUILD_BENCHMARKS=OFF
+      - name: Check formatting (clang-format)
+        run: |
+          {
+            find cpp/include -type f \( -name '*.hpp' -o -name '*.h' \) -print0
+            find cpp/tests -type f \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -print0
+            find cpp/benchmarks -type f \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -print0
+          } | xargs -0 -r clang-format --dry-run --Werror
 
-            - name: Build
-              run: cmake --build build ${{ matrix.compiler == 'msvc' && '--config Release' ||
-                  '' }}
+      - name: Configure compile database
+        run: |
+          cmake -S cpp -B build_tidy \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DGIVP_BUILD_TESTS=ON \
+            -DGIVP_BUILD_BENCHMARKS=ON \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-            - name: Test
-              run: >
-                  ctest --test-dir build --output-on-failure ${{ matrix.compiler
-                  == 'msvc' && '-C Release' || '' }}
+      - name: Run clang-tidy
+        run: |
+          find cpp/tests cpp/benchmarks -type f -name '*.cpp' -print0 \
+            | xargs -0 -r -n 1 clang-tidy -p build_tidy --warnings-as-errors='*'
 
-    coverage:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+  test:
+    needs: setup
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.setup.outputs.toolchains) }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Install lcov
-              run: sudo apt-get install -y lcov
+      - name: Set compiler (non-Windows)
+        if: matrix.compiler != 'msvc'
+        run: |
+          echo "CC=${{ matrix.cc }}"   >> "$GITHUB_ENV"
+          echo "CXX=${{ matrix.cxx }}" >> "$GITHUB_ENV"
 
-            - name: Configure (coverage build)
-              run: >
-                  cmake -S cpp -B build_cov -DCMAKE_BUILD_TYPE=Debug
-                  -DCMAKE_CXX_FLAGS="--coverage"
-                  -DCMAKE_EXE_LINKER_FLAGS="--coverage" -DGIVP_BUILD_TESTS=ON
-                  -DGIVP_BUILD_BENCHMARKS=OFF
+      # Single-config generators (Makefile/Ninja on Linux/macOS) use
+      # CMAKE_BUILD_TYPE at configure time; multi-config (MSVC) needs
+      # --config at build/test time.
+      - name: Configure
+        run: >
+          cmake -S cpp -B build ${{ matrix.compiler == 'msvc' && '' ||
+          '-DCMAKE_BUILD_TYPE=Release' }} -DGIVP_BUILD_TESTS=ON
+          -DGIVP_BUILD_BENCHMARKS=OFF
 
-            - name: Build
-              run: cmake --build build_cov -- -j4
+      - name: Build
+        run: cmake --build build ${{ matrix.compiler == 'msvc' && '--config Release' ||
+          '' }}
 
-            - name: Run tests
-              run: ctest --test-dir build_cov --output-on-failure
+      - name: Test
+        run: >
+          ctest --test-dir build --output-on-failure ${{ matrix.compiler ==
+          'msvc' && '-C Release' || '' }}
 
-            - name: Collect coverage
-              run: |
-                  lcov --capture \
-                       --directory build_cov \
-                       --output-file coverage_raw.info \
-                       --gcov-tool gcov \
-                       --ignore-errors source,gcov \
-                       --rc geninfo_unexecuted_blocks=1
-                  lcov --remove coverage_raw.info \
-                       '*/build_cov/_deps/*' \
-                       '/usr/*' \
-                       --output-file coverage.info \
-                       --ignore-errors source
-                  lcov --list coverage.info
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Upload to Codecov
-              uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6
-              with:
-                  files: coverage.info
-                  flags: cpp
-                  token: ${{ secrets.CODECOV_TOKEN }}
-                  version: v11.2.8
-                  fail_ci_if_error: false
+      - name: Install lcov
+        run: sudo apt-get install -y lcov
 
-    benchmarks:
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Configure (coverage build)
+        run: >
+          cmake -S cpp -B build_cov -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_CXX_FLAGS="--coverage" -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+          -DGIVP_BUILD_TESTS=ON -DGIVP_BUILD_BENCHMARKS=OFF
 
-            - name: Configure
-              run: >
-                  cmake -S cpp -B build_bench -DCMAKE_BUILD_TYPE=Release
-                  -DGIVP_BUILD_TESTS=OFF -DGIVP_BUILD_BENCHMARKS=ON
+      - name: Build
+        run: cmake --build build_cov -- -j4
 
-            - name: Build
-              run: cmake --build build_bench -- -j4
+      - name: Run tests
+        run: ctest --test-dir build_cov --output-on-failure
 
-            - name: Run benchmarks (smoke)
-              run: ./build_bench/benchmarks/givp_benchmarks
+      - name: Collect coverage
+        run: |
+          lcov --capture \
+               --directory build_cov \
+               --output-file coverage_raw.info \
+               --gcov-tool gcov \
+            --ignore-errors source,gcov,negative \
+               --rc geninfo_unexecuted_blocks=1
+          lcov --remove coverage_raw.info \
+               '*/build_cov/_deps/*' \
+               '/usr/*' \
+               --output-file coverage.info \
+            --ignore-errors source,negative
+          lcov --list coverage.info
+
+      - name: Check coverage gate (≥90%)
+        run: |
+          hit=$(grep '^LH:' coverage.info | awk -F: '{s+=$2} END {print s+0}')
+          total=$(grep '^LF:' coverage.info | awk -F: '{s+=$2} END {print s+0}')
+          if [ "$total" -eq 0 ]; then
+            echo "::error::No coverage data found in coverage.info"
+            exit 1
+          fi
+          pct=$(awk "BEGIN {printf \"%.1f\", $hit / $total * 100}")
+          echo "C++ coverage: ${pct}%  ($hit / $total lines)"
+          awk "BEGIN { if ($hit / $total * 100 < 90.0) { print \"::error::Coverage below 90% threshold (got ${pct}%)\"; exit 1 } }"
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6
+        with:
+          files: coverage.info
+          flags: cpp
+          token: ${{ secrets.CODECOV_TOKEN }}
+          version: v11.2.8
+          fail_ci_if_error: false
+
+  benchmarks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Configure
+        run: >
+          cmake -S cpp -B build_bench -DCMAKE_BUILD_TYPE=Release
+          -DGIVP_BUILD_TESTS=OFF -DGIVP_BUILD_BENCHMARKS=ON
+
+      - name: Build
+        run: cmake --build build_bench -- -j4
+
+      - name: Run benchmarks (smoke)
+        run: ./build_bench/benchmarks/givp_benchmarks

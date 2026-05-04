@@ -87,6 +87,8 @@ jobs:
           '
 
       - name: Run tests
+        env:
+          JULIA_NUM_THREADS: auto
         run: julia --project=julia -e 'using Pkg; Pkg.test()'
 
   coverage:
@@ -121,6 +123,8 @@ jobs:
           '
 
       - name: Run tests with coverage
+        env:
+          JULIA_NUM_THREADS: auto
         run: julia --project=julia -e 'using Pkg; Pkg.test(; coverage=true)'
 
       - name: Process coverage
@@ -250,7 +254,7 @@ jobs:
             Aqua.test_all(
               GIVPOptimizer;
               ambiguities = (broken = false,),
-              stale_deps = (ignore = [:JSON, :Aqua],),
+              stale_deps = (ignore = [:JSON, :Aqua, :JET],),
             )
             println("Aqua: all checks passed ✓")
           '
@@ -290,6 +294,7 @@ jobs:
             using Pkg
             Pkg.activate("julia")
             Pkg.Registry.update()
+            rm(joinpath("julia", "Manifest.toml"); force=true)
             Pkg.instantiate()
             Pkg.status()
             println("Pkg.status: dependency check complete ✓")
@@ -461,3 +466,35 @@ jobs:
               println("Mutation kill rate ≥ 65% ✓")
             end
           ' || true
+
+  algorithm-quality-gate:
+    name: Algorithm quality gate (convergence assertions)
+    needs: test
+    runs-on: ubuntu-latest
+    # BLOCKING: this job must pass before merging. It verifies that
+    # GIVPOptimizer actually converges on standard benchmark functions, not
+    # merely that it runs without errors. Thresholds are statistical (median
+    # over 5 seeds) and calibrated at the 95th-percentile worst-case for the
+    # default GIVPConfig. A failure here indicates an algorithmic regression.
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: julia-actions/setup-julia@f6f565d9f7cf12f53dc8045742460d6260ad3b39 # v3.0.1
+        with:
+          version: "1"
+
+      - uses: julia-actions/cache@9a93c5fb3e9c1c20b60fc80a478cae53e38618a4 # v3.0.2
+
+      - name: Install package
+        run: |
+          julia --project=julia -e '
+            using Pkg
+            Pkg.Registry.update()
+            Pkg.instantiate()
+          '
+
+      - name: Run convergence quality gate
+        run: |
+          julia --project=julia julia/test/test_quality_gate.jl

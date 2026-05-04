@@ -93,7 +93,7 @@ jobs:
 
       - name: Clippy
         working-directory: rust
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --all-targets --all-features -- -D warnings
 
   fmt:
     runs-on: ubuntu-latest
@@ -131,6 +131,19 @@ jobs:
       - name: Generate coverage
         working-directory: rust
         run: cargo llvm-cov --all-features --lcov --output-path lcov.info
+
+      - name: Check coverage gate (≥90%)
+        working-directory: rust
+        run: |
+          hit=$(grep '^LH:' lcov.info | awk -F: '{s+=$2} END {print s+0}')
+          total=$(grep '^LF:' lcov.info | awk -F: '{s+=$2} END {print s+0}')
+          if [ "$total" -eq 0 ]; then
+            echo "::error::No coverage data found in lcov.info"
+            exit 1
+          fi
+          pct=$(awk "BEGIN {printf \"%.1f\", $hit / $total * 100}")
+          echo "Rust coverage: ${pct}%  ($hit / $total lines)"
+          awk "BEGIN { if ($hit / $total * 100 < 90.0) { print \"::error::Coverage below 90% threshold (got ${pct}%)\"; exit 1 } }"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6

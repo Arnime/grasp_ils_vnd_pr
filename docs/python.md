@@ -162,6 +162,51 @@ print(f"fun: {stats['fun']['mean']:.4e} ± {stats['fun']['std']:.4e}")
 
 Requires `pandas` for DataFrame output; works without it returning `list[dict]`.
 
+## Full experimental pipeline (30-seed protocol)
+
+For publication-quality comparisons against literature baselines, use the
+two-stage pipeline in `python/benchmarks/`:
+
+### Stage 1 — run the experiment
+
+```bash
+cd python/
+pip install -e .[dev]
+
+# 30 independent runs × 10-D on all 6 benchmark functions (default)
+python benchmarks/run_literature_comparison.py \
+    --n-runs 30 --output results.json
+
+# Include scipy baselines (Differential Evolution + Dual Annealing)
+python benchmarks/run_literature_comparison.py \
+    --algorithms GIVP-full GRASP-only DE SA \
+    --dims 30 --n-runs 30 --output results_30d.json
+```
+
+The script writes one JSON entry per `(algorithm, function, seed)` triple,
+guaranteeing deterministic reproducibility: seed `k` always maps to the same
+run via `np.random.default_rng(seed_start + k)`.
+
+### Stage 2 — generate the statistical report
+
+```bash
+# Console + Markdown tables + boxplot PNG
+python benchmarks/generate_report.py --input results.json
+
+# LaTeX tables only (booktabs, ready for SBPO / BRACIS)
+python benchmarks/generate_report.py \
+    --input results.json --format latex --no-plots
+
+# Compare all algorithms against Differential Evolution as the reference
+python benchmarks/generate_report.py \
+    --input results.json --reference DE --output-dir paper/tables/
+```
+
+`generate_report.py` applies the **Wilcoxon signed-rank test** (α = 0.05) on
+matched pairs from the 30 seeds and reports rank-biserial correlation as effect
+size.  Requires `scipy` for the statistical tests and `matplotlib` for plots
+(both optional; the script degrades gracefully without them).
+
 ## OO interface
 
 ```python

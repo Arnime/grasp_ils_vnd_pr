@@ -1,12 +1,18 @@
 name = "GIVPOptimizer"
 uuid = "52b765d9-9955-43cf-8457-2e847d316e43"
+keywords = ["optimization", "metaheuristic", "grasp", "vnd", "path-relinking"]
 license = "MIT"
 version = "1.0.0"
-authors = ["Arnaldo Mendes Pires Junior"]
+authors = ["Arnaldo Mendes Pires Junior <arnaldo_200@live.com>"]
 description = "GRASP-ILS-VND with Path Relinking metaheuristic for continuous black-box optimization"
+documentation = "https://github.com/Arnime/grasp_ils_vnd_pr#readme"
+homepage = "https://github.com/Arnime/grasp_ils_vnd_pr"
+repository = "https://github.com/Arnime/grasp_ils_vnd_pr"
 
 [deps]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
@@ -14,22 +20,28 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
+Aqua = "0.8"
 Dates = "1"
 Documenter = "1"
+JET = "0.8, 0.9, 0.10, 0.11"
 JSON = "0.21, 1"
-JuliaFormatter = "2"
+JuliaFormatter = "1, 2"
 LinearAlgebra = "1"
 Printf = "1"
 Random = "1"
 Statistics = "1"
+Supposition = "0.3"
 Test = "1"
 julia = "1.9"
 
 [extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 JuliaFormatter = "98e50ef6-434e-11e9-1051-2b60c6c9e899"
+Supposition = "5a0628fe-1738-4658-9b6d-0b7605a9755b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 format = ["JuliaFormatter"]
-test = ["Test"]
+test = ["Aqua", "JET", "Supposition", "Test"]
